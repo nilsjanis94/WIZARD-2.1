@@ -1,0 +1,92 @@
+# WIZARD-2.1 - Git Attributes
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python files
+*.py text eol=lf
+*.pyi text eol=lf
+
+# Configuration files
+*.ini text eol=lf
+*.cfg text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.rst text eol=lf
+*.txt text eol=lf
+
+# UI files
+*.ui text eol=lf
+
+# Translation files
+*.ts text eol=lf
+*.qm binary
+
+# Binary files
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.exe binary
+*.dmg binary
+*.deb binary
+*.rpm binary
+
+# Log files
+*.log text eol=lf
+
+# Data files
+*.tob text eol=lf
+*.TOB text eol=lf
+*.flx text eol=lf
+*.FLX text eol=lf
+*.wzp binary
+
+# Temporary files
+*.tmp text eol=lf
+*.temp text eol=lf
+*.bak text eol=lf
+*.backup text eol=lf
+
+# IDE files
+*.swp text eol=lf
+*.swo text eol=lf
+
+# Windows specific
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts
+*.sh text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
+
+# Makefiles
+Makefile text eol=lf
+*.mk text eol=lf
+
+# Docker files
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# CI/CD files
+*.yml text eol=lf
+*.yaml text eol=lf
+.github/** text eol=lf
+
+# Large files (use Git LFS if needed)
+# *.bin filter=lfs diff=lfs merge=lfs -text
+# *.dat filter=lfs diff=lfs merge=lfs -text
+# *.dump filter=lfs diff=lfs merge=lfs -text
