@@ -94,12 +94,11 @@ def main() -> int:
         # Setup translations
         setup_translations(app)
         
-        # Create main window and controller
-        main_window = MainWindow()
-        main_controller = MainController(main_window)
+        # Create main controller (which creates the main window)
+        main_controller = MainController()
         
         # Show main window
-        main_window.show()
+        main_controller.show_main_window()
         
         # Start event loop
         return app.exec()

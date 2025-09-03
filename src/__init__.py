@@ -15,10 +15,5 @@ __author__ = "FIELAX Development Team"
 __email__ = "dev@fielax.com"
 __description__ = "Scientific Data Analysis and Visualization Tool"
 
-# Package imports for easy access
-from .models import *
-from .views import *
-from .controllers import *
-from .services import *
-from .utils import *
-from .exceptions import *
+# Don't import everything to avoid circular imports
+# Components should be imported explicitly when needed
