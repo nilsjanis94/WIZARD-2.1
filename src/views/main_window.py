@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                              QSpacerItem, QVBoxLayout, QWidget)
 
 from ..utils.error_handler import ErrorHandler
+from ..services.ui_state_manager import UIStateManager, UIState
 
 
 class MainWindow(QMainWindow):
@@ -52,6 +53,9 @@ class MainWindow(QMainWindow):
         self.controller = controller
         self.error_handler = ErrorHandler()
 
+        # Initialize UI state manager
+        self.ui_state_manager = UIStateManager()
+
         # UI state
         self.current_file_path: Optional[str] = None
         self.current_project_path: Optional[str] = None
@@ -74,8 +78,14 @@ class MainWindow(QMainWindow):
             ui_file_path = Path(__file__).parent.parent.parent / "ui" / "main_window.ui"
             uic.loadUi(str(ui_file_path), self)
 
+            # Set up fonts for better readability
+            self._setup_fonts()
+
             # Store references to important widgets
             self._store_widget_references()
+
+            # Set up UI state manager with container references
+            self.ui_state_manager.set_containers(self.welcome_container, self.plot_container)
 
             # Initialize UI state
             self._initialize_ui_state()
@@ -88,6 +98,35 @@ class MainWindow(QMainWindow):
                 "UI Loading Error", f"Failed to load the user interface: {e}"
             )
             raise
+
+    def _setup_fonts(self):
+        """
+        Set up fonts using the UI service for better modularity.
+        """
+        try:
+            from ..services.ui_service import UIService
+            
+            # Use UI service for font management
+            ui_service = UIService()
+            success = ui_service.setup_fonts(self)
+            
+            if success:
+                self.logger.info("Fonts configured successfully using UI service")
+            else:
+                self.logger.warning("Font setup failed, using system default")
+                
+        except Exception as e:
+            self.logger.error(f"Font setup failed: {e}")
+            # Fallback to system default
+            try:
+                from PyQt6.QtGui import QFont
+                fallback_font = QFont()
+                fallback_font.setStyleHint(QFont.StyleHint.SansSerif)
+                fallback_font.setPointSize(10)
+                self.setFont(fallback_font)
+                self.logger.info("Using system fallback font")
+            except Exception as fallback_error:
+                self.logger.error(f"Font setup completely failed: {fallback_error}")
 
     def _store_widget_references(self):
         """
@@ -173,8 +212,11 @@ class MainWindow(QMainWindow):
         """
         Initialize the UI to its default state.
         """
-        # Show welcome screen initially
-        self._show_welcome_screen()
+        # Fix UI visibility issues first
+        self._fix_ui_visibility()
+
+        # Show welcome screen initially (reset to initial state)
+        self.ui_state_manager.reset_to_initial_state()
 
         # Initialize axis controls
         self._initialize_axis_controls()
@@ -184,6 +226,52 @@ class MainWindow(QMainWindow):
         self._reset_project_info()
 
         self.logger.debug("UI state initialized")
+
+    def _fix_ui_visibility(self):
+        """
+        Fix UI visibility issues by ensuring all text widgets are visible and properly styled.
+        This addresses the problem where widgets exist but are not visible to the user.
+        """
+        try:
+            from PyQt6.QtWidgets import QLabel, QCheckBox, QPushButton, QLineEdit
+
+            # Fix QLabel widgets
+            labels = self.findChildren(QLabel)
+            for label in labels:
+                label.setVisible(True)
+                current_style = label.styleSheet() or ""
+                if "color:" not in current_style:
+                    label.setStyleSheet(current_style + "color: black;")
+
+            # Fix QCheckBox widgets
+            checkboxes = self.findChildren(QCheckBox)
+            for checkbox in checkboxes:
+                checkbox.setVisible(True)
+                current_style = checkbox.styleSheet() or ""
+                if "color:" not in current_style:
+                    checkbox.setStyleSheet(current_style + "color: black;")
+
+            # Fix QPushButton widgets
+            buttons = self.findChildren(QPushButton)
+            for button in buttons:
+                button.setVisible(True)
+                current_style = button.styleSheet() or ""
+                if "color:" not in current_style:
+                    button.setStyleSheet(current_style + "color: black; background-color: lightgray;")
+
+            # Fix QLineEdit widgets
+            line_edits = self.findChildren(QLineEdit)
+            for line_edit in line_edits:
+                line_edit.setVisible(True)
+                current_style = line_edit.styleSheet() or ""
+                if "color:" not in current_style:
+                    line_edit.setStyleSheet(current_style + "color: black; background-color: white;")
+
+            self.logger.info("UI visibility fixed: %d labels, %d checkboxes, %d buttons, %d line edits", 
+                           len(labels), len(checkboxes), len(buttons), len(line_edits))
+
+        except Exception as e:
+            self.logger.error("Failed to fix UI visibility: %s", e)
 
     def _initialize_axis_controls(self):
         """
@@ -328,24 +416,14 @@ class MainWindow(QMainWindow):
         """
         Show the welcome screen and hide plot area.
         """
-        if self.welcome_container:
-            self.welcome_container.setVisible(True)
-
-        if self.plot_container:
-            self.plot_container.setVisible(False)
-
+        self.ui_state_manager.show_welcome_mode()
         self.logger.debug("Welcome screen displayed")
 
     def _show_plot_area(self):
         """
         Show the plot area and hide welcome screen.
         """
-        if self.welcome_container:
-            self.welcome_container.setVisible(False)
-
-        if self.plot_container:
-            self.plot_container.setVisible(True)
-
+        self.ui_state_manager.show_plot_mode()
         self.logger.debug("Plot area displayed")
 
     def _reset_data_metrics(self):
@@ -395,6 +473,8 @@ class MainWindow(QMainWindow):
             if file_path:
                 self.logger.info(f"Opening TOB file: {file_path}")
                 self.file_opened.emit(file_path)
+                # Switch to plot mode when TOB file is loaded
+                self.ui_state_manager.show_plot_mode()
 
         except Exception as e:
             self.logger.error(f"Error opening TOB file: {e}")
@@ -419,6 +499,8 @@ class MainWindow(QMainWindow):
                 password = "default_password"  # Placeholder
                 self.logger.info(f"Opening project file: {file_path}")
                 self.project_opened.emit(file_path, password)
+                # Switch to plot mode when project is loaded
+                self.ui_state_manager.show_plot_mode()
 
         except Exception as e:
             self.logger.error(f"Error opening project: {e}")
