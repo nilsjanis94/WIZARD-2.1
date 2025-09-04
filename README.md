@@ -21,6 +21,8 @@ A professional desktop application for processing and analyzing .TOB temperature
 - **📝 Comprehensive Logging**: Structured logging with rotation and categories
 - **🛡️ Error Handling**: Robust error handling with user-friendly dialogs
 - **⚡ Performance**: Optimized for large datasets with memory management
+- **🎯 Code Quality**: Professional development standards with 8.67/10 lint score
+- **🔧 Modular Architecture**: Clean MVC pattern with dedicated services
 
 ## 📋 Requirements
 
@@ -88,7 +90,9 @@ src/
 │   ├── tob_service.py
 │   ├── data_service.py
 │   ├── encryption_service.py
-│   └── error_service.py
+│   ├── error_service.py
+│   ├── ui_service.py
+│   └── ui_state_manager.py
 ├── utils/           # Utility functions and helpers
 │   ├── logging_config.py
 │   ├── error_handler.py
@@ -104,9 +108,25 @@ src/
 ### Code Quality Tools
 
 - **Black**: Code formatting (`black src/`)
-- **Pylint**: Code analysis (`pylint src/`)
+- **Pylint**: Code analysis (`pylint src/`) - Current score: 8.67/10
 - **mypy**: Type checking (`mypy src/`)
 - **pytest**: Testing framework (`pytest tests/`)
+
+### Development Scripts
+
+```bash
+# Start application
+make start
+
+# Run linting
+make lint
+
+# Clear logs
+make logs
+
+# Run tests
+make test
+```
 
 ### Running Tests
 
