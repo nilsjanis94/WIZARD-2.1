@@ -7,7 +7,7 @@ for the temperature data analysis application.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal
@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
                              QPushButton, QWidget)
 
 from ..services.data_service import DataService
+from ..services.plot_service import PlotService
 from ..services.ui_service import UIService
 from ..services.ui_state_manager import UIStateManager
 from ..utils.error_handler import ErrorHandler
@@ -57,6 +58,7 @@ class MainWindow(QMainWindow):
         self.ui_state_manager = UIStateManager()
         self.ui_service = UIService()
         self.data_service = DataService()
+        self.plot_service = PlotService()
 
         # UI state
         self.current_file_path: Optional[str] = None
@@ -119,6 +121,10 @@ class MainWindow(QMainWindow):
         self.plot_container = self.findChild(QFrame, "plot_container")
         self.plot_canvas_container = self.findChild(QWidget, "plot_canvas_container")
         self.plot_info_container = self.findChild(QFrame, "plot_info_container")
+        
+        # Initialize plot widget
+        self.plot_widget = None
+        self._initialize_plot_widget()
 
         # Project info labels
         self.cruise_info_label = self.findChild(QLabel, "cruise_info_label")
@@ -208,6 +214,29 @@ class MainWindow(QMainWindow):
         self._reset_project_info()
 
         self.logger.debug("UI state initialized")
+
+    def _initialize_plot_widget(self):
+        """
+        Initialize the plot widget for data visualization.
+        """
+        try:
+            if self.plot_canvas_container:
+                # Create plot widget
+                self.plot_widget = self.plot_service.create_plot_widget(self.plot_canvas_container)
+                
+                # Add plot widget to the container layout
+                from PyQt6.QtWidgets import QVBoxLayout
+                layout = QVBoxLayout()
+                layout.addWidget(self.plot_widget)
+                layout.setContentsMargins(0, 0, 0, 0)
+                self.plot_canvas_container.setLayout(layout)
+                
+                self.logger.debug("Plot widget initialized successfully")
+            else:
+                self.logger.warning("Plot canvas container not found, plot widget not initialized")
+        except Exception as e:
+            self.logger.error("Failed to initialize plot widget: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Widget Initialization Error")
 
     def _initialize_axis_controls(self):
         """
@@ -547,6 +576,73 @@ class MainWindow(QMainWindow):
         if self.statusbar:
             self.statusbar.showMessage(message, timeout)
         self.logger.debug("Status message: %s", message)
+
+    def update_plot_data(self, tob_data_model):
+        """
+        Update the plot widget with new TOB data.
+        
+        Args:
+            tob_data_model: TOB data model containing sensor data
+        """
+        try:
+            if self.plot_widget:
+                self.plot_widget.update_data(tob_data_model)
+                self.logger.debug("Plot data updated successfully")
+            else:
+                self.logger.warning("Plot widget not available for data update")
+        except Exception as e:
+            self.logger.error("Failed to update plot data: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Data Update Error")
+
+    def update_plot_sensors(self, selected_sensors: List[str]):
+        """
+        Update the selected sensors for plotting.
+        
+        Args:
+            selected_sensors: List of selected sensor names
+        """
+        try:
+            if self.plot_widget:
+                self.plot_widget.update_sensor_selection(selected_sensors)
+                self.logger.debug("Plot sensors updated: %s", selected_sensors)
+            else:
+                self.logger.warning("Plot widget not available for sensor update")
+        except Exception as e:
+            self.logger.error("Failed to update plot sensors: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Sensor Update Error")
+
+    def update_plot_axis_settings(self, axis_settings: Dict[str, Any]):
+        """
+        Update axis settings for plotting.
+        
+        Args:
+            axis_settings: Dictionary containing axis configuration
+        """
+        try:
+            if self.plot_widget:
+                self.plot_widget.update_axis_settings(axis_settings)
+                self.logger.debug("Plot axis settings updated: %s", axis_settings)
+            else:
+                self.logger.warning("Plot widget not available for axis update")
+        except Exception as e:
+            self.logger.error("Failed to update plot axis settings: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Axis Update Error")
+
+    def get_plot_info(self) -> Dict[str, Any]:
+        """
+        Get information about the current plot.
+        
+        Returns:
+            Dictionary containing plot information
+        """
+        try:
+            if self.plot_widget:
+                return self.plot_widget.get_plot_info()
+            else:
+                return {'has_plot_widget': False}
+        except Exception as e:
+            self.logger.error("Failed to get plot info: %s", e)
+            return {'error': str(e)}
 
     def display_status_message(self, message: str, timeout: int = 5000):
         """

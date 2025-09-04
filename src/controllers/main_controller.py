@@ -7,7 +7,7 @@ the models, views, and services.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
@@ -16,6 +16,7 @@ from ..models.tob_data_model import TOBDataModel
 from ..services.data_service import DataService
 from ..services.encryption_service import EncryptionService
 from ..services.error_service import ErrorService
+from ..services.plot_service import PlotService
 from ..services.tob_service import TOBService
 from ..utils.error_handler import ErrorHandler
 
@@ -45,6 +46,7 @@ class MainController(QObject):
         # Initialize services
         self.tob_service = TOBService()
         self.data_service = DataService()
+        self.plot_service = PlotService()
         self.encryption_service = EncryptionService()
         self.error_service = ErrorService()
         self.error_handler = ErrorHandler()
@@ -153,6 +155,9 @@ class MainController(QObject):
             # Update sensor checkboxes
             self._update_sensor_checkboxes()
 
+            # Update plot with data
+            self.main_window.update_plot_data(self.tob_data_model)
+
             # Switch to plot mode
             self.main_window.ui_state_manager.show_plot_mode()
 
@@ -232,10 +237,12 @@ class MainController(QObject):
         try:
             self.logger.debug("Updating sensor selection: %s = %s", sensor_name, is_selected)
             
-            # TODO: Update plot visualization based on sensor selection
-            # This will be implemented when we add the visualization component
+            # Get current selected sensors
+            selected_sensors = self._get_selected_sensors()
             
-            # For now, just log the change
+            # Update plot with new sensor selection
+            self.main_window.update_plot_sensors(selected_sensors)
+            
             if is_selected:
                 self.logger.info("Sensor %s selected for visualization", sensor_name)
             else:
@@ -244,6 +251,33 @@ class MainController(QObject):
         except Exception as e:
             self.logger.error("Error updating sensor selection: %s", e)
             self.error_handler.handle_error(e, self.main_window, "Sensor Selection Error")
+
+    def _get_selected_sensors(self) -> List[str]:
+        """
+        Get list of currently selected sensors.
+        
+        Returns:
+            List of selected sensor names
+        """
+        try:
+            selected_sensors = []
+            
+            # Check NTC checkboxes
+            for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
+                if checkbox and checkbox.isChecked():
+                    selected_sensors.append(sensor_name)
+            
+            # Check PT100 checkbox
+            if hasattr(self.main_window, 'pt100_checkbox') and self.main_window.pt100_checkbox:
+                if self.main_window.pt100_checkbox.isChecked():
+                    selected_sensors.append('PT100')
+            
+            self.logger.debug("Selected sensors: %s", selected_sensors)
+            return selected_sensors
+            
+        except Exception as e:
+            self.logger.error("Error getting selected sensors: %s", e)
+            return []
 
     def update_axis_auto_mode(self, axis_name: str, is_auto: bool):
         """
@@ -256,8 +290,13 @@ class MainController(QObject):
         try:
             self.logger.debug("Updating axis auto mode: %s = %s", axis_name, is_auto)
             
-            # TODO: Update axis settings for visualization
-            # This will be implemented when we add the visualization component
+            # Update axis settings
+            axis_settings = {
+                f'{axis_name}_auto': is_auto
+            }
+            
+            # Update plot with new axis settings
+            self.main_window.update_plot_axis_settings(axis_settings)
             
             self.logger.info("Axis %s auto mode: %s", axis_name, is_auto)
 
