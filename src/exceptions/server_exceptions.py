@@ -7,11 +7,11 @@ Custom exception classes for server communication operations.
 
 class ServerError(Exception):
     """Base exception for server operations."""
-    
+
     def __init__(self, message: str, error_code: str = None):
         """
         Initialize server error.
-        
+
         Args:
             message: Error message
             error_code: Optional error code
@@ -23,11 +23,11 @@ class ServerError(Exception):
 
 class ServerConnectionError(ServerError):
     """Exception raised when server connection fails."""
-    
+
     def __init__(self, message: str, url: str = None, status_code: int = None):
         """
         Initialize server connection error.
-        
+
         Args:
             message: Error message
             url: URL that failed to connect
@@ -40,11 +40,11 @@ class ServerConnectionError(ServerError):
 
 class ServerTimeoutError(ServerError):
     """Exception raised when server request times out."""
-    
+
     def __init__(self, message: str, url: str = None, timeout: float = None):
         """
         Initialize server timeout error.
-        
+
         Args:
             message: Error message
             url: URL that timed out
@@ -57,11 +57,11 @@ class ServerTimeoutError(ServerError):
 
 class ServerAuthenticationError(ServerError):
     """Exception raised when server authentication fails."""
-    
+
     def __init__(self, message: str, url: str = None, status_code: int = None):
         """
         Initialize server authentication error.
-        
+
         Args:
             message: Error message
             url: URL that failed authentication
@@ -74,11 +74,11 @@ class ServerAuthenticationError(ServerError):
 
 class ServerResponseError(ServerError):
     """Exception raised when server response is invalid."""
-    
+
     def __init__(self, message: str, url: str = None, response_data: str = None):
         """
         Initialize server response error.
-        
+
         Args:
             message: Error message
             url: URL that returned invalid response
@@ -91,11 +91,11 @@ class ServerResponseError(ServerError):
 
 class ServerUploadError(ServerError):
     """Exception raised when file upload to server fails."""
-    
+
     def __init__(self, message: str, url: str = None, file_path: str = None):
         """
         Initialize server upload error.
-        
+
         Args:
             message: Error message
             url: URL that failed to upload
@@ -108,11 +108,11 @@ class ServerUploadError(ServerError):
 
 class ServerStatusError(ServerError):
     """Exception raised when server status query fails."""
-    
+
     def __init__(self, message: str, url: str = None, job_id: str = None):
         """
         Initialize server status error.
-        
+
         Args:
             message: Error message
             url: URL that failed status query

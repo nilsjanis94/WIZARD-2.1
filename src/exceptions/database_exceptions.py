@@ -9,11 +9,11 @@ implementation uses encrypted files instead of a database.
 
 class DatabaseError(Exception):
     """Base exception for database operations."""
-    
+
     def __init__(self, message: str, error_code: str = None):
         """
         Initialize database error.
-        
+
         Args:
             message: Error message
             error_code: Optional error code
@@ -25,11 +25,11 @@ class DatabaseError(Exception):
 
 class DatabaseConnectionError(DatabaseError):
     """Exception raised when database connection fails."""
-    
+
     def __init__(self, message: str, connection_string: str = None):
         """
         Initialize database connection error.
-        
+
         Args:
             message: Error message
             connection_string: Connection string that failed
@@ -40,11 +40,11 @@ class DatabaseConnectionError(DatabaseError):
 
 class DatabaseQueryError(DatabaseError):
     """Exception raised when database query fails."""
-    
+
     def __init__(self, message: str, query: str = None):
         """
         Initialize database query error.
-        
+
         Args:
             message: Error message
             query: Query that failed
@@ -55,11 +55,11 @@ class DatabaseQueryError(DatabaseError):
 
 class DatabaseTransactionError(DatabaseError):
     """Exception raised when database transaction fails."""
-    
+
     def __init__(self, message: str, transaction_id: str = None):
         """
         Initialize database transaction error.
-        
+
         Args:
             message: Error message
             transaction_id: ID of the failed transaction
@@ -70,11 +70,11 @@ class DatabaseTransactionError(DatabaseError):
 
 class DatabaseSchemaError(DatabaseError):
     """Exception raised when database schema operations fail."""
-    
+
     def __init__(self, message: str, table_name: str = None):
         """
         Initialize database schema error.
-        
+
         Args:
             message: Error message
             table_name: Name of the table that caused the error

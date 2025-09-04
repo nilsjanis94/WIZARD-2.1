@@ -1,0 +1,16 @@
+[MASTER]
+extension-pkg-whitelist=PyQt6
+ignore-paths=.*/venv/.*
+
+[MESSAGES CONTROL]
+# Nur echte PyQt6-Probleme umgehen
+disable=import-error,no-name-in-module
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-attributes=15
+max-args=8
+max-locals=20
+max-branches=15

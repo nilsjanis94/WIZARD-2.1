@@ -7,11 +7,11 @@ Custom exception classes for TOB file operations.
 
 class TOBError(Exception):
     """Base exception for TOB file operations."""
-    
+
     def __init__(self, message: str, error_code: str = None):
         """
         Initialize TOB error.
-        
+
         Args:
             message: Error message
             error_code: Optional error code
@@ -23,11 +23,11 @@ class TOBError(Exception):
 
 class TOBFileNotFoundError(TOBError):
     """Exception raised when a TOB file is not found."""
-    
+
     def __init__(self, message: str, file_path: str = None):
         """
         Initialize TOB file not found error.
-        
+
         Args:
             message: Error message
             file_path: Path to the file that was not found
@@ -38,11 +38,11 @@ class TOBFileNotFoundError(TOBError):
 
 class TOBParsingError(TOBError):
     """Exception raised when TOB file parsing fails."""
-    
+
     def __init__(self, message: str, file_path: str = None, line_number: int = None):
         """
         Initialize TOB parsing error.
-        
+
         Args:
             message: Error message
             file_path: Path to the file that failed to parse
@@ -55,11 +55,11 @@ class TOBParsingError(TOBError):
 
 class TOBValidationError(TOBError):
     """Exception raised when TOB file validation fails."""
-    
+
     def __init__(self, message: str, validation_type: str = None):
         """
         Initialize TOB validation error.
-        
+
         Args:
             message: Error message
             validation_type: Type of validation that failed
@@ -70,11 +70,11 @@ class TOBValidationError(TOBError):
 
 class TOBDataError(TOBError):
     """Exception raised when TOB data processing fails."""
-    
+
     def __init__(self, message: str, data_type: str = None):
         """
         Initialize TOB data error.
-        
+
         Args:
             message: Error message
             data_type: Type of data that caused the error
@@ -85,11 +85,11 @@ class TOBDataError(TOBError):
 
 class TOBHeaderError(TOBError):
     """Exception raised when TOB header processing fails."""
-    
+
     def __init__(self, message: str, header_field: str = None):
         """
         Initialize TOB header error.
-        
+
         Args:
             message: Error message
             header_field: Header field that caused the error
@@ -100,11 +100,11 @@ class TOBHeaderError(TOBError):
 
 class TOBSensorError(TOBError):
     """Exception raised when TOB sensor data processing fails."""
-    
+
     def __init__(self, message: str, sensor_name: str = None):
         """
         Initialize TOB sensor error.
-        
+
         Args:
             message: Error message
             sensor_name: Name of the sensor that caused the error
