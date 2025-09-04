@@ -30,7 +30,7 @@ class PlotService:
     def __init__(self):
         """Initialize the plot service."""
         self.logger = logging.getLogger(__name__)
-        self.logger.debug("PlotService initialized")
+        self.logger.info("PlotService initialized")
         
         # Color schemes for different sensor types
         self.ntc_colors = [
@@ -65,8 +65,9 @@ class PlotService:
             PlotWidget: Configured plot widget instance
         """
         try:
+            self.logger.info("Creating plot widget with parent: %s", parent)
             plot_widget = PlotWidget(parent, self)
-            self.logger.debug("Plot widget created successfully")
+            self.logger.info("Plot widget created successfully")
             return plot_widget
         except Exception as e:
             self.logger.error("Failed to create plot widget: %s", e)
@@ -203,6 +204,8 @@ class PlotWidget(QWidget):
         self.plot_service = plot_service
         self.logger = logging.getLogger(__name__)
         
+        self.logger.info("Initializing PlotWidget...")
+        
         # Data storage
         self.tob_data_model: Optional[TOBDataModel] = None
         self.selected_sensors: List[str] = []
@@ -216,11 +219,14 @@ class PlotWidget(QWidget):
         }
         
         # Matplotlib setup
+        self.logger.info("Setting up matplotlib...")
         self._setup_matplotlib()
+        self.logger.info("Creating plot canvas...")
         self._create_plot_canvas()
+        self.logger.info("Setting up plot layout...")
         self._setup_plot_layout()
         
-        self.logger.debug("PlotWidget initialized")
+        self.logger.info("PlotWidget initialized successfully")
 
     def _setup_matplotlib(self):
         """Configure matplotlib for professional plotting."""

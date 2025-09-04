@@ -89,6 +89,10 @@ class MainWindow(QMainWindow):
             self.ui_state_manager.set_containers(
                 self.welcome_container, self.plot_container
             )
+            
+            # Debug logging for UI state manager setup
+            self.logger.info("UI state manager containers set - welcome: %s, plot: %s", 
+                           self.welcome_container is not None, self.plot_container is not None)
 
             # Initialize UI state
             self._initialize_ui_state()
@@ -121,6 +125,11 @@ class MainWindow(QMainWindow):
         self.plot_container = self.findChild(QFrame, "plot_container")
         self.plot_canvas_container = self.findChild(QWidget, "plot_canvas_container")
         self.plot_info_container = self.findChild(QFrame, "plot_info_container")
+        
+        # Debug logging for plot containers
+        self.logger.info("Plot container found: %s", self.plot_container is not None)
+        self.logger.info("Plot canvas container found: %s", self.plot_canvas_container is not None)
+        self.logger.info("Plot info container found: %s", self.plot_info_container is not None)
         
         # Initialize plot widget
         self.plot_widget = None
@@ -220,18 +229,39 @@ class MainWindow(QMainWindow):
         Initialize the plot widget for data visualization.
         """
         try:
+            self.logger.info("Initializing plot widget...")
+            
             if self.plot_canvas_container:
+                self.logger.info("Plot canvas container found, creating plot widget")
+                
                 # Create plot widget
                 self.plot_widget = self.plot_service.create_plot_widget(self.plot_canvas_container)
+                self.logger.info("Plot widget created successfully")
                 
                 # Add plot widget to the container layout
                 from PyQt6.QtWidgets import QVBoxLayout
+                
+                # Check if container already has a layout
+                existing_layout = self.plot_canvas_container.layout()
+                if existing_layout:
+                    # Clear existing layout
+                    while existing_layout.count():
+                        child = existing_layout.takeAt(0)
+                        if child.widget():
+                            child.widget().deleteLater()
+                    existing_layout.deleteLater()
+                
+                # Create new layout
                 layout = QVBoxLayout()
                 layout.addWidget(self.plot_widget)
                 layout.setContentsMargins(0, 0, 0, 0)
                 self.plot_canvas_container.setLayout(layout)
                 
-                self.logger.debug("Plot widget initialized successfully")
+                # Make sure the plot widget is visible
+                self.plot_widget.setVisible(True)
+                self.plot_canvas_container.setVisible(True)
+                
+                self.logger.info("Plot widget initialized and made visible successfully")
             else:
                 self.logger.warning("Plot canvas container not found, plot widget not initialized")
         except Exception as e:
@@ -533,7 +563,7 @@ class MainWindow(QMainWindow):
         if self.location_comment_value:
             self.location_comment_value.setText(comment)
 
-        self.logger.debug("Project info updated: %s, %s", project_name, location)
+        self.logger.info("Project info updated: %s, %s", project_name, location)
 
     def update_data_metrics(self, metrics: Dict[str, Any]):
         """
