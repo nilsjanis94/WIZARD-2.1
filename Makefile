@@ -14,7 +14,12 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  run/start   Start the application"
-	@echo "  test        Run tests"
+	@echo "  test        Run all tests"
+	@echo "  test-unit   Run unit tests only"
+	@echo "  test-integration Run integration tests only"
+	@echo "  test-ui     Run UI tests only"
+	@echo "  test-coverage Run tests with coverage report"
+	@echo "  test-fast   Run fast tests (exclude slow tests)"
 	@echo "  lint        Run linting"
 	@echo "  format      Format code"
 	@echo ""
@@ -71,6 +76,26 @@ deps:
 test:
 	@echo "Running tests..."
 	pytest tests/ -v
+
+test-unit:
+	@echo "Running unit tests..."
+	pytest tests/unit/ -v -m unit
+
+test-integration:
+	@echo "Running integration tests..."
+	pytest tests/integration/ -v -m integration
+
+test-ui:
+	@echo "Running UI tests..."
+	pytest tests/ui/ -v -m ui
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
+
+test-fast:
+	@echo "Running fast tests (excluding slow tests)..."
+	pytest tests/ -v -m "not slow"
 
 lint:
 	@echo "Running linting..."

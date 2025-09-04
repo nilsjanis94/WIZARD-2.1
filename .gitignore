@@ -218,10 +218,10 @@ data/*.flx
 data/*.FLX
 !data/.gitkeep
 
-# Test files
-test_*.py
-*_test.py
-tests/test_*.py
+# Test files (but keep our test structure)
+# test_*.py
+# *_test.py
+# tests/test_*.py
 
 # Documentation build
 docs/build/
