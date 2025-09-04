@@ -156,12 +156,10 @@ class TestUIService:
         
         assert fonts == []
 
-    @patch('src.services.ui_service.QFont')
-    def test_test_font_availability(self, mock_qfont):
+    @patch.object(UIService, 'get_available_fonts')
+    def test_test_font_availability(self, mock_get_fonts):
         """Test font availability testing."""
-        mock_font = MagicMock()
-        mock_font.exactMatch.return_value = True
-        mock_qfont.return_value = mock_font
+        mock_get_fonts.return_value = ["Arial", "Helvetica", "Times"]
         
         service = UIService()
         result = service.test_font_availability("Arial")
