@@ -13,7 +13,7 @@ help:
 	@echo "  venv        Create virtual environment"
 	@echo ""
 	@echo "Development:"
-	@echo "  run         Start the application"
+	@echo "  run/start   Start the application"
 	@echo "  test        Run tests"
 	@echo "  lint        Run linting"
 	@echo "  format      Format code"
@@ -46,6 +46,9 @@ install:
 run:
 	@echo "Starting WIZARD-2.1 application..."
 	python scripts/start_app.py
+
+start: run
+	@echo "Alias for 'run' command"
 
 # Cleanup commands
 clean:
