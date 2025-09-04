@@ -6,7 +6,10 @@ the models, views, and services.
 """
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
+
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from ..models.project_model import ProjectModel
 from ..models.tob_data_model import TOBDataModel
@@ -17,7 +20,7 @@ from ..services.tob_service import TOBService
 from ..utils.error_handler import ErrorHandler
 
 
-class MainController:
+class MainController(QObject):
     """
     Main controller class for the WIZARD-2.1 application.
 
@@ -25,10 +28,18 @@ class MainController:
     handling the main application logic and user interactions.
     """
 
+    # Signals for communication with the view
+    file_loaded = pyqtSignal(str, object)  # file_path, tob_data_model
+    file_load_progress = pyqtSignal(int)  # progress percentage
+    file_load_error = pyqtSignal(str, str)  # error_type, error_message
+    data_processed = pyqtSignal(object)  # processed_data
+    sensors_updated = pyqtSignal(list)  # available_sensors
+
     def __init__(self):
         """
         Initialize the main controller.
         """
+        super().__init__()
         self.logger = logging.getLogger(__name__)
 
         # Initialize services
@@ -39,7 +50,7 @@ class MainController:
         self.error_handler = ErrorHandler()
 
         # Initialize models
-        self.tob_data_model = TOBDataModel()
+        self.tob_data_model: Optional[TOBDataModel] = None
         self.project_model = ProjectModel(name="Untitled Project")
 
         # Initialize view (import here to avoid circular import)
@@ -72,26 +83,187 @@ class MainController:
         """
         try:
             self.logger.info("Loading TOB file: %s", file_path)
-            self.main_window.show_status_message("Loading file...")
+            self.main_window.display_status_message("Loading file...", 0)
+            self.file_load_progress.emit(10)
+
+            # Validate file before loading
+            if not self.tob_service.validate_tob_file(file_path):
+                raise ValueError(f"Invalid TOB file format: {file_path}")
+
+            self.file_load_progress.emit(30)
 
             # Load TOB data using service
-            tob_data = self.tob_service.load_tob_file(file_path)
+            self.tob_data_model = self.tob_service.load_tob_file(file_path)
+            self.file_load_progress.emit(60)
 
-            # Update model
-            self.tob_data_model.set_data(tob_data)
+            # Process the loaded data
+            processed_data = self.data_service.process_tob_data(self.tob_data_model)
+            self.file_load_progress.emit(80)
 
-            # Update view
-            self._update_view_with_data()
+            # Update view with loaded data
+            self._update_view_with_tob_data()
 
-            self.main_window.show_status_message("File loaded successfully")
-            self.logger.info("TOB file loaded successfully")
+            # Emit signals for UI updates
+            self.file_loaded.emit(file_path, self.tob_data_model)
+            self.data_processed.emit(processed_data)
+            self.sensors_updated.emit(self.tob_data_model.sensors)
+
+            self.file_load_progress.emit(100)
+            self.main_window.display_status_message("File loaded successfully", 2000)
+            self.logger.info("TOB file loaded successfully: %s", file_path)
+
+        except (FileNotFoundError, PermissionError) as e:
+            error_msg = f"File access error: {e}"
+            self.logger.error("File access error loading TOB file %s: %s", file_path, e)
+            self.file_load_error.emit("FileAccessError", error_msg)
+            self.error_handler.handle_error(e, self.main_window, "File Access Error")
+        except (ValueError, TypeError) as e:
+            error_msg = f"File format error: {e}"
+            self.logger.error("File format error loading TOB file %s: %s", file_path, e)
+            self.file_load_error.emit("FileFormatError", error_msg)
+            self.error_handler.handle_error(e, self.main_window, "File Format Error")
+        except Exception as e:
+            error_msg = f"Unexpected error: {e}"
+            self.logger.error("Unexpected error loading TOB file %s: %s", file_path, e)
+            self.file_load_error.emit("UnexpectedError", error_msg)
+            self.error_handler.handle_error(e, self.main_window, "File Loading Error")
+
+    def _update_view_with_tob_data(self):
+        """
+        Update the view with loaded TOB data.
+        """
+        try:
+            if not self.tob_data_model:
+                self.logger.warning("No TOB data model available for view update")
+                return
+
+            # Update project information
+            metadata = self.tob_data_model.get_metadata()
+            self.main_window.update_project_info(
+                project_name=Path(metadata.get("file_path", "")).stem,
+                location="TOB Data",
+                comment=f"Data points: {metadata.get('data_points', 0)}"
+            )
+
+            # Update data metrics
+            if self.tob_data_model.data is not None:
+                metrics = self.data_service._calculate_metrics(self.tob_data_model)
+                self.main_window.update_data_metrics(metrics)
+
+            # Update sensor checkboxes
+            self._update_sensor_checkboxes()
+
+            # Switch to plot mode
+            self.main_window.ui_state_manager.show_plot_mode()
+
+            self.logger.debug("View updated with TOB data successfully")
 
         except Exception as e:
-            self.logger.error("Error loading TOB file: %s", e)
-            self.error_handler.show_error(
-                "File Loading Error", f"Failed to load file: {e}"
-            )
-            self.main_window.show_status_message("Error loading file")
+            self.logger.error("Error updating view with TOB data: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "View Update Error")
+
+    def _update_sensor_checkboxes(self):
+        """
+        Update sensor checkboxes based on available sensors.
+        """
+        try:
+            if not self.tob_data_model or not self.tob_data_model.sensors:
+                self.logger.warning("No sensors available for checkbox update")
+                return
+
+            # Get available sensors
+            available_sensors = self.tob_data_model.sensors
+            
+            # Update NTC checkboxes
+            for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
+                if sensor_name in available_sensors:
+                    checkbox.setVisible(True)
+                    checkbox.setEnabled(True)
+                    checkbox.setChecked(True)  # Default to selected
+                else:
+                    checkbox.setVisible(False)
+                    checkbox.setEnabled(False)
+                    checkbox.setChecked(False)
+
+            # Update PT100 checkbox
+            if hasattr(self.main_window, 'pt100_checkbox') and self.main_window.pt100_checkbox:
+                pt100_sensor = self.tob_data_model.get_pt100_sensor()
+                if pt100_sensor:
+                    self.main_window.pt100_checkbox.setVisible(True)
+                    self.main_window.pt100_checkbox.setEnabled(True)
+                    self.main_window.pt100_checkbox.setChecked(True)
+                else:
+                    self.main_window.pt100_checkbox.setVisible(False)
+                    self.main_window.pt100_checkbox.setEnabled(False)
+                    self.main_window.pt100_checkbox.setChecked(False)
+
+            self.logger.debug("Sensor checkboxes updated successfully")
+
+        except Exception as e:
+            self.logger.error("Error updating sensor checkboxes: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Sensor Update Error")
+
+    def open_tob_file(self, file_path: str):
+        """
+        Public method to open a TOB file.
+
+        Args:
+            file_path: Path to the TOB file
+        """
+        self._on_file_opened(file_path)
+
+    def get_current_tob_data(self) -> Optional[TOBDataModel]:
+        """
+        Get the currently loaded TOB data model.
+
+        Returns:
+            Current TOB data model or None if no data loaded
+        """
+        return self.tob_data_model
+
+    def update_sensor_selection(self, sensor_name: str, is_selected: bool):
+        """
+        Update sensor selection state.
+
+        Args:
+            sensor_name: Name of the sensor
+            is_selected: Whether the sensor is selected
+        """
+        try:
+            self.logger.debug("Updating sensor selection: %s = %s", sensor_name, is_selected)
+            
+            # TODO: Update plot visualization based on sensor selection
+            # This will be implemented when we add the visualization component
+            
+            # For now, just log the change
+            if is_selected:
+                self.logger.info("Sensor %s selected for visualization", sensor_name)
+            else:
+                self.logger.info("Sensor %s deselected from visualization", sensor_name)
+
+        except Exception as e:
+            self.logger.error("Error updating sensor selection: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Sensor Selection Error")
+
+    def update_axis_auto_mode(self, axis_name: str, is_auto: bool):
+        """
+        Update axis auto mode setting.
+
+        Args:
+            axis_name: Name of the axis (e.g., 'y1', 'y2', 'x')
+            is_auto: Whether auto mode is enabled
+        """
+        try:
+            self.logger.debug("Updating axis auto mode: %s = %s", axis_name, is_auto)
+            
+            # TODO: Update axis settings for visualization
+            # This will be implemented when we add the visualization component
+            
+            self.logger.info("Axis %s auto mode: %s", axis_name, is_auto)
+
+        except Exception as e:
+            self.logger.error("Error updating axis auto mode: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Axis Update Error")
 
     def _on_project_created(self, project_path: str, password: str):
         """

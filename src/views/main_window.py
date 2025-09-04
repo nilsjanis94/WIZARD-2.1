@@ -364,8 +364,7 @@ class MainWindow(QMainWindow):
             if file_path:
                 self.logger.info("Opening TOB file: %s", file_path)
                 self.file_opened.emit(file_path)
-                # Switch to plot mode when TOB file is loaded
-                self.ui_state_manager.show_plot_mode()
+                # The controller will handle switching to plot mode
 
         except (FileNotFoundError, PermissionError) as e:
             self.logger.error("File access error: %s", e)
@@ -548,6 +547,17 @@ class MainWindow(QMainWindow):
         if self.statusbar:
             self.statusbar.showMessage(message, timeout)
         self.logger.debug("Status message: %s", message)
+
+    def display_status_message(self, message: str, timeout: int = 5000):
+        """
+        Display a status message in the status bar.
+        Alias for show_status_message for consistency.
+
+        Args:
+            message: Message to display
+            timeout: Timeout in milliseconds (0 = permanent)
+        """
+        self.show_status_message(message, timeout)
 
     def closeEvent(self, event):
         """
