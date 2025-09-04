@@ -108,3 +108,95 @@ class TOBDataModel(BaseModel):
                 }
 
         return result
+
+    def get_metadata(self) -> Dict[str, Any]:
+        """
+        Get comprehensive metadata about the TOB file.
+
+        Returns:
+            Dictionary containing file metadata
+        """
+        metadata = {
+            "file_path": self.file_path,
+            "file_size": self.file_size,
+            "data_points": self.data_points,
+            "sensors": self.sensors,
+            "headers": self.headers,
+            "data_shape": self.data.shape if self.data is not None else (0, 0),
+            "time_range": self.get_data_range().get("time_range"),
+            "sensor_count": len(self.sensors),
+            "ntc_sensors": self.get_ntc_sensors(),
+            "pt100_sensor": self.get_pt100_sensor(),
+        }
+        return metadata
+
+    def validate_data_integrity(self) -> Dict[str, Any]:
+        """
+        Validate the integrity of the loaded data.
+
+        Returns:
+            Dictionary containing validation results
+        """
+        validation_results = {
+            "is_valid": True,
+            "errors": [],
+            "warnings": [],
+            "data_quality": "unknown",
+        }
+
+        if self.data is None:
+            validation_results["is_valid"] = False
+            validation_results["errors"].append("No data loaded")
+            validation_results["data_quality"] = "poor"
+            return validation_results
+
+        # Check for missing values
+        missing_data = self.data.isnull().sum()
+        if missing_data.any():
+            validation_results["warnings"].append(f"Missing data in columns: {missing_data[missing_data > 0].to_dict()}")
+
+        # Check for duplicate timestamps
+        time_col = self.get_time_column()
+        if time_col and time_col in self.data.columns:
+            if self.data[time_col].duplicated().any():
+                validation_results["warnings"].append("Duplicate timestamps found")
+
+        # Check data consistency
+        if len(self.data) == 0:
+            validation_results["is_valid"] = False
+            validation_results["errors"].append("Empty dataset")
+
+        # Assess data quality
+        if validation_results["errors"]:
+            validation_results["data_quality"] = "poor"
+        elif validation_results["warnings"]:
+            validation_results["data_quality"] = "fair"
+        else:
+            validation_results["data_quality"] = "good"
+
+        return validation_results
+
+    def get_sensor_statistics(self) -> Dict[str, Dict[str, float]]:
+        """
+        Get statistical information for all sensors.
+
+        Returns:
+            Dictionary containing sensor statistics
+        """
+        if self.data is None:
+            return {}
+
+        statistics = {}
+        for sensor in self.sensors:
+            if sensor in self.data.columns:
+                sensor_data = self.data[sensor]
+                statistics[sensor] = {
+                    "mean": float(sensor_data.mean()),
+                    "std": float(sensor_data.std()),
+                    "min": float(sensor_data.min()),
+                    "max": float(sensor_data.max()),
+                    "median": float(sensor_data.median()),
+                    "count": int(sensor_data.count()),
+                }
+
+        return statistics
