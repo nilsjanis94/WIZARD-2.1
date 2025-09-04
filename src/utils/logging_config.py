@@ -98,8 +98,14 @@ def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> Non
         logger.info("Log directory: %s", log_dir)
         logger.info("Log level: %s", log_level)
 
+    except (OSError, PermissionError) as e:
+        print(f"File system error setting up logging: {e}", file=sys.stderr)
+        # Fallback to basic logging
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        )
     except Exception as e:
-        print("Error setting up logging: %s" % e, file=sys.stderr)
+        print(f"Unexpected error setting up logging: {e}", file=sys.stderr)
         # Fallback to basic logging
         logging.basicConfig(
             level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -137,6 +143,9 @@ def log_function_call(func):
             result = func(*args, **kwargs)
             logger.debug("%s completed successfully", func.__name__)
             return result
+        except (TypeError, AttributeError) as e:
+            logger.error("Function signature error in %s: %s", func.__name__, e)
+            raise
         except Exception as e:
             logger.error("%s failed with error: %s", func.__name__, e)
             raise
@@ -165,11 +174,24 @@ def log_performance(func):
             duration = end_time - start_time
             logger.info("%s completed in %.3f seconds", func.__name__, duration)
             return result
+        except (TypeError, AttributeError) as e:
+            end_time = time.time()
+            duration = end_time - start_time
+            logger.error(
+                "Function signature error in %s after %.3f seconds: %s",
+                func.__name__,
+                duration,
+                e,
+            )
+            raise
         except Exception as e:
             end_time = time.time()
             duration = end_time - start_time
             logger.error(
-                f"{func.__name__} failed after {duration:.3f} seconds with error: {e}"
+                "%s failed after %.3f seconds with error: %s",
+                func.__name__,
+                duration,
+                e,
             )
             raise
 

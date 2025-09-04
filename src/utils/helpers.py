@@ -215,8 +215,11 @@ def create_backup(file_path: Union[str, Path]) -> Optional[Path]:
         shutil.copy2(path, backup_path)
         return backup_path
 
+    except (OSError, PermissionError) as e:
+        get_logger(__name__).error("File system error creating backup: %s", e)
+        return None
     except Exception as e:
-        get_logger(__name__).error(f"Error creating backup: {e}")
+        get_logger(__name__).error("Unexpected error creating backup: %s", e)
         return None
 
 
@@ -233,8 +236,10 @@ def cleanup_temp_files(temp_dir: Union[str, Path]) -> None:
             import shutil
 
             shutil.rmtree(temp_path)
+    except (OSError, PermissionError) as e:
+        get_logger(__name__).error("File system error cleaning up temp files: %s", e)
     except Exception as e:
-        get_logger(__name__).error(f"Error cleaning up temp files: {e}")
+        get_logger(__name__).error("Unexpected error cleaning up temp files: %s", e)
 
 
 def get_system_info() -> Dict[str, Any]:

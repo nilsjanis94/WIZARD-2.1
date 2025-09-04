@@ -10,16 +10,16 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from PyQt6 import uic
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox,
-                             QDoubleSpinBox, QFileDialog, QFrame, QGridLayout,
-                             QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-                             QMessageBox, QPushButton, QSizePolicy,
-                             QSpacerItem, QVBoxLayout, QWidget)
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
+                             QFrame, QLabel, QLineEdit, QMainWindow,
+                             QPushButton, QWidget)
 
+from ..services.data_service import DataService
+from ..services.ui_service import UIService
+from ..services.ui_state_manager import UIStateManager
 from ..utils.error_handler import ErrorHandler
-from ..services.ui_state_manager import UIStateManager, UIState
 
 
 class MainWindow(QMainWindow):
@@ -53,8 +53,10 @@ class MainWindow(QMainWindow):
         self.controller = controller
         self.error_handler = ErrorHandler()
 
-        # Initialize UI state manager
+        # Initialize services
         self.ui_state_manager = UIStateManager()
+        self.ui_service = UIService()
+        self.data_service = DataService()
 
         # UI state
         self.current_file_path: Optional[str] = None
@@ -78,55 +80,27 @@ class MainWindow(QMainWindow):
             ui_file_path = Path(__file__).parent.parent.parent / "ui" / "main_window.ui"
             uic.loadUi(str(ui_file_path), self)
 
-            # Set up fonts for better readability
-            self._setup_fonts()
-
             # Store references to important widgets
             self._store_widget_references()
 
             # Set up UI state manager with container references
-            self.ui_state_manager.set_containers(self.welcome_container, self.plot_container)
+            self.ui_state_manager.set_containers(
+                self.welcome_container, self.plot_container
+            )
 
             # Initialize UI state
             self._initialize_ui_state()
 
             self.logger.info("UI loaded successfully from .ui file")
 
-        except Exception as e:
-            self.logger.error(f"Failed to load UI: {e}")
-            self.error_handler.show_error(
-                "UI Loading Error", f"Failed to load the user interface: {e}"
-            )
+        except (FileNotFoundError, OSError) as e:
+            self.logger.error("UI file not found or inaccessible: %s", e)
+            self.error_handler.handle_error(e, self, "UI File Error")
             raise
-
-    def _setup_fonts(self):
-        """
-        Set up fonts using the UI service for better modularity.
-        """
-        try:
-            from ..services.ui_service import UIService
-            
-            # Use UI service for font management
-            ui_service = UIService()
-            success = ui_service.setup_fonts(self)
-            
-            if success:
-                self.logger.info("Fonts configured successfully using UI service")
-            else:
-                self.logger.warning("Font setup failed, using system default")
-                
         except Exception as e:
-            self.logger.error(f"Font setup failed: {e}")
-            # Fallback to system default
-            try:
-                from PyQt6.QtGui import QFont
-                fallback_font = QFont()
-                fallback_font.setStyleHint(QFont.StyleHint.SansSerif)
-                fallback_font.setPointSize(10)
-                self.setFont(fallback_font)
-                self.logger.info("Using system fallback font")
-            except Exception as fallback_error:
-                self.logger.error(f"Font setup completely failed: {fallback_error}")
+            self.logger.error("Unexpected error loading UI: %s", e)
+            self.error_handler.handle_error(e, self, "UI Loading Error")
+            raise
 
     def _store_widget_references(self):
         """
@@ -174,6 +148,13 @@ class MainWindow(QMainWindow):
         self.y2_axis_combo = self.findChild(QComboBox, "y2_axis_combo")
         self.x_axis_combo = self.findChild(QComboBox, "x_axis_combo")
 
+        # Create axis_combos dictionary for service usage
+        self.axis_combos = {
+            "y1_axis_combo": self.y1_axis_combo,
+            "y2_axis_combo": self.y2_axis_combo,
+            "x_axis_combo": self.x_axis_combo,
+        }
+
         self.y1_min_value = self.findChild(QLineEdit, "y1_min_value")
         self.y1_max_value = self.findChild(QLineEdit, "y1_max_value")
         self.y2_min_value = self.findChild(QLineEdit, "y2_min_value")
@@ -212,8 +193,9 @@ class MainWindow(QMainWindow):
         """
         Initialize the UI to its default state.
         """
-        # Fix UI visibility issues first
-        self._fix_ui_visibility()
+        # Setup fonts and fix visibility using services
+        self.ui_service.setup_fonts(self)
+        self.ui_service.fix_ui_visibility(self)
 
         # Show welcome screen initially (reset to initial state)
         self.ui_state_manager.reset_to_initial_state()
@@ -227,96 +209,12 @@ class MainWindow(QMainWindow):
 
         self.logger.debug("UI state initialized")
 
-    def _fix_ui_visibility(self):
-        """
-        Fix UI visibility issues by ensuring all text widgets are visible and properly styled.
-        This addresses the problem where widgets exist but are not visible to the user.
-        """
-        try:
-            from PyQt6.QtWidgets import QLabel, QCheckBox, QPushButton, QLineEdit
-
-            # Fix QLabel widgets
-            labels = self.findChildren(QLabel)
-            for label in labels:
-                label.setVisible(True)
-                current_style = label.styleSheet() or ""
-                if "color:" not in current_style:
-                    label.setStyleSheet(current_style + "color: black;")
-
-            # Fix QCheckBox widgets
-            checkboxes = self.findChildren(QCheckBox)
-            for checkbox in checkboxes:
-                checkbox.setVisible(True)
-                current_style = checkbox.styleSheet() or ""
-                if "color:" not in current_style:
-                    checkbox.setStyleSheet(current_style + "color: black;")
-
-            # Fix QPushButton widgets
-            buttons = self.findChildren(QPushButton)
-            for button in buttons:
-                button.setVisible(True)
-                current_style = button.styleSheet() or ""
-                if "color:" not in current_style:
-                    button.setStyleSheet(current_style + "color: black; background-color: lightgray;")
-
-            # Fix QLineEdit widgets
-            line_edits = self.findChildren(QLineEdit)
-            for line_edit in line_edits:
-                line_edit.setVisible(True)
-                current_style = line_edit.styleSheet() or ""
-                if "color:" not in current_style:
-                    line_edit.setStyleSheet(current_style + "color: black; background-color: white;")
-
-            self.logger.info("UI visibility fixed: %d labels, %d checkboxes, %d buttons, %d line edits", 
-                           len(labels), len(checkboxes), len(buttons), len(line_edits))
-
-        except Exception as e:
-            self.logger.error("Failed to fix UI visibility: %s", e)
-
     def _initialize_axis_controls(self):
         """
         Initialize the axis control comboboxes with available options.
         """
-        # Y1 and Y2 axis options (temperature sensors)
-        sensor_options = [
-            "NTC01",
-            "NTC02",
-            "NTC03",
-            "NTC04",
-            "NTC05",
-            "NTC06",
-            "NTC07",
-            "NTC08",
-            "NTC09",
-            "NTC10",
-            "NTC11",
-            "NTC12",
-            "NTC13",
-            "NTC14",
-            "NTC15",
-            "NTC16",
-            "NTC17",
-            "NTC18",
-            "NTC19",
-            "NTC20",
-            "NTC21",
-            "NTC22",
-            "PT100",
-        ]
-
-        if self.y1_axis_combo:
-            self.y1_axis_combo.addItems(sensor_options)
-            self.y1_axis_combo.setCurrentText("NTC01")
-
-        if self.y2_axis_combo:
-            self.y2_axis_combo.addItems(sensor_options)
-            self.y2_axis_combo.setCurrentText("PT100")
-
-        # X axis options (time-based)
-        time_options = ["Time", "Depth", "Pressure"]
-        if self.x_axis_combo:
-            self.x_axis_combo.addItems(time_options)
-            self.x_axis_combo.setCurrentText("Time")
+        # Use UI service for axis control setup
+        self.ui_service.setup_axis_controls(self.axis_combos)
 
     def _setup_menu_bar(self):
         """
@@ -430,35 +328,28 @@ class MainWindow(QMainWindow):
         """
         Reset data metrics to default values.
         """
-        metrics_widgets = [
-            self.mean_hp_power_value,
-            self.max_v_accu_value,
-            self.tilt_status_value,
-            self.mean_press_value,
-        ]
-
-        for widget in metrics_widgets:
-            if widget:
-                widget.setText("-")
+        # Use data service for metrics reset
+        metrics_widgets = {
+            "mean_hp_power_value": self.mean_hp_power_value,
+            "max_v_accu_value": self.max_v_accu_value,
+            "tilt_status_value": self.tilt_status_value,
+            "mean_press_value": self.mean_press_value,
+        }
+        self.data_service.reset_data_metrics(metrics_widgets)
 
     def _reset_project_info(self):
         """
         Reset project information to default values.
         """
-        if self.cruise_info_label:
-            self.cruise_info_label.setText("Project: -")
-
-        if self.location_info_label:
-            self.location_info_label.setText("Location: -")
-
-        if self.location_comment_value:
-            self.location_comment_value.setText("-")
-
-        if self.location_sensorstring_value:
-            self.location_sensorstring_value.setText("-")
-
-        if self.location_subcon_spin:
-            self.location_subcon_spin.setValue(0.0)
+        # Use UI service for project info reset
+        project_widgets = {
+            "cruise_info_label": self.cruise_info_label,
+            "location_info_label": self.location_info_label,
+            "location_comment_value": self.location_comment_value,
+            "location_sensorstring_value": self.location_sensorstring_value,
+            "location_subcon_spin": self.location_subcon_spin,
+        }
+        self.ui_service.reset_ui_widgets(project_widgets)
 
     # Event handlers
     def _on_open_tob_file(self):
@@ -471,16 +362,17 @@ class MainWindow(QMainWindow):
             )
 
             if file_path:
-                self.logger.info(f"Opening TOB file: {file_path}")
+                self.logger.info("Opening TOB file: %s", file_path)
                 self.file_opened.emit(file_path)
                 # Switch to plot mode when TOB file is loaded
                 self.ui_state_manager.show_plot_mode()
 
+        except (FileNotFoundError, PermissionError) as e:
+            self.logger.error("File access error: %s", e)
+            self.error_handler.handle_error(e, self, "File Access Error")
         except Exception as e:
-            self.logger.error(f"Error opening TOB file: {e}")
-            self.error_handler.show_error(
-                "File Open Error", f"Failed to open file: {e}"
-            )
+            self.logger.error("Unexpected error opening TOB file: %s", e)
+            self.error_handler.handle_error(e, self, "File Open Error")
 
     def _on_open_project(self):
         """
@@ -497,16 +389,17 @@ class MainWindow(QMainWindow):
             if file_path:
                 # TODO: Show password dialog
                 password = "default_password"  # Placeholder
-                self.logger.info(f"Opening project file: {file_path}")
+                self.logger.info("Opening project file: %s", file_path)
                 self.project_opened.emit(file_path, password)
                 # Switch to plot mode when project is loaded
                 self.ui_state_manager.show_plot_mode()
 
+        except (FileNotFoundError, PermissionError) as e:
+            self.logger.error("Project file access error: %s", e)
+            self.error_handler.handle_error(e, self, "Project File Access Error")
         except Exception as e:
-            self.logger.error(f"Error opening project: {e}")
-            self.error_handler.show_error(
-                "Project Open Error", f"Failed to open project: {e}"
-            )
+            self.logger.error("Unexpected error opening project: %s", e)
+            self.error_handler.handle_error(e, self, "Project Open Error")
 
     def _on_create_project(self):
         """
@@ -523,14 +416,15 @@ class MainWindow(QMainWindow):
             if file_path:
                 # TODO: Show project creation dialog with password
                 password = "default_password"  # Placeholder
-                self.logger.info(f"Creating project file: {file_path}")
+                self.logger.info("Creating project file: %s", file_path)
                 self.project_created.emit(file_path, password)
 
+        except (OSError, PermissionError) as e:
+            self.logger.error("File system error creating project: %s", e)
+            self.error_handler.handle_error(e, self, "Project Creation File Error")
         except Exception as e:
-            self.logger.error(f"Error creating project: {e}")
-            self.error_handler.show_error(
-                "Project Creation Error", f"Failed to create project: {e}"
-            )
+            self.logger.error("Unexpected error creating project: %s", e)
+            self.error_handler.handle_error(e, self, "Project Creation Error")
 
     def _on_sensor_selection_changed(self, sensor_name: str, state: int):
         """
@@ -541,7 +435,7 @@ class MainWindow(QMainWindow):
             state: Checkbox state (0 = unchecked, 2 = checked)
         """
         is_selected = state == 2
-        self.logger.debug(f"Sensor {sensor_name} selection changed: {is_selected}")
+        self.logger.debug("Sensor %s selection changed: %s", sensor_name, is_selected)
 
         # TODO: Update plot visualization
         if self.controller:
@@ -550,7 +444,7 @@ class MainWindow(QMainWindow):
     def _on_y1_auto_changed(self, state: int):
         """Handle Y1 axis auto mode change."""
         is_auto = state == 2
-        self.logger.debug(f"Y1 axis auto mode: {is_auto}")
+        self.logger.debug("Y1 axis auto mode: %s", is_auto)
 
         # Enable/disable manual controls
         if self.y1_min_value and self.y1_max_value:
@@ -560,7 +454,7 @@ class MainWindow(QMainWindow):
     def _on_y2_auto_changed(self, state: int):
         """Handle Y2 axis auto mode change."""
         is_auto = state == 2
-        self.logger.debug(f"Y2 axis auto mode: {is_auto}")
+        self.logger.debug("Y2 axis auto mode: %s", is_auto)
 
         # Enable/disable manual controls
         if self.y2_min_value and self.y2_max_value:
@@ -570,7 +464,7 @@ class MainWindow(QMainWindow):
     def _on_x_auto_changed(self, state: int):
         """Handle X axis auto mode change."""
         is_auto = state == 2
-        self.logger.debug(f"X axis auto mode: {is_auto}")
+        self.logger.debug("X axis auto mode: %s", is_auto)
 
         # Enable/disable manual controls
         if self.x_min_value and self.x_max_value:
@@ -611,7 +505,7 @@ class MainWindow(QMainWindow):
         if self.location_comment_value:
             self.location_comment_value.setText(comment)
 
-        self.logger.debug(f"Project info updated: {project_name}, {location}")
+        self.logger.debug("Project info updated: %s, %s", project_name, location)
 
     def update_data_metrics(self, metrics: Dict[str, Any]):
         """
@@ -653,7 +547,7 @@ class MainWindow(QMainWindow):
         """
         if self.statusbar:
             self.statusbar.showMessage(message, timeout)
-        self.logger.debug(f"Status message: {message}")
+        self.logger.debug("Status message: %s", message)
 
     def closeEvent(self, event):
         """

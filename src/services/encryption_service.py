@@ -37,7 +37,7 @@ class EncryptionService:
             Encrypted project data as bytes
         """
         try:
-            self.logger.info(f"Encrypting project: {project.name}")
+            self.logger.info("Encrypting project: %s", project.name)
 
             # Convert project to JSON
             project_json = project.model_dump_json()
@@ -50,11 +50,11 @@ class EncryptionService:
             fernet = Fernet(key)
             encrypted_data = fernet.encrypt(project_bytes)
 
-            self.logger.info(f"Successfully encrypted project: {project.name}")
+            self.logger.info("Successfully encrypted project: %s", project.name)
             return encrypted_data
 
         except Exception as e:
-            self.logger.error(f"Error encrypting project {project.name}: {e}")
+            self.logger.error("Error encrypting project %s: %s", project.name, e)
             raise
 
     def decrypt_project(self, encrypted_data: bytes, password: str) -> ProjectModel:
@@ -84,11 +84,11 @@ class EncryptionService:
 
             project = ProjectModel(**project_data)
 
-            self.logger.info(f"Successfully decrypted project: {project.name}")
+            self.logger.info("Successfully decrypted project: %s", project.name)
             return project
 
         except Exception as e:
-            self.logger.error(f"Error decrypting project: {e}")
+            self.logger.error("Error decrypting project: %s", e)
             raise
 
     def _derive_key_from_password(self, password: str) -> bytes:
@@ -117,7 +117,7 @@ class EncryptionService:
             return key
 
         except Exception as e:
-            self.logger.error(f"Error deriving key from password: {e}")
+            self.logger.error("Error deriving key from password: %s", e)
             raise
 
     def save_encrypted_project(
@@ -132,7 +132,7 @@ class EncryptionService:
             file_path: Path where to save the encrypted project
         """
         try:
-            self.logger.info(f"Saving encrypted project to: {file_path}")
+            self.logger.info("Saving encrypted project to: %s", file_path)
 
             # Encrypt the project
             encrypted_data = self.encrypt_project(project, password)
@@ -141,10 +141,10 @@ class EncryptionService:
             with open(file_path, "wb") as f:
                 f.write(encrypted_data)
 
-            self.logger.info(f"Successfully saved encrypted project to: {file_path}")
+            self.logger.info("Successfully saved encrypted project to: %s", file_path)
 
         except Exception as e:
-            self.logger.error(f"Error saving encrypted project to {file_path}: {e}")
+            self.logger.error("Error saving encrypted project to %s: %s", file_path, e)
             raise
 
     def load_encrypted_project(self, file_path: str, password: str) -> ProjectModel:
@@ -159,7 +159,7 @@ class EncryptionService:
             Decrypted ProjectModel instance
         """
         try:
-            self.logger.info(f"Loading encrypted project from: {file_path}")
+            self.logger.info("Loading encrypted project from: %s", file_path)
 
             # Read encrypted data from file
             with open(file_path, "rb") as f:
@@ -168,11 +168,13 @@ class EncryptionService:
             # Decrypt the project
             project = self.decrypt_project(encrypted_data, password)
 
-            self.logger.info(f"Successfully loaded encrypted project: {project.name}")
+            self.logger.info("Successfully loaded encrypted project: %s", project.name)
             return project
 
         except Exception as e:
-            self.logger.error(f"Error loading encrypted project from {file_path}: {e}")
+            self.logger.error(
+                "Error loading encrypted project from %s: %s", file_path, e
+            )
             raise
 
     def validate_password(self, encrypted_data: bytes, password: str) -> bool:
@@ -214,5 +216,5 @@ class EncryptionService:
             }
 
         except Exception as e:
-            self.logger.error(f"Error getting project info: {e}")
+            self.logger.error("Error getting project info: %s", e)
             return {}

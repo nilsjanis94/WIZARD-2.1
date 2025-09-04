@@ -100,7 +100,13 @@ def main() -> int:
         # Start event loop
         return app.exec()
 
+    except (ImportError, ModuleNotFoundError) as e:
+        print(f"Import error: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
+        # Use proper error handling instead of print
+        error_handler = ErrorHandler()
+        error_handler.log_exception(e, "Application startup")
         print(f"Fatal error: {e}", file=sys.stderr)
         return 1
 

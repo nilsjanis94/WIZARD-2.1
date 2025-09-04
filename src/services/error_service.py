@@ -32,13 +32,13 @@ class ErrorService:
             error_type = type(error).__name__
             error_message = str(error)
 
-            self.logger.error(f"Error occurred: {error_type} - {error_message}")
+            self.logger.error("Error occurred: %s - %s", error_type, error_message)
 
             # Show user-friendly error dialog
             self._show_error_dialog(error_type, error_message, parent)
 
         except Exception as e:
-            self.logger.error(f"Error in error handling: {e}")
+            self.logger.error("Error in error handling: %s", e)
 
     def _show_error_dialog(
         self, error_type: str, error_message: str, parent: Optional[QWidget] = None
@@ -66,7 +66,7 @@ class ErrorService:
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing error dialog: {e}")
+            self.logger.error("Error showing error dialog: %s", e)
 
     def _create_user_message(self, error_type: str, error_message: str) -> str:
         """
@@ -113,7 +113,7 @@ class ErrorService:
             self.logger.error(log_message, exc_info=True)
 
         except Exception as e:
-            self.logger.error(f"Error in error logging: {e}")
+            self.logger.error("Error in error logging: %s", e)
 
     def handle_warning(self, message: str, parent: Optional[QWidget] = None) -> None:
         """
@@ -133,7 +133,7 @@ class ErrorService:
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing warning dialog: {e}")
+            self.logger.error("Error showing warning dialog: %s", e)
 
     def handle_info(self, message: str, parent: Optional[QWidget] = None) -> None:
         """
@@ -153,4 +153,4 @@ class ErrorService:
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing info dialog: {e}")
+            self.logger.error("Error showing info dialog: %s", e)

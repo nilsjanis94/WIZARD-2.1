@@ -1,7 +1,7 @@
 """
 Data Service for WIZARD-2.1
 
-Service for data processing and analysis operations.
+Service for data processing, analysis operations, and data metrics management.
 """
 
 import logging
@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from PyQt6.QtWidgets import QLineEdit
 
 from ..models.tob_data_model import TOBDataModel
 
@@ -47,8 +48,11 @@ class DataService:
             self.logger.info("Successfully processed TOB data")
             return processed_data
 
+        except (ValueError, KeyError) as e:
+            self.logger.error("Data validation error: %s", e)
+            return {}
         except Exception as e:
-            self.logger.error(f"Error processing TOB data: {e}")
+            self.logger.error("Unexpected error processing TOB data: %s", e)
             return {}
 
     def _get_time_range(self, data_model: TOBDataModel) -> Dict[str, Any]:
@@ -72,8 +76,11 @@ class DataService:
                     "count": len(time_data),
                 }
             return {}
+        except (ValueError, KeyError) as e:
+            self.logger.error("Time data validation error: %s", e)
+            return {}
         except Exception as e:
-            self.logger.error(f"Error getting time range: {e}")
+            self.logger.error("Unexpected error getting time range: %s", e)
             return {}
 
     def _get_sensor_ranges(self, data_model: TOBDataModel) -> Dict[str, Dict[str, Any]]:
@@ -101,7 +108,7 @@ class DataService:
                         }
             return ranges
         except Exception as e:
-            self.logger.error(f"Error getting sensor ranges: {e}")
+            self.logger.error("Error getting sensor ranges: %s", e)
             return {}
 
     def _calculate_metrics(self, data_model: TOBDataModel) -> Dict[str, Any]:
@@ -133,7 +140,7 @@ class DataService:
             return metrics
 
         except Exception as e:
-            self.logger.error(f"Error calculating metrics: {e}")
+            self.logger.error("Error calculating metrics: %s", e)
             return {}
 
     def _calculate_mean_hp_power(self, data_model: TOBDataModel) -> float:
@@ -152,7 +159,7 @@ class DataService:
             self.logger.info("Calculating mean HP-Power")
             return 0.0
         except Exception as e:
-            self.logger.error(f"Error calculating mean HP-Power: {e}")
+            self.logger.error("Error calculating mean HP-Power: %s", e)
             return 0.0
 
     def _calculate_max_vaccu(self, data_model: TOBDataModel) -> float:
@@ -170,7 +177,7 @@ class DataService:
             self.logger.info("Calculating max vacuum")
             return 0.0
         except Exception as e:
-            self.logger.error(f"Error calculating max vacuum: {e}")
+            self.logger.error("Error calculating max vacuum: %s", e)
             return 0.0
 
     def _calculate_tilt_status(self, data_model: TOBDataModel) -> str:
@@ -188,7 +195,7 @@ class DataService:
             self.logger.info("Calculating tilt status")
             return "Unknown"
         except Exception as e:
-            self.logger.error(f"Error calculating tilt status: {e}")
+            self.logger.error("Error calculating tilt status: %s", e)
             return "Error"
 
     def _calculate_mean_press(self, data_model: TOBDataModel) -> float:
@@ -206,7 +213,7 @@ class DataService:
             self.logger.info("Calculating mean pressure")
             return 0.0
         except Exception as e:
-            self.logger.error(f"Error calculating mean pressure: {e}")
+            self.logger.error("Error calculating mean pressure: %s", e)
             return 0.0
 
     def filter_sensor_data(
@@ -236,5 +243,62 @@ class DataService:
             return filtered_data
 
         except Exception as e:
-            self.logger.error(f"Error filtering sensor data: {e}")
+            self.logger.error("Error filtering sensor data: %s", e)
             return pd.DataFrame()
+
+    def reset_data_metrics(self, metrics_widgets: Dict[str, QLineEdit]) -> None:
+        """
+        Reset data metrics widgets to default values.
+
+        Args:
+            metrics_widgets: Dictionary containing metric widget references
+        """
+        try:
+            for widget in metrics_widgets.values():
+                if widget:
+                    widget.setText("-")
+
+            self.logger.debug("Data metrics reset to default values")
+
+        except Exception as e:
+            self.logger.error("Failed to reset data metrics: %s", e)
+
+    def update_data_metrics(
+        self, metrics_widgets: Dict[str, QLineEdit], metrics: Dict[str, Any]
+    ) -> None:
+        """
+        Update data metrics widgets with calculated values.
+
+        Args:
+            metrics_widgets: Dictionary containing metric widget references
+            metrics: Dictionary containing metric values
+        """
+        try:
+            if "mean_hp_power" in metrics and "mean_hp_power_value" in metrics_widgets:
+                if metrics_widgets["mean_hp_power_value"]:
+                    metrics_widgets["mean_hp_power_value"].setText(
+                        str(metrics["mean_hp_power"])
+                    )
+
+            if "max_v_accu" in metrics and "max_v_accu_value" in metrics_widgets:
+                if metrics_widgets["max_v_accu_value"]:
+                    metrics_widgets["max_v_accu_value"].setText(
+                        str(metrics["max_v_accu"])
+                    )
+
+            if "tilt_status" in metrics and "tilt_status_value" in metrics_widgets:
+                if metrics_widgets["tilt_status_value"]:
+                    metrics_widgets["tilt_status_value"].setText(
+                        str(metrics["tilt_status"])
+                    )
+
+            if "mean_press" in metrics and "mean_press_value" in metrics_widgets:
+                if metrics_widgets["mean_press_value"]:
+                    metrics_widgets["mean_press_value"].setText(
+                        str(metrics["mean_press"])
+                    )
+
+            self.logger.debug("Data metrics updated successfully")
+
+        except Exception as e:
+            self.logger.error("Failed to update data metrics: %s", e)

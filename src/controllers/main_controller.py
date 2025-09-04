@@ -71,7 +71,7 @@ class MainController:
             file_path: Path to the opened file
         """
         try:
-            self.logger.info(f"Loading TOB file: {file_path}")
+            self.logger.info("Loading TOB file: %s", file_path)
             self.main_window.show_status_message("Loading file...")
 
             # Load TOB data using service
@@ -87,7 +87,7 @@ class MainController:
             self.logger.info("TOB file loaded successfully")
 
         except Exception as e:
-            self.logger.error(f"Error loading TOB file: {e}")
+            self.logger.error("Error loading TOB file: %s", e)
             self.error_handler.show_error(
                 "File Loading Error", f"Failed to load file: {e}"
             )
@@ -102,7 +102,7 @@ class MainController:
             password: Project password
         """
         try:
-            self.logger.info(f"Creating project: {project_path}")
+            self.logger.info("Creating project: %s", project_path)
             self.main_window.show_status_message("Creating project...")
 
             # Create project using encryption service
@@ -114,7 +114,7 @@ class MainController:
             self.logger.info("Project created successfully")
 
         except Exception as e:
-            self.logger.error(f"Error creating project: {e}")
+            self.logger.error("Error creating project: %s", e)
             self.error_handler.show_error(
                 "Project Creation Error", f"Failed to create project: {e}"
             )
@@ -129,7 +129,7 @@ class MainController:
             password: Project password
         """
         try:
-            self.logger.info(f"Opening project: {project_path}")
+            self.logger.info("Opening project: %s", project_path)
             self.main_window.show_status_message("Opening project...")
 
             # Load project using encryption service
@@ -148,7 +148,7 @@ class MainController:
             self.logger.info("Project opened successfully")
 
         except Exception as e:
-            self.logger.error(f"Error opening project: {e}")
+            self.logger.error("Error opening project: %s", e)
             self.error_handler.show_error(
                 "Project Opening Error", f"Failed to open project: {e}"
             )
@@ -196,7 +196,7 @@ class MainController:
             sensor_name: Name of the sensor
             is_selected: Whether the sensor is selected
         """
-        self.logger.debug(f"Sensor selection updated: {sensor_name} = {is_selected}")
+        self.logger.debug("Sensor selection updated: %s = %s", sensor_name, is_selected)
 
         # TODO: Update plot visualization
         # This will be implemented when we add the plotting functionality

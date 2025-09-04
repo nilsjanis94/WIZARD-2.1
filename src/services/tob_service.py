@@ -42,7 +42,7 @@ class TOBService:
             if not file_path.exists():
                 raise TOBFileNotFoundError(f"TOB file not found: {file_path}")
 
-            self.logger.info(f"Loading TOB file: {file_path}")
+            self.logger.info("Loading TOB file: %s", file_path)
 
             # TODO: Integrate with tob_dataloader package
             # For now, create a placeholder model
@@ -54,13 +54,13 @@ class TOBService:
                 sensors=[],
             )
 
-            self.logger.info(f"Successfully loaded TOB file: {file_path}")
+            self.logger.info("Successfully loaded TOB file: %s", file_path)
             return data_model
 
         except TOBError:
             raise
         except Exception as e:
-            self.logger.error(f"Error loading TOB file {file_path}: {e}")
+            self.logger.error("Error loading TOB file %s: %s", file_path, e)
             raise TOBParsingError(f"Failed to parse TOB file: {e}")
 
     def parse_headers(self, file_path: str) -> Dict[str, Any]:
@@ -75,10 +75,10 @@ class TOBService:
         """
         try:
             # TODO: Implement header parsing using tob_dataloader
-            self.logger.info(f"Parsing headers from: {file_path}")
+            self.logger.info("Parsing headers from: %s", file_path)
             return {}
         except Exception as e:
-            self.logger.error(f"Error parsing headers from {file_path}: {e}")
+            self.logger.error("Error parsing headers from %s: %s", file_path, e)
             raise TOBParsingError(f"Failed to parse headers: {e}")
 
     def parse_data(self, file_path: str) -> pd.DataFrame:
@@ -93,10 +93,10 @@ class TOBService:
         """
         try:
             # TODO: Implement data parsing using tob_dataloader
-            self.logger.info(f"Parsing data from: {file_path}")
+            self.logger.info("Parsing data from: %s", file_path)
             return pd.DataFrame()
         except Exception as e:
-            self.logger.error(f"Error parsing data from {file_path}: {e}")
+            self.logger.error("Error parsing data from %s: %s", file_path, e)
             raise TOBParsingError(f"Failed to parse data: {e}")
 
     def get_available_sensors(self, data: pd.DataFrame) -> List[str]:
@@ -114,7 +114,7 @@ class TOBService:
             self.logger.info("Detecting available sensors")
             return []
         except Exception as e:
-            self.logger.error(f"Error detecting sensors: {e}")
+            self.logger.error("Error detecting sensors: %s", e)
             return []
 
     def validate_tob_file(self, file_path: str) -> bool:
@@ -142,5 +142,5 @@ class TOBService:
             return True
 
         except Exception as e:
-            self.logger.error(f"Error validating TOB file {file_path}: {e}")
+            self.logger.error("Error validating TOB file %s: %s", file_path, e)
             return False

@@ -11,9 +11,6 @@ from typing import Any, Dict, Optional
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QWidget
 
-from ..exceptions.server_exceptions import ServerError
-from ..exceptions.tob_exceptions import TOBError
-
 
 class ErrorHandler(QObject):
     """
@@ -67,7 +64,7 @@ class ErrorHandler(QObject):
             self._show_error_dialog(error_type, error_message, parent)
 
         except Exception as e:
-            self.logger.error(f"Error in error handling: {e}")
+            self.logger.error("Error in error handling: %s", e)
 
     def handle_warning(
         self,
@@ -98,7 +95,7 @@ class ErrorHandler(QObject):
             self._show_warning_dialog(message, parent)
 
         except Exception as e:
-            self.logger.error(f"Error in warning handling: {e}")
+            self.logger.error("Error in warning handling: %s", e)
 
     def handle_info(
         self,
@@ -129,7 +126,7 @@ class ErrorHandler(QObject):
             self._show_info_dialog(message, parent)
 
         except Exception as e:
-            self.logger.error(f"Error in info handling: {e}")
+            self.logger.error("Error in info handling: %s", e)
 
     def _show_error_dialog(
         self, error_type: str, error_message: str, parent: Optional[QWidget] = None
@@ -157,7 +154,7 @@ class ErrorHandler(QObject):
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing error dialog: {e}")
+            self.logger.error("Error showing error dialog: %s", e)
 
     def _show_warning_dialog(
         self, message: str, parent: Optional[QWidget] = None
@@ -177,7 +174,7 @@ class ErrorHandler(QObject):
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing warning dialog: {e}")
+            self.logger.error("Error showing warning dialog: %s", e)
 
     def _show_info_dialog(self, message: str, parent: Optional[QWidget] = None) -> None:
         """
@@ -195,7 +192,7 @@ class ErrorHandler(QObject):
             msg_box.exec()
 
         except Exception as e:
-            self.logger.error(f"Error showing info dialog: {e}")
+            self.logger.error("Error showing info dialog: %s", e)
 
     def _create_user_message(self, error_type: str, error_message: str) -> str:
         """
@@ -234,7 +231,10 @@ class ErrorHandler(QObject):
             "KeyError": "Required data is missing. Please check your input and try again.",
             "ConnectionError": "Network connection error. Please check your internet connection and try again.",
             "TimeoutError": "Operation timed out. Please try again later.",
-            "MemoryError": "Insufficient memory to complete the operation. Please try with a smaller file or close other applications.",
+            "MemoryError": (
+                "Insufficient memory to complete the operation. "
+                "Please try with a smaller file or close other applications."
+            ),
             "OSError": "System error occurred. Please try again or contact support if the problem persists.",
         }
 
@@ -258,10 +258,10 @@ class ErrorHandler(QObject):
             if context:
                 log_message = f"{context}: {log_message}"
 
-            self.logger.error(f"{log_message}\n{traceback_str}")
+            self.logger.error("%s\n%s", log_message, traceback_str)
 
         except Exception as e:
-            self.logger.error(f"Error in exception logging: {e}")
+            self.logger.error("Error in exception logging: %s", e)
 
     def get_error_summary(self, error: Exception) -> Dict[str, Any]:
         """
@@ -281,7 +281,7 @@ class ErrorHandler(QObject):
                 "traceback": traceback.format_exc(),
             }
         except Exception as e:
-            self.logger.error(f"Error creating error summary: {e}")
+            self.logger.error("Error creating error summary: %s", e)
             return {
                 "type": "UnknownError",
                 "message": "Error creating error summary",
