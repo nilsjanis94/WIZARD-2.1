@@ -84,13 +84,19 @@ class TestAnalyticsService:
         """Test mean pressure calculation."""
         service = AnalyticsService()
 
+        # Add Press column with pressure data
+        sample_data = sample_tob_data.copy()
+        sample_data['Press'] = [15.1, 15.2, 15.0, 15.3, 15.1, 15.2]  # Vacuum pressure values
+
         mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
+        mock_model.data = pd.DataFrame(sample_data)
 
         result = service._calculate_mean_press(mock_model)
 
         assert isinstance(result, float)
-        assert result >= 0.0
+        assert result > 0.0
+        # Should be around 15.15 (mean of test values)
+        assert 15.0 <= result <= 16.0
 
     def test_calculate_metrics_no_data(self):
         """Test metrics calculation with no data."""

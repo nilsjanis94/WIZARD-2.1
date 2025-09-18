@@ -273,7 +273,7 @@ class AnalyticsService:
                 return 0.0
 
             # Look for pressure column
-            pressure_columns = ["pressure", "press", "P", "atm_pressure", "barometric"]
+            pressure_columns = ["Press", "pressure", "press", "P", "atm_pressure", "barometric"]
             pressure_data = None
 
             for col in pressure_columns:
