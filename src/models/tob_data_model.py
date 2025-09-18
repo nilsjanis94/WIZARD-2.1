@@ -68,14 +68,39 @@ class TOBDataModel(BaseModel):
         pt100_sensors = [sensor for sensor in self.sensors if sensor == "PT100"]
         return pt100_sensors[0] if pt100_sensors else None
 
-    def get_time_column(self) -> Optional[str]:
+    def get_time_column(self) -> Optional[pd.Series]:
+        """
+        Get the time column data.
+
+        Returns:
+            Time column data or None if not found
+        """
+        if self.data is None:
+            return None
+
+        # Try common time column names
+        time_columns = ["Time", "time", "TIMESTAMP", "timestamp", "Datasets"]
+        for col in time_columns:
+            if col in self.data.columns:
+                return self.data[col]
+
+        # If no explicit time column, create index-based time
+        if len(self.data) > 0:
+            return pd.Series(range(len(self.data)), name="Time")
+
+        return None
+
+    def get_time_column_name(self) -> Optional[str]:
         """
         Get the time column name.
 
         Returns:
             Time column name or None if not found
         """
-        time_columns = ["Time", "time", "TIMESTAMP", "timestamp"]
+        if self.data is None:
+            return None
+
+        time_columns = ["Time", "time", "TIMESTAMP", "timestamp", "Datasets"]
         for col in time_columns:
             if col in self.data.columns:
                 return col
@@ -94,10 +119,10 @@ class TOBDataModel(BaseModel):
         result = {"time_range": None, "sensor_ranges": {}}
 
         time_col = self.get_time_column()
-        if time_col:
+        if time_col is not None and not time_col.empty:
             result["time_range"] = {
-                "min": self.data[time_col].min(),
-                "max": self.data[time_col].max(),
+                "min": time_col.min(),
+                "max": time_col.max(),
             }
 
         for sensor in self.sensors:
@@ -156,9 +181,9 @@ class TOBDataModel(BaseModel):
             validation_results["warnings"].append(f"Missing data in columns: {missing_data[missing_data > 0].to_dict()}")
 
         # Check for duplicate timestamps
-        time_col = self.get_time_column()
-        if time_col and time_col in self.data.columns:
-            if self.data[time_col].duplicated().any():
+        time_col_name = self.get_time_column_name()
+        if time_col_name and time_col_name in self.data.columns:
+            if self.data[time_col_name].duplicated().any():
                 validation_results["warnings"].append("Duplicate timestamps found")
 
         # Check data consistency

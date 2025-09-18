@@ -303,11 +303,18 @@ class PlotWidget(QWidget):
             self.figure.suptitle('Temperature Sensor Data Analysis', 
                                fontsize=14, fontweight='bold', y=0.95)
             
-            # Add canvas to layout
-            from PyQt6.QtWidgets import QVBoxLayout
-            layout = QVBoxLayout()
-            layout.addWidget(self.canvas)
-            self.setLayout(layout)
+            # Add canvas to existing layout (from UI file)
+            if self.layout() is not None:
+                # Use existing layout from UI file
+                self.layout().addWidget(self.canvas)
+                self.logger.debug("Canvas added to existing layout")
+            else:
+                # Fallback: create new layout if none exists
+                from PyQt6.QtWidgets import QVBoxLayout
+                layout = QVBoxLayout()
+                layout.addWidget(self.canvas)
+                self.setLayout(layout)
+                self.logger.debug("Canvas added to new layout (fallback)")
             
             self.logger.debug("Plot layout configured successfully")
         except Exception as e:
@@ -362,7 +369,7 @@ class PlotWidget(QWidget):
     def _refresh_plot(self):
         """Refresh the plot with current data and settings."""
         try:
-            if not self.tob_data_model or not self.tob_data_model.data is not None:
+            if not self.tob_data_model or self.tob_data_model.data is None:
                 self._clear_plot()
                 return
             
@@ -398,7 +405,7 @@ class PlotWidget(QWidget):
     def _plot_sensors(self, time_values: np.ndarray):
         """Plot the selected sensors."""
         try:
-            if not self.tob_data_model or not self.tob_data_model.data is not None:
+            if not self.tob_data_model or self.tob_data_model.data is None:
                 return
             
             data = self.tob_data_model.data

@@ -107,7 +107,7 @@ class UIStateManager:
             self.plot_container.setVisible(True)
             # Remove height restrictions to make container visible
             self.plot_container.setMaximumHeight(16777215)  # Qt's maximum value
-            self.plot_container.setMinimumHeight(400)  # Set minimum height for visibility
+            self.plot_container.setMinimumHeight(200)  # Set minimum height for visibility
             self.logger.info("Plot container shown and resized")
 
         self.current_state = UIState.PLOT

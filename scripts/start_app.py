@@ -10,6 +10,9 @@ import sys
 import subprocess
 from pathlib import Path
 
+# Global variable for verbose output
+verbose = False
+
 
 def check_venv():
     """
@@ -35,7 +38,7 @@ def activate_venv():
         print("❌ Virtual environment not found!")
         print("   Please run: python -m venv venv")
         return False
-    
+
     # Try to activate venv
     if os.name == 'nt':  # Windows
         activate_script = venv_path / "Scripts" / "activate.bat"
@@ -43,7 +46,7 @@ def activate_venv():
     else:  # Unix/Linux/macOS
         activate_script = venv_path / "bin" / "activate"
         python_exe = venv_path / "bin" / "python"
-    
+
     if not python_exe.exists():
         print("❌ Python executable not found in virtual environment!")
         return False
@@ -54,20 +57,20 @@ def activate_venv():
 def install_dependencies():
     """
     Install dependencies if needed.
-    
+
     Returns:
         bool: True if dependencies are installed
     """
     project_root = Path(__file__).parent.parent
     venv_path = project_root / "venv"
-    
+
     if os.name == 'nt':  # Windows
         python_exe = venv_path / "Scripts" / "python.exe"
         pip_exe = venv_path / "Scripts" / "pip.exe"
     else:  # Unix/Linux/macOS
         python_exe = venv_path / "bin" / "python"
         pip_exe = venv_path / "bin" / "pip"
-    
+
     try:
         # Check if requirements are installed
         result = subprocess.run([
@@ -77,11 +80,13 @@ def install_dependencies():
         
         if result.returncode != 0:
             print("📦 Installing dependencies...")
-            subprocess.run([str(pip_exe), "install", "-r", "requirements.txt"], 
-                         cwd=project_root, check=True)
-            print("✅ Dependencies installed successfully!")
+            subprocess.run([str(pip_exe), "install", "-r", "requirements.txt"],
+                         cwd=project_root, check=True, capture_output=not verbose)
+            if verbose:
+                print("✅ Dependencies installed successfully!")
         else:
-            print("✅ Dependencies are already installed")
+            if verbose:
+                print("✅ Dependencies are already installed")
         
         return True
         
@@ -96,27 +101,28 @@ def install_dependencies():
 def start_application():
     """
     Start the WIZARD-2.1 application.
-    
+
     Returns:
         bool: True if application started successfully
     """
     project_root = Path(__file__).parent.parent
     venv_path = project_root / "venv"
-    
+
     if os.name == 'nt':  # Windows
         python_exe = venv_path / "Scripts" / "python.exe"
     else:  # Unix/Linux/macOS
         python_exe = venv_path / "bin" / "python"
-    
+
     try:
-        print("🚀 Starting WIZARD-2.1 application...")
-        print("=" * 50)
-        
-        # Start the application
-        subprocess.run([str(python_exe), "-m", "src.main"], cwd=project_root)
-        
-        return True
-        
+        # Quiet startup - logs go to files only
+        result = subprocess.run([str(python_exe), "-m", "src.main"], cwd=project_root)
+
+        # Only show errors
+        if result.returncode != 0:
+            print(f"❌ Application exited with error code: {result.returncode}")
+
+        return result.returncode == 0
+
     except KeyboardInterrupt:
         print("\n⏹️  Application stopped by user")
         return True
@@ -129,31 +135,37 @@ def main():
     """
     Main function.
     """
-    print("🚀 WIZARD-2.1 - Start Application Script")
-    print("=" * 50)
-    
+    # Minimal output - only show warnings and errors
+    global verbose
+    verbose = os.environ.get('WIZARD_VERBOSE', '').lower() in ('true', '1', 'yes')
+
+    if verbose:
+        print("🚀 WIZARD-2.1 - Start Application Script")
+        print("=" * 50)
+
     # Check if we're in a virtual environment
     if not check_venv():
         print("⚠️  Virtual environment not activated!")
         print("   Attempting to use project venv...")
-        
+
         if not activate_venv():
             print("❌ Failed to activate virtual environment!")
             print("   Please run: source venv/bin/activate (Unix/macOS)")
             print("   or: venv\\Scripts\\activate (Windows)")
             sys.exit(1)
-    
+
     # Install dependencies
     if not install_dependencies():
         print("❌ Failed to install dependencies!")
         sys.exit(1)
-    
+
     # Start application
     if not start_application():
         print("❌ Failed to start application!")
         sys.exit(1)
-    
-    print("\n🎉 Application session completed!")
+
+    if verbose:
+        print("\n🎉 Application session completed!")
 
 
 if __name__ == "__main__":

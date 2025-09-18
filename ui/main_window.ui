@@ -28,7 +28,7 @@
      <number>12</number>
     </property>
     <property name="topMargin">
-     <number>8</number>
+     <number>0</number>
     </property>
     <property name="rightMargin">
      <number>12</number>
@@ -402,6 +402,18 @@
        <string>background-color: white;</string>
       </property>
       <layout class="QVBoxLayout" name="plot_container_layout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QFrame" name="plot_info_container">
          <property name="styleSheet">
@@ -415,7 +427,7 @@
            <number>12</number>
           </property>
           <property name="topMargin">
-           <number>8</number>
+           <number>0</number>
           </property>
           <property name="rightMargin">
            <number>12</number>
@@ -522,20 +534,6 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <layout class="QVBoxLayout" name="plot_canvas_container_layout">
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-         </layout>
         </widget>
        </item>
       </layout>

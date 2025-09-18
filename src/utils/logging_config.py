@@ -45,11 +45,11 @@ def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> Non
             "%(asctime)s - %(levelname)s - %(message)s"
         )
 
-        # Console handler
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(simple_formatter)
-        root_logger.addHandler(console_handler)
+        # Console handler - disabled for production, logs go to files only
+        # console_handler = logging.StreamHandler(sys.stdout)
+        # console_handler.setLevel(logging.INFO)
+        # console_handler.setFormatter(simple_formatter)
+        # root_logger.addHandler(console_handler)
 
         # Application log file handler
         app_log_file = log_dir / "wizard_app.log"
@@ -85,12 +85,7 @@ def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> Non
         )
         server_handler.setLevel(logging.INFO)
         server_handler.setFormatter(detailed_formatter)
-
-        # Create server logger
-        server_logger = logging.getLogger("server")
-        server_logger.addHandler(server_handler)
-        server_logger.setLevel(logging.INFO)
-        server_logger.propagate = False
+        root_logger.addHandler(server_handler)
 
         # Log startup message
         logger = logging.getLogger(__name__)

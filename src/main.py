@@ -79,6 +79,9 @@ def main() -> int:
         int: Exit code
     """
     try:
+        # Simple startup message before logging setup
+        print("🚀 WIZARD-2.1 - Starting application...")
+
         # Setup logging
         setup_logging()
 

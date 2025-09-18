@@ -158,6 +158,12 @@ class MainController(QObject):
             # Update plot with data
             self.main_window.update_plot_data(self.tob_data_model)
 
+            # Update sensor selection for plotting (automatically select all NTC sensors)
+            selected_sensors = [sensor for sensor in self.tob_data_model.sensors if sensor.startswith('NTC')]
+            if selected_sensors:
+                self.main_window.update_plot_sensors(selected_sensors)
+                self.logger.debug("Auto-selected %d NTC sensors for plotting: %s", len(selected_sensors), selected_sensors)
+
             # Switch to plot mode
             self.main_window.ui_state_manager.show_plot_mode()
 
