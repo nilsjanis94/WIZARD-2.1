@@ -49,8 +49,6 @@ class PlotService:
         self.pt100_line_style = '--'
         self.time_line_style = '-'
 
-        # PT100 sensor names (can be customized)
-        self.pt100_sensor_names = ['PT100', 'Temp', 'Temperature', 'T100', 'PT_100']
         
         # Line widths
         self.ntc_line_width = 1.5
@@ -93,7 +91,7 @@ class PlotService:
                 return self.ntc_colors[(ntc_num - 1) % len(self.ntc_colors)]
             except (ValueError, IndexError):
                 return self.ntc_colors[0]
-        elif sensor_name in self.pt100_sensor_names:
+        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
             return self.pt100_color
         else:
             return self.ntc_colors[0]
@@ -110,7 +108,7 @@ class PlotService:
         """
         if sensor_name.startswith('NTC'):
             return self.ntc_line_style
-        elif sensor_name in self.pt100_sensor_names:
+        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
             return self.pt100_line_style
         else:
             return self.ntc_line_style
@@ -127,7 +125,7 @@ class PlotService:
         """
         if sensor_name.startswith('NTC'):
             return self.ntc_line_width
-        elif sensor_name in self.pt100_sensor_names:
+        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
             return self.pt100_line_width
         else:
             return self.ntc_line_width
