@@ -1185,7 +1185,7 @@
           <item row="2" column="0">
            <widget class="QLabel" name="tilt_status_label">
             <property name="text">
-             <string>Tilt Status [X/Y]:</string>
+             <string>Tilt Stability [σ]:</string>
             </property>
            </widget>
           </item>

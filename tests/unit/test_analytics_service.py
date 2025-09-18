@@ -4,6 +4,7 @@ Unit tests for AnalyticsService.
 
 import pytest
 import pandas as pd
+import numpy as np
 from unittest.mock import MagicMock
 
 from src.services.analytics_service import AnalyticsService
@@ -67,18 +68,24 @@ class TestAnalyticsService:
         assert result > 20.0  # Should be battery voltage (> 20V typical)
 
     def test_calculate_tilt_status(self, sample_tob_data):
-        """Test tilt status calculation."""
+        """Test tilt stability calculation from dedicated tilt sensors."""
         service = AnalyticsService()
 
+        # Add tilt sensor columns
+        sample_data = sample_tob_data.copy()
+        sample_data['TiltX'] = [2.0, 2.1, 2.0, 2.2, 2.1, 2.0]  # Low variation
+        sample_data['TiltY'] = [4.0, 4.1, 4.0, 4.2, 4.1, 4.0]  # Low variation
+        sample_data['ACCz'] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0]  # Very stable
+
         mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        mock_model.get_ntc_sensors.return_value = ["NTC01", "NTC02"]
-        mock_model.get_sensor_data.return_value = pd.Series([20.5, 21.0, 21.5, 22.0, 22.5, 23.0])
+        mock_model.data = pd.DataFrame(sample_data)
 
         result = service._calculate_tilt_status(mock_model)
 
-        assert isinstance(result, str)
-        assert result in ["OK", "Warning", "Error", "Unknown"]
+        assert isinstance(result, float)
+        assert not np.isnan(result)
+        # With low variation in sensors, should be around 0.054 (mean std)
+        assert 0.05 <= result <= 0.06
 
     def test_calculate_mean_press(self, sample_tob_data):
         """Test mean pressure calculation."""

@@ -192,29 +192,89 @@ class AnalyticsService:
             self.logger.error("Unexpected error calculating battery voltage: %s", e)
             return 0.0
 
-    def _calculate_tilt_status(self, data_model: TOBDataModel) -> str:
+    def _calculate_tilt_status(self, data_model: TOBDataModel) -> float:
         """
-        Calculate tilt status based on temperature sensor stability.
+        Calculate tilt stability based on dedicated tilt sensors.
 
-        Tilt status is determined by analyzing the standard deviation
-        of temperature sensors. High variation indicates potential tilt.
+        Tilt stability is calculated as the mean standard deviation of
+        tilt sensors (TiltX, TiltY) and accelerometer (ACCz).
+        Lower values indicate higher stability (less tilt/movement).
 
         Args:
             data_model: TOBDataModel instance
 
         Returns:
-            Tilt status: "OK", "Warning", "Error", or "Unknown"
+            Mean standard deviation of tilt sensors (stability metric)
         """
         try:
             if data_model.data is None:
                 self.logger.warning("No data available for tilt calculation")
-                return "Unknown"
+                return float('nan')
 
+            # Look for dedicated tilt sensors
+            tilt_columns = ["TiltX", "TiltY", "ACCz"]
+            available_tilt_sensors = []
+
+            for col in tilt_columns:
+                if col in data_model.data.columns:
+                    available_tilt_sensors.append(col)
+
+            if not available_tilt_sensors:
+                self.logger.warning("No dedicated tilt sensors found, falling back to NTC analysis")
+                # Fallback to NTC analysis if no tilt sensors available
+                return self._calculate_tilt_from_ntc(data_model)
+
+            # Calculate stability metrics for each tilt sensor
+            sensor_stabilities = []
+
+            for sensor in available_tilt_sensors:
+                sensor_data = data_model.data[sensor]
+                if len(sensor_data) > 1:
+                    # Use standard deviation as stability metric
+                    # Lower std = more stable = better (less tilt/movement)
+                    std_dev = sensor_data.std()
+                    if not np.isnan(std_dev):
+                        sensor_stabilities.append(std_dev)
+
+            if not sensor_stabilities:
+                self.logger.warning("No valid tilt sensor data found")
+                return float('nan')
+
+            # Calculate overall stability (mean of all sensor stabilities)
+            overall_stability = np.mean(sensor_stabilities)
+
+            # Round to 4 decimal places for meaningful precision
+            rounded_stability = round(overall_stability, 4)
+
+            self.logger.info("Calculated tilt stability: %.4f (from %d sensors)",
+                           rounded_stability, len(sensor_stabilities))
+            return rounded_stability
+
+        except (ValueError, KeyError) as e:
+            self.logger.error("Data validation error calculating tilt: %s", e)
+            return float('nan')
+        except Exception as e:
+            self.logger.error("Unexpected error calculating tilt: %s", e)
+            return float('nan')
+
+    def _calculate_tilt_from_ntc(self, data_model: TOBDataModel) -> float:
+        """
+        Fallback method: Calculate tilt stability from NTC temperature sensors.
+
+        This is used when no dedicated tilt sensors are available.
+        Returns temperature variability as stability metric.
+
+        Args:
+            data_model: TOBDataModel instance
+
+        Returns:
+            Mean temperature standard deviation (stability metric)
+        """
+        try:
             # Get NTC sensors for tilt analysis
             ntc_sensors = data_model.get_ntc_sensors()
             if not ntc_sensors:
-                self.logger.warning("No NTC sensors found for tilt calculation")
-                return "Unknown"
+                return float('nan')
 
             # Calculate standard deviation for each sensor
             sensor_stds = []
@@ -227,35 +287,19 @@ class AnalyticsService:
                         sensor_stds.append(std_dev)
 
             if not sensor_stds:
-                self.logger.warning("No valid sensor data for tilt calculation")
-                return "Unknown"
+                return float('nan')
 
-            # Calculate coefficient of variation (relative variability)
-            mean_std = np.mean(sensor_stds)
-            std_of_stds = np.std(sensor_stds)
+            # Return mean temperature standard deviation as stability metric
+            mean_temp_stability = np.mean(sensor_stds)
+            rounded_stability = round(mean_temp_stability, 4)
 
-            if mean_std == 0:
-                cv = 0.0
-            else:
-                cv = std_of_stds / mean_std
+            self.logger.info("Calculated tilt stability from NTC: %.4f (temperature variability)",
+                           rounded_stability)
+            return rounded_stability
 
-            # Determine tilt status based on coefficient of variation
-            if cv < 0.1:
-                status = "OK"
-            elif cv < 0.3:
-                status = "Warning"
-            else:
-                status = "Error"
-
-            self.logger.info("Calculated tilt status: %s (CV: %.3f)", status, cv)
-            return status
-
-        except (ValueError, KeyError) as e:
-            self.logger.error("Data validation error calculating tilt: %s", e)
-            return "Unknown"
         except Exception as e:
-            self.logger.error("Unexpected error calculating tilt: %s", e)
-            return "Unknown"
+            self.logger.error("Error in NTC tilt fallback: %s", e)
+            return float('nan')
 
     def _calculate_mean_press(self, data_model: TOBDataModel) -> float:
         """
