@@ -116,8 +116,8 @@ class TestTOBDataModel:
         
         model = TOBDataModel(data=data)
         
-        time_col = model.get_time_column()
-        assert time_col == "Time"
+        time_col_name = model.get_time_column_name()
+        assert time_col_name == "Time"
 
     def test_get_time_column_timestamp(self):
         """Test getting timestamp column name."""
@@ -128,8 +128,8 @@ class TestTOBDataModel:
         
         model = TOBDataModel(data=data)
         
-        time_col = model.get_time_column()
-        assert time_col == "TIMESTAMP"
+        time_col_name = model.get_time_column_name()
+        assert time_col_name == "TIMESTAMP"
 
     def test_get_time_column_none(self):
         """Test getting time column when none exists."""
@@ -140,8 +140,8 @@ class TestTOBDataModel:
         
         model = TOBDataModel(data=data)
         
-        time_col = model.get_time_column()
-        assert time_col is None
+        time_col_name = model.get_time_column_name()
+        assert time_col_name is None
 
     def test_get_data_range_with_data(self):
         """Test getting data range with valid data."""
