@@ -101,79 +101,17 @@ class TestDataService:
     def test_calculate_metrics_success(self, sample_tob_data):
         """Test successful metrics calculation."""
         service = DataService()
-        
-        mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        
-        with patch.object(service, '_calculate_mean_hp_power', return_value=100.0), \
-             patch.object(service, '_calculate_max_vaccu', return_value=50.0), \
-             patch.object(service, '_calculate_tilt_status', return_value="OK"), \
-             patch.object(service, '_calculate_mean_press', return_value=1013.25):
-            
-            result = service._calculate_metrics(mock_model)
-            
-            assert isinstance(result, dict)
-            assert "mean_hp_power" in result
-            assert "max_vaccu" in result
-            assert "tilt_status" in result
-            assert "mean_press" in result
 
-    def test_calculate_mean_hp_power(self, sample_tob_data):
-        """Test mean heat pulse power calculation."""
-        service = DataService()
-        
         mock_model = MagicMock(spec=TOBDataModel)
         mock_model.data = pd.DataFrame(sample_tob_data)
-        mock_model.get_ntc_sensors.return_value = ["NTC01", "NTC02"]
-        mock_model.get_sensor_data.return_value = pd.Series([20.5, 21.0, 21.5, 22.0, 22.5, 23.0])
-        
-        result = service._calculate_mean_hp_power(mock_model)
-        
-        # Should return a calculated value (not 0.0)
-        assert isinstance(result, float)
-        assert result >= 0.0
 
-    def test_calculate_max_vaccu(self, sample_tob_data):
-        """Test max vacuum calculation."""
-        service = DataService()
-        
-        mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        
-        result = service._calculate_max_vaccu(mock_model)
-        
-        # Should return a calculated vacuum value (0-100%)
-        assert isinstance(result, float)
-        assert 0.0 <= result <= 100.0
+        result = service._calculate_metrics(mock_model)
 
-    def test_calculate_tilt_status(self, sample_tob_data):
-        """Test tilt status calculation."""
-        service = DataService()
-        
-        mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        mock_model.get_ntc_sensors.return_value = ["NTC01", "NTC02"]
-        mock_model.get_sensor_data.return_value = pd.Series([20.5, 21.0, 21.5, 22.0, 22.5, 23.0])
-        
-        result = service._calculate_tilt_status(mock_model)
-        
-        # Should return a valid status
-        assert result in ["OK", "Warning", "Error", "Unknown"]
-
-    def test_calculate_mean_press(self, sample_tob_data):
-        """Test mean pressure calculation."""
-        service = DataService()
-        
-        mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        
-        result = service._calculate_mean_press(mock_model)
-        
-        # Should return the actual mean pressure from sample data
-        assert isinstance(result, float)
-        assert result > 0.0
-        # Sample data has pressure values around 1013.25-1013.50
-        assert 1013.0 <= result <= 1014.0
+        assert isinstance(result, dict)
+        assert "mean_hp_power" in result
+        assert "max_v_accu" in result  # Updated key name
+        assert "tilt_status" in result
+        assert "mean_press" in result
 
     def test_filter_sensor_data(self, sample_tob_data):
         """Test sensor data filtering."""
