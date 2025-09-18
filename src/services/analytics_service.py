@@ -63,10 +63,10 @@ class AnalyticsService:
 
     def _calculate_mean_hp_power(self, data_model: TOBDataModel) -> float:
         """
-        Calculate mean heat pulse power excluding noise.
+        Calculate mean heat pulse power from voltage and current data.
 
-        Heat pulse power is calculated from temperature sensor data during
-        heat pulse periods, excluding noise and non-heat pulse periods.
+        Heat pulse power is calculated as P = U × I (Power = Voltage × Current)
+        during heat pulse periods, excluding noise and non-heat pulse periods.
 
         Args:
             data_model: TOBDataModel instance
@@ -79,38 +79,64 @@ class AnalyticsService:
                 self.logger.warning("No data available for HP-Power calculation")
                 return 0.0
 
-            # Get NTC sensors for heat pulse power calculation
-            ntc_sensors = data_model.get_ntc_sensors()
-            if not ntc_sensors:
-                self.logger.warning("No NTC sensors found for HP-Power calculation")
+            # Check for heating voltage and current columns
+            voltage_col = None
+            current_col = None
+
+            # Look for heating voltage (Vheat) and current (Iheat)
+            for col in ['Vheat', 'Heating_Voltage', 'Heat_Voltage']:
+                if col in data_model.data.columns:
+                    voltage_col = col
+                    break
+
+            for col in ['Iheat', 'Heating_Current', 'Heat_Current']:
+                if col in data_model.data.columns:
+                    current_col = col
+                    break
+
+            if voltage_col is None or current_col is None:
+                self.logger.warning("No heating voltage/current data found for HP-Power calculation")
                 return 0.0
 
-            # Calculate heat pulse power for each NTC sensor
-            hp_power_values = []
+            # Get voltage and current data
+            voltage_data = data_model.data[voltage_col]
+            current_data = data_model.data[current_col]
 
-            for sensor in ntc_sensors:
-                sensor_data = data_model.get_sensor_data(sensor)
-                if sensor_data is not None and len(sensor_data) > 1:
-                    # Calculate temperature difference (delta T)
-                    temp_diff = sensor_data.diff().abs()
+            # Calculate instantaneous power P = U × I
+            power_data = voltage_data * current_data
 
-                    # Filter out noise (values below threshold)
-                    noise_threshold = temp_diff.quantile(0.1)  # Bottom 10% as noise
-                    heat_pulse_data = temp_diff[temp_diff > noise_threshold]
+            # Filter out negative or zero power (invalid measurements)
+            valid_power_data = power_data[power_data > 0]
 
-                    if len(heat_pulse_data) > 0:
-                        # Calculate mean heat pulse power (simplified formula)
-                        # In real implementation, this would use specific heat capacity
-                        # and other physical parameters
-                        mean_power = heat_pulse_data.mean()
-                        hp_power_values.append(mean_power)
+            if len(valid_power_data) == 0:
+                self.logger.warning("No valid power data found")
+                return 0.0
 
-            if hp_power_values:
-                mean_hp_power = np.mean(hp_power_values)
-                self.logger.info("Calculated mean HP-Power: %.3f W", mean_hp_power)
-                return float(mean_hp_power)
+            # Filter heat pulses using multiple criteria for better noise rejection
+
+            # 1. Absolute minimum power threshold (realistic heat pulse)
+            min_power_threshold = 10.0  # Watts - minimum realistic heat pulse power
+            realistic_power = valid_power_data[valid_power_data >= min_power_threshold]
+
+            # 2. Additional filtering using power stability (reduce noise from fluctuations)
+            if len(realistic_power) > 1:
+                power_diff = realistic_power.diff().abs()
+                # Use a more aggressive noise threshold for power differences
+                diff_threshold = power_diff.quantile(0.3)  # Bottom 30% of differences
+                heat_pulse_power = realistic_power[power_diff > diff_threshold]
             else:
-                self.logger.warning("No valid heat pulse data found")
+                heat_pulse_power = realistic_power
+
+            if len(heat_pulse_power) > 0:
+                # Calculate mean heat pulse power
+                mean_hp_power = heat_pulse_power.mean()
+                # Round to 2 decimal places for meaningful precision
+                rounded_hp_power = round(mean_hp_power, 2)
+                self.logger.info("Calculated mean HP-Power: %.2f W (from %d heat pulses, filtered from %d valid measurements)",
+                               rounded_hp_power, len(heat_pulse_power), len(valid_power_data))
+                return rounded_hp_power
+            else:
+                self.logger.warning("No significant heat pulse power data found")
                 return 0.0
 
         except (ValueError, KeyError) as e:
@@ -161,8 +187,10 @@ class AnalyticsService:
                 vacuum_data = ((max_voltage - voltage_data) / (max_voltage - min_voltage)) * 100
                 max_vacuum = vacuum_data.max()
 
-                self.logger.info("Calculated max vacuum: %.2f%%", max_vacuum)
-                return float(max_vacuum)
+                # Round to 1 decimal place for percentage
+                rounded_vacuum = round(max_vacuum, 1)
+                self.logger.info("Calculated max vacuum: %.1f%%", rounded_vacuum)
+                return rounded_vacuum
             else:
                 self.logger.warning("Insufficient voltage range for vacuum calculation")
                 return 0.0
@@ -274,8 +302,10 @@ class AnalyticsService:
                 self.logger.warning("Invalid pressure data (NaN values)")
                 return 0.0
 
-            self.logger.info("Calculated mean pressure: %.2f hPa", mean_pressure)
-            return float(mean_pressure)
+            # Round to 1 decimal place for pressure readings
+            rounded_pressure = round(mean_pressure, 1)
+            self.logger.info("Calculated mean pressure: %.1f hPa", rounded_pressure)
+            return rounded_pressure
 
         except (ValueError, KeyError) as e:
             self.logger.error("Data validation error calculating pressure: %s", e)
