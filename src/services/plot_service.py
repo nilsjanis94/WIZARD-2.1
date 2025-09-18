@@ -283,10 +283,10 @@ class PlotWidget(QWidget):
         try:
             # Configure axes
             self.ax1.set_xlabel('Time', fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
+            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
 
             # Set axis colors
-            self.ax1.tick_params(axis='y', labelcolor='#1f77b4')
+            self.ax1.tick_params(axis='y', labelcolor='black')
             
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -446,7 +446,7 @@ class PlotWidget(QWidget):
 
             # Set labels
             self.ax1.set_xlabel('Time', fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
+            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
             
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -485,7 +485,7 @@ class PlotWidget(QWidget):
             
             # Configure empty plot
             self.ax1.set_xlabel('Time', fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
+            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
             
             self.canvas.draw()
             
