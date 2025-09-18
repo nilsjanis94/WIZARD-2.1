@@ -147,10 +147,10 @@ class MainWindow(QMainWindow):
             if checkbox:
                 self.ntc_checkboxes[f"NTC{i:02d}"] = checkbox
 
-        # PT100 checkbox
+        # PT100 checkbox (stored as "Temp" in data)
         self.ntc_pt100_checkbox = self.findChild(QCheckBox, "ntc_pt100_checkbox")
         if self.ntc_pt100_checkbox:
-            self.ntc_checkboxes["PT100"] = self.ntc_pt100_checkbox
+            self.ntc_checkboxes["Temp"] = self.ntc_pt100_checkbox
 
         # Data metrics widgets
         self.mean_hp_power_value = self.findChild(QLineEdit, "mean_hp_power_value")
@@ -495,9 +495,10 @@ class MainWindow(QMainWindow):
         is_selected = state == 2
         self.logger.debug("Sensor %s selection changed: %s", sensor_name, is_selected)
 
-        # TODO: Update plot visualization
+        # Update plot visualization by getting all currently selected sensors
         if self.controller:
-            self.controller.update_sensor_selection(sensor_name, is_selected)
+            selected_sensors = self.controller._get_selected_sensors()
+            self.controller.main_window.update_plot_sensors(selected_sensors)
 
     def _on_y1_auto_changed(self, state: int):
         """Handle Y1 axis auto mode change."""

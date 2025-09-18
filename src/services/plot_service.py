@@ -332,11 +332,12 @@ class PlotWidget(QWidget):
     def update_sensor_selection(self, selected_sensors: List[str]):
         """
         Update the selected sensors for plotting.
-        
+
         Args:
             selected_sensors: List of selected sensor names
         """
         try:
+            self.logger.debug("PlotWidget: updating sensor selection from %s to %s", self.selected_sensors, selected_sensors)
             self.selected_sensors = selected_sensors.copy()
             self.logger.debug("Sensor selection updated: %s", selected_sensors)
             self._refresh_plot()
@@ -367,8 +368,11 @@ class PlotWidget(QWidget):
                 return
             
             # Clear previous plots
+            lines_before = len(self.ax1.get_lines())
             self.ax1.clear()
-            
+            lines_after_clear = len(self.ax1.get_lines())
+            self.logger.debug("Cleared plot: %d lines before, %d lines after", lines_before, lines_after_clear)
+
             # Get time data
             time_data = self.tob_data_model.get_time_column()
             if time_data is None or time_data.empty:
@@ -386,9 +390,24 @@ class PlotWidget(QWidget):
             # Legend removed for cleaner visualization
             # self._add_legend()
 
-            # Refresh canvas
-            self.canvas.draw()
-            
+            # Refresh canvas - multiple approaches for reliable updates
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+            # Force Qt event processing to ensure GUI updates
+            from PyQt6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                app.processEvents()
+
+            # Additional canvas update to ensure changes are visible
+            self.canvas.update()
+            self.canvas.repaint()  # Force immediate repaint
+
+            # Force figure redraw as additional measure
+            self.figure.canvas.draw()
+            self.figure.canvas.flush_events()
+
             self.logger.debug("Plot refreshed successfully")
         except Exception as e:
             self.logger.error("Failed to refresh plot: %s", e)

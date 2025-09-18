@@ -36,9 +36,12 @@ class MainController(QObject):
     data_processed = pyqtSignal(object)  # processed_data
     sensors_updated = pyqtSignal(list)  # available_sensors
 
-    def __init__(self):
+    def __init__(self, main_window=None):
         """
         Initialize the main controller.
+
+        Args:
+            main_window: Main window instance (optional, for dependency injection)
         """
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -55,10 +58,15 @@ class MainController(QObject):
         self.tob_data_model: Optional[TOBDataModel] = None
         self.project_model = ProjectModel(name="Untitled Project")
 
-        # Initialize view (import here to avoid circular import)
-        from ..views.main_window import MainWindow
-
-        self.main_window = MainWindow(controller=self)
+        # Initialize view
+        if main_window is not None:
+            self.main_window = main_window
+            # Connect controller to window
+            self.main_window.controller = self
+        else:
+            # Fallback: create window (backward compatibility)
+            from ..views.main_window import MainWindow
+            self.main_window = MainWindow(controller=self)
 
         # Connect signals
         self._connect_signals()
@@ -262,8 +270,8 @@ class MainController(QObject):
                 self.logger.info("Sensor %s deselected from visualization", sensor_name)
 
         except Exception as e:
-            self.logger.error("Error updating sensor selection: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "Sensor Selection Error")
+            self.logger.error("Failed to update sensor selection: %s", e)
+            raise
 
     def _get_selected_sensors(self) -> List[str]:
         """
