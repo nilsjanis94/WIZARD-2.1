@@ -1159,7 +1159,7 @@
           <item row="1" column="0">
            <widget class="QLabel" name="max_v_accu_label">
             <property name="text">
-             <string>Max Vaccu [V]:</string>
+             <string>Max Battery Voltage [V]:</string>
             </property>
            </widget>
           </item>

@@ -34,30 +34,37 @@ class TestAnalyticsService:
         assert "mean_press" in result
 
     def test_calculate_mean_hp_power(self, sample_tob_data):
-        """Test mean heat pulse power calculation."""
+        """Test mean heat pulse power calculation from voltage/current data."""
         service = AnalyticsService()
 
+        # Add Vheat and Iheat columns to sample data
+        sample_data = sample_tob_data.copy()
+        sample_data['Vheat'] = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005]  # Constant low voltage
+        sample_data['Iheat'] = [-0.002, -0.002, -0.002, 15.0, 15.0, 15.0]  # Some current pulses
+
         mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
-        mock_model.get_ntc_sensors.return_value = ["NTC01", "NTC02"]
-        mock_model.get_sensor_data.return_value = pd.Series([20.5, 21.0, 21.5, 22.0, 22.5, 23.0])
+        mock_model.data = pd.DataFrame(sample_data)
 
         result = service._calculate_mean_hp_power(mock_model)
 
         assert isinstance(result, float)
-        assert result >= 0.0
+        assert result >= 0.0  # Should find some power from the current pulses
 
     def test_calculate_max_vaccu(self, sample_tob_data):
-        """Test max vacuum calculation."""
+        """Test max battery voltage calculation."""
         service = AnalyticsService()
 
+        # Add Vaccu column with battery voltage data
+        sample_data = sample_tob_data.copy()
+        sample_data['Vaccu'] = [23.5, 23.8, 24.0, 24.2, 24.1, 23.9]  # Battery voltage values
+
         mock_model = MagicMock(spec=TOBDataModel)
-        mock_model.data = pd.DataFrame(sample_tob_data)
+        mock_model.data = pd.DataFrame(sample_data)
 
         result = service._calculate_max_vaccu(mock_model)
 
         assert isinstance(result, float)
-        assert 0.0 <= result <= 100.0  # Vacuum should be percentage
+        assert result > 20.0  # Should be battery voltage (> 20V typical)
 
     def test_calculate_tilt_status(self, sample_tob_data):
         """Test tilt status calculation."""

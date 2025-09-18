@@ -148,24 +148,24 @@ class AnalyticsService:
 
     def _calculate_max_vaccu(self, data_model: TOBDataModel) -> float:
         """
-        Calculate maximum vacuum value.
+        Calculate maximum battery voltage value.
 
-        Vacuum is calculated from battery voltage data, as lower voltage
-        typically indicates higher vacuum conditions in the system.
+        Vaccu represents the battery voltage for the vacuum system.
+        Max Vaccu is the highest battery voltage recorded.
 
         Args:
             data_model: TOBDataModel instance
 
         Returns:
-            Maximum vacuum value (inverted voltage scale)
+            Maximum battery voltage in volts
         """
         try:
             if data_model.data is None:
-                self.logger.warning("No data available for vacuum calculation")
+                self.logger.warning("No data available for battery voltage calculation")
                 return 0.0
 
             # Look for battery voltage column
-            voltage_columns = ["battery_voltage", "voltage", "battery", "V_batt"]
+            voltage_columns = ["Vaccu", "Vbatt", "battery_voltage", "voltage", "battery", "V_batt"]
             voltage_data = None
 
             for col in voltage_columns:
@@ -174,32 +174,22 @@ class AnalyticsService:
                     break
 
             if voltage_data is None:
-                self.logger.warning("No voltage data found for vacuum calculation")
+                self.logger.warning("No battery voltage data found")
                 return 0.0
 
-            # Calculate vacuum as inverse of voltage (higher vacuum = lower voltage)
-            # Normalize to 0-100 scale for vacuum percentage
-            min_voltage = voltage_data.min()
+            # Max Vaccu is simply the maximum battery voltage
             max_voltage = voltage_data.max()
 
-            if max_voltage > min_voltage:
-                # Invert voltage to get vacuum (0% = max voltage, 100% = min voltage)
-                vacuum_data = ((max_voltage - voltage_data) / (max_voltage - min_voltage)) * 100
-                max_vacuum = vacuum_data.max()
-
-                # Round to 1 decimal place for percentage
-                rounded_vacuum = round(max_vacuum, 1)
-                self.logger.info("Calculated max vacuum: %.1f%%", rounded_vacuum)
-                return rounded_vacuum
-            else:
-                self.logger.warning("Insufficient voltage range for vacuum calculation")
-                return 0.0
+            # Round to 2 decimal places for voltage precision
+            rounded_voltage = round(max_voltage, 2)
+            self.logger.info("Calculated max battery voltage: %.2f V", rounded_voltage)
+            return rounded_voltage
 
         except (ValueError, KeyError) as e:
-            self.logger.error("Data validation error calculating vacuum: %s", e)
+            self.logger.error("Data validation error calculating battery voltage: %s", e)
             return 0.0
         except Exception as e:
-            self.logger.error("Unexpected error calculating vacuum: %s", e)
+            self.logger.error("Unexpected error calculating battery voltage: %s", e)
             return 0.0
 
     def _calculate_tilt_status(self, data_model: TOBDataModel) -> str:
