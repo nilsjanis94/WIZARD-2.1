@@ -73,11 +73,18 @@ class TOBService:
             # Extract sensors from DataFrame columns
             sensors = []
             if data is not None and not data.empty:
-                # The tob_dataloader gives us columns with NTC sensor names
+                # Filter out non-sensor columns
+                non_sensor_columns = [
+                    'time', 'timestamp', 'datasets', 'date', 'datetime',
+                    'vbatt', 'vaccu', 'press', 'vheat', 'iheat',
+                    'tiltx', 'tilty', 'accz', 'stat',
+                    'intt_time', 'intt_date'
+                ]
+
                 for column in data.columns:
-                    column_str = str(column).strip()
-                    if column_str and column_str.lower() not in ['time', 'timestamp']:
-                        sensors.append(column_str)
+                    column_str = str(column).strip().lower()
+                    if column_str and column_str not in non_sensor_columns:
+                        sensors.append(str(column).strip())
 
             sensors = sorted(list(set(sensors)))  # Remove duplicates and sort
             self.logger.debug("Detected %d sensors: %s", len(sensors), sensors[:5] if sensors else [])

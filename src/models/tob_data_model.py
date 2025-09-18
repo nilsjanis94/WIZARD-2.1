@@ -65,8 +65,13 @@ class TOBDataModel(BaseModel):
         Returns:
             PT100 sensor name or None if not found
         """
-        pt100_sensors = [sensor for sensor in self.sensors if sensor == "PT100"]
-        return pt100_sensors[0] if pt100_sensors else None
+        # Check for PT100-like sensor names in the sensors list
+        pt100_candidates = ["PT100", "Temp", "Temperature", "T100", "PT_100"]
+        for candidate in pt100_candidates:
+            if candidate in self.sensors:
+                return candidate
+
+        return None
 
     def get_time_column(self) -> Optional[pd.Series]:
         """

@@ -158,11 +158,18 @@ class MainController(QObject):
             # Update plot with data
             self.main_window.update_plot_data(self.tob_data_model)
 
-            # Update sensor selection for plotting (automatically select all NTC sensors)
+            # Update sensor selection for plotting (automatically select all NTC sensors and PT100)
             selected_sensors = [sensor for sensor in self.tob_data_model.sensors if sensor.startswith('NTC')]
+
+            # Add PT100 sensor if available
+            pt100_sensor = self.tob_data_model.get_pt100_sensor()
+            if pt100_sensor:
+                selected_sensors.append(pt100_sensor)
+                self.logger.debug("PT100 sensor added to selection: %s", pt100_sensor)
+
             if selected_sensors:
                 self.main_window.update_plot_sensors(selected_sensors)
-                self.logger.debug("Auto-selected %d NTC sensors for plotting: %s", len(selected_sensors), selected_sensors)
+                self.logger.debug("Auto-selected %d sensors for plotting: %s", len(selected_sensors), selected_sensors)
 
             # Switch to plot mode
             self.main_window.ui_state_manager.show_plot_mode()
@@ -197,16 +204,16 @@ class MainController(QObject):
                     checkbox.setChecked(False)
 
             # Update PT100 checkbox
-            if hasattr(self.main_window, 'pt100_checkbox') and self.main_window.pt100_checkbox:
+            if hasattr(self.main_window, 'ntc_pt100_checkbox') and self.main_window.ntc_pt100_checkbox:
                 pt100_sensor = self.tob_data_model.get_pt100_sensor()
                 if pt100_sensor:
-                    self.main_window.pt100_checkbox.setVisible(True)
-                    self.main_window.pt100_checkbox.setEnabled(True)
-                    self.main_window.pt100_checkbox.setChecked(True)
+                    self.main_window.ntc_pt100_checkbox.setVisible(True)
+                    self.main_window.ntc_pt100_checkbox.setEnabled(True)
+                    self.main_window.ntc_pt100_checkbox.setChecked(True)
                 else:
-                    self.main_window.pt100_checkbox.setVisible(False)
-                    self.main_window.pt100_checkbox.setEnabled(False)
-                    self.main_window.pt100_checkbox.setChecked(False)
+                    self.main_window.ntc_pt100_checkbox.setVisible(False)
+                    self.main_window.ntc_pt100_checkbox.setEnabled(False)
+                    self.main_window.ntc_pt100_checkbox.setChecked(False)
 
             self.logger.debug("Sensor checkboxes updated successfully")
 
@@ -274,8 +281,8 @@ class MainController(QObject):
                     selected_sensors.append(sensor_name)
             
             # Check PT100 checkbox
-            if hasattr(self.main_window, 'pt100_checkbox') and self.main_window.pt100_checkbox:
-                if self.main_window.pt100_checkbox.isChecked():
+            if hasattr(self.main_window, 'ntc_pt100_checkbox') and self.main_window.ntc_pt100_checkbox:
+                if self.main_window.ntc_pt100_checkbox.isChecked():
                     selected_sensors.append('PT100')
             
             self.logger.debug("Selected sensors: %s", selected_sensors)
