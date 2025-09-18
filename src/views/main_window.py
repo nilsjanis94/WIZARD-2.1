@@ -488,17 +488,20 @@ class MainWindow(QMainWindow):
         """
         Handle sensor selection changes.
 
+        MVC-compliant: View informs Controller about UI events.
+        Controller decides what to do and updates views accordingly.
+
         Args:
-            sensor_name: Name of the sensor (e.g., "NTC01", "PT100")
+            sensor_name: Name of the sensor (e.g., "NTC01", "Temp")
             state: Checkbox state (0 = unchecked, 2 = checked)
         """
         is_selected = state == 2
-        self.logger.debug("Sensor %s selection changed: %s", sensor_name, is_selected)
+        self.logger.debug("View: sensor %s selection changed: %s", sensor_name, is_selected)
 
-        # Update plot visualization by getting all currently selected sensors
+        # MVC: View informs Controller about UI event
+        # Controller handles the logic and updates views
         if self.controller:
-            selected_sensors = self.controller._get_selected_sensors()
-            self.controller.main_window.update_plot_sensors(selected_sensors)
+            self.controller.handle_sensor_selection_changed(sensor_name, is_selected)
 
     def _on_y1_auto_changed(self, state: int):
         """Handle Y1 axis auto mode change."""

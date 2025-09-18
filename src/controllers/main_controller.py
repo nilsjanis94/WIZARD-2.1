@@ -247,30 +247,49 @@ class MainController(QObject):
         """
         return self.tob_data_model
 
-    def update_sensor_selection(self, sensor_name: str, is_selected: bool):
+    def handle_sensor_selection_changed(self, sensor_name: str, is_selected: bool):
         """
-        Update sensor selection state.
+        Handle sensor selection changes from the view.
+
+        This is the proper MVC way: View informs Controller about UI events,
+        Controller decides what to do and updates the view accordingly.
 
         Args:
-            sensor_name: Name of the sensor
-            is_selected: Whether the sensor is selected
+            sensor_name: Name of the sensor that changed
+            is_selected: Whether the sensor is now selected
         """
         try:
-            self.logger.debug("Updating sensor selection: %s = %s", sensor_name, is_selected)
-            
-            # Get current selected sensors
-            selected_sensors = self._get_selected_sensors()
-            
-            # Update plot with new sensor selection
-            self.main_window.update_plot_sensors(selected_sensors)
-            
+            self.logger.debug("Controller: handling sensor selection change: %s = %s", sensor_name, is_selected)
+
+            # Get current selected sensors from the view
+            current_selected = self._get_selected_sensors()
+            self.logger.debug("Current selected sensors: %s", current_selected)
+
+            # Calculate the new sensor selection based on the event
+            # (Checkbox state might not be updated yet, so we calculate based on the event)
+            if is_selected and sensor_name not in current_selected:
+                # Add sensor to selection
+                new_selected = current_selected + [sensor_name]
+            elif not is_selected and sensor_name in current_selected:
+                # Remove sensor from selection
+                new_selected = [s for s in current_selected if s != sensor_name]
+            else:
+                # No change needed (sensor already in correct state)
+                new_selected = current_selected
+
+            self.logger.debug("New selected sensors: %s", new_selected)
+
+            # Update the plot view with new sensor selection
+            if self.main_window:
+                self.main_window.update_plot_sensors(new_selected)
+
             if is_selected:
                 self.logger.info("Sensor %s selected for visualization", sensor_name)
             else:
                 self.logger.info("Sensor %s deselected from visualization", sensor_name)
 
         except Exception as e:
-            self.logger.error("Failed to update sensor selection: %s", e)
+            self.logger.error("Failed to handle sensor selection change: %s", e)
             raise
 
     def _get_selected_sensors(self) -> List[str]:
@@ -283,15 +302,10 @@ class MainController(QObject):
         try:
             selected_sensors = []
             
-            # Check NTC checkboxes
+            # Check all NTC checkboxes (including PT100 which is registered as "Temp")
             for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
                 if checkbox and checkbox.isChecked():
                     selected_sensors.append(sensor_name)
-            
-            # Check PT100 checkbox
-            if hasattr(self.main_window, 'ntc_pt100_checkbox') and self.main_window.ntc_pt100_checkbox:
-                if self.main_window.ntc_pt100_checkbox.isChecked():
-                    selected_sensors.append('PT100')
             
             self.logger.debug("Selected sensors: %s", selected_sensors)
             return selected_sensors
