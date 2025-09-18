@@ -266,9 +266,9 @@ class PlotWidget(QWidget):
             self.figure = Figure(figsize=(12, 8), dpi=100)
             self.figure.patch.set_facecolor('white')
             
-            # Create subplots (dual y-axis setup)
+            # Create single subplot (main y-axis only)
             self.ax1 = self.figure.add_subplot(111)
-            self.ax2 = self.ax1.twinx()
+            # ax2 removed for cleaner single-axis visualization
             
             # Create canvas
             self.canvas = FigureCanvas(self.figure)
@@ -284,11 +284,9 @@ class PlotWidget(QWidget):
             # Configure axes
             self.ax1.set_xlabel('Time', fontweight='bold')
             self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
-            self.ax2.set_ylabel('Temperature (°C)', fontweight='bold', color='#ff6b6b')
-            
+
             # Set axis colors
             self.ax1.tick_params(axis='y', labelcolor='#1f77b4')
-            self.ax2.tick_params(axis='y', labelcolor='#ff6b6b')
             
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -369,7 +367,6 @@ class PlotWidget(QWidget):
             
             # Clear previous plots
             self.ax1.clear()
-            self.ax2.clear()
             
             # Get time data
             time_data = self.tob_data_model.get_time_column()
@@ -417,14 +414,8 @@ class PlotWidget(QWidget):
                 line_style = self.plot_service.get_line_style(sensor)
                 line_width = self.plot_service.get_line_width(sensor)
                 
-                # Determine which axis to use
-                if sensor == self.axis_settings.get('y1_axis'):
-                    ax = self.ax1
-                elif sensor == self.axis_settings.get('y2_axis'):
-                    ax = self.ax2
-                else:
-                    # Default to y1 axis
-                    ax = self.ax1
+                # All sensors plot on main axis (ax1)
+                ax = self.ax1
                 
                 # Plot the data
                 ax.plot(time_values[:len(sensor_data)], sensor_data.values,
@@ -452,17 +443,10 @@ class PlotWidget(QWidget):
             else:
                 # Manual y1-axis limits would be set here
                 pass
-            
-            if self.axis_settings.get('y2_auto', True):
-                self.ax2.set_ylim(auto=True)
-            else:
-                # Manual y2-axis limits would be set here
-                pass
-            
+
             # Set labels
             self.ax1.set_xlabel('Time', fontweight='bold')
             self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
-            self.ax2.set_ylabel('Temperature (°C)', fontweight='bold', color='#ff6b6b')
             
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -475,12 +459,11 @@ class PlotWidget(QWidget):
     def _add_legend(self):
         """Add legend to the plot."""
         try:
-            # Combine legends from both axes
+            # Get legend from main axis only
             lines1, labels1 = self.ax1.get_legend_handles_labels()
-            lines2, labels2 = self.ax2.get_legend_handles_labels()
-            
-            if lines1 or lines2:
-                self.ax1.legend(lines1 + lines2, labels1 + labels2,
+
+            if lines1:
+                self.ax1.legend(lines1, labels1,
                               loc='upper right', frameon=True, fancybox=True,
                               shadow=True, framealpha=0.9)
             
@@ -503,7 +486,6 @@ class PlotWidget(QWidget):
             # Configure empty plot
             self.ax1.set_xlabel('Time', fontweight='bold')
             self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='#1f77b4')
-            self.ax2.set_ylabel('Temperature (°C)', fontweight='bold', color='#ff6b6b')
             
             self.canvas.draw()
             
