@@ -251,13 +251,7 @@ class PlotWidget(QWidget):
                 'axes.titlesize': 12,
                 'axes.labelsize': 10,
                 'xtick.labelsize': 9,
-                'ytick.labelsize': 9,
-                'legend.fontsize': 9,
-                'legend.frameon': True,
-                'legend.fancybox': True,
-                'legend.shadow': True,
-                'legend.framealpha': 0.9,
-                'legend.edgecolor': '#cccccc'
+                'ytick.labelsize': 9
             })
             
             self.logger.debug("Matplotlib configured successfully")
@@ -390,10 +384,10 @@ class PlotWidget(QWidget):
             
             # Configure axes
             self._configure_axes(time_values)
-            
-            # Add legend
-            self._add_legend()
-            
+
+            # Legend removed for cleaner visualization
+            # self._add_legend()
+
             # Refresh canvas
             self.canvas.draw()
             
