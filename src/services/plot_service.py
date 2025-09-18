@@ -291,11 +291,7 @@ class PlotWidget(QWidget):
             
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
-            
-            # Set title
-            self.figure.suptitle('Temperature Sensor Data Analysis', 
-                               fontsize=14, fontweight='bold', y=0.95)
-            
+
             # Add canvas to existing layout (from UI file)
             if self.layout() is not None:
                 # Use existing layout from UI file
