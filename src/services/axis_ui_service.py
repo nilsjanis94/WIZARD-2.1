@@ -111,12 +111,45 @@ class AxisUIService:
             # Update control enable/disable state
             self._set_axis_controls_enabled(main_window, axis, not is_auto)
 
-            # If switching to manual mode, ensure current values are displayed
-            if not is_auto and axis == 'x':
+            # When switching modes, ensure values are updated and plot is refreshed
+            if axis == 'x':
                 if hasattr(main_window, 'controller') and main_window.controller:
                     time_range = main_window.controller.get_time_range()
                     if time_range:
                         self.update_axis_values(main_window, time_range)
+
+                        # Update axis auto mode setting
+                        main_window.controller.update_axis_settings({'x_auto': is_auto})
+
+                        # If switching to manual mode, apply current manual limits
+                        if not is_auto:
+                            if hasattr(main_window, 'x_min_value') and main_window.x_min_value and \
+                               hasattr(main_window, 'x_max_value') and main_window.x_max_value:
+                                min_text = main_window.x_min_value.text()
+                                max_text = main_window.x_max_value.text()
+                                if min_text and max_text:
+                                    try:
+                                        # Get time unit conversion
+                                        time_unit = "Seconds"
+                                        if hasattr(main_window, 'x_axis_combo') and main_window.x_axis_combo:
+                                            current_text = main_window.x_axis_combo.currentText()
+                                            if current_text:
+                                                time_unit = current_text
+
+                                        min_val = float(min_text)
+                                        max_val = float(max_text)
+
+                                        # Convert to seconds
+                                        if time_unit == "Minutes":
+                                            min_val *= 60.0
+                                            max_val *= 60.0
+                                        elif time_unit == "Hours":
+                                            min_val *= 3600.0
+                                            max_val *= 3600.0
+
+                                        main_window.controller.update_x_axis_limits(min_val, max_val)
+                                    except ValueError:
+                                        pass  # Ignore invalid values
 
             self.logger.debug("Axis %s auto mode changed: %s", axis, is_auto)
 

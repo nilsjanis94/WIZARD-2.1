@@ -140,15 +140,30 @@ class TestAxisUIService:
         service = AxisUIService()
         main_window = MagicMock()
 
+        # Mock controller and time range
+        main_window.controller = MagicMock()
+        main_window.controller.get_time_range.return_value = {
+            'min': 100.0, 'max': 500.0
+        }
+
         # Mock UI elements
+        main_window.x_axis_combo = MagicMock()
+        main_window.x_axis_combo.currentText.return_value = "Seconds"
         main_window.x_min_value = MagicMock(spec=QLineEdit)
         main_window.x_max_value = MagicMock(spec=QLineEdit)
+        main_window.x_auto_checkbox = MagicMock(spec=QCheckBox)
+        main_window.x_auto_checkbox.isChecked.return_value = True
 
         service.handle_axis_auto_mode_changed(main_window, 'x', True)
 
-        # Controls should be disabled
+        # Controls should be disabled and values updated
         main_window.x_min_value.setEnabled.assert_called_with(False)
         main_window.x_max_value.setEnabled.assert_called_with(False)
+        # Values should be updated to show current auto range
+        main_window.x_min_value.setText.assert_called_with("100.00")
+        main_window.x_max_value.setText.assert_called_with("500.00")
+        # Controller should be called to update axis settings
+        main_window.controller.update_axis_settings.assert_called_with({'x_auto': True})
 
     def test_handle_axis_auto_mode_changed_auto_disabled(self):
         """Test auto mode change to disabled."""
@@ -175,6 +190,8 @@ class TestAxisUIService:
         # Controls should be enabled and values updated
         main_window.x_min_value.setEnabled.assert_called_with(True)
         main_window.x_max_value.setEnabled.assert_called_with(True)
+        # Controller should be called to update axis settings
+        main_window.controller.update_axis_settings.assert_called_with({'x_auto': False})
 
     def test_handle_axis_limits_changed_auto_mode(self):
         """Test limits change when auto mode is enabled - should be ignored."""
