@@ -172,6 +172,48 @@ class PlotService:
             self.logger.error("Failed to calculate plot limits: %s", e)
             return 0.0, 1.0
 
+    def _get_y_axis_label(self, sensor_name: str) -> str:
+        """
+        Get the appropriate Y-axis label based on the selected sensor.
+
+        Args:
+            sensor_name: Name of the selected sensor
+
+        Returns:
+            Appropriate Y-axis label with unit
+        """
+        # Define labels for different sensor types
+        sensor_labels = {
+            # NTC sensors
+            'NTCs': 'Temperature (°C)',
+            # Individual NTC sensors also use temperature
+            **{f'NTC{i:02d}': 'Temperature (°C)' for i in range(1, 23)},
+
+            # PT100
+            'Temp': 'Temperature (°C)',
+
+            # Voltage sensors
+            'Vheat': 'Heating Voltage (V)',
+            'Vbatt': 'Battery Voltage (V)',
+            'Vaccu': 'Accumulator Voltage (V)',
+
+            # Current sensors
+            'Iheat': 'Heating Current (A)',
+
+            # Pressure sensors
+            'Press': 'Pressure (hPa)',
+
+            # Tilt sensors
+            'TiltX': 'Tilt X-Axis (°)',
+            'TiltY': 'Tilt Y-Axis (°)',
+            'ACCz': 'Acceleration Z-Axis (m/s²)',
+
+            # Calculated values
+            'HP-Power': 'Heating Power (W)',
+        }
+
+        return sensor_labels.get(sensor_name, 'Value')
+
 
 class PlotWidget(QWidget):
     """
@@ -278,7 +320,15 @@ class PlotWidget(QWidget):
         try:
             # Configure axes
             self.ax1.set_xlabel('Time', fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
+
+            # Set initial Y-axis label (will be updated dynamically when sensors are selected)
+            if self.selected_sensors:
+                primary_sensor = self.selected_sensors[0]
+                y_label = self.plot_service._get_y_axis_label(primary_sensor)
+            else:
+                y_label = 'Value'
+
+            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
 
             # Set axis colors
             self.ax1.tick_params(axis='y', labelcolor='black')
@@ -479,7 +529,16 @@ class PlotWidget(QWidget):
             # Set labels
             x_label = f"Time ({time_unit})"
             self.ax1.set_xlabel(x_label, fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
+
+            # Determine Y-axis label based on selected sensors
+            if self.selected_sensors:
+                # Use the first sensor to determine the label type
+                primary_sensor = self.selected_sensors[0]
+                y_label = self.plot_service._get_y_axis_label(primary_sensor)
+            else:
+                y_label = 'Value'
+
+            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
 
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -522,7 +581,8 @@ class PlotWidget(QWidget):
             
             # Configure empty plot
             self.ax1.set_xlabel('Time', fontweight='bold')
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
+            # Use default label for empty plot
+            self.ax1.set_ylabel('Value', fontweight='bold', color='black')
             
             self.canvas.draw()
             
@@ -574,6 +634,19 @@ class PlotWidget(QWidget):
             axis_settings: Dictionary containing axis configuration
         """
         try:
+            # Extract sensor selections from axis settings
+            sensor_updates = []
+            if 'y1_sensor' in axis_settings:
+                sensor_updates.append(axis_settings['y1_sensor'])
+            if 'y2_sensor' in axis_settings:
+                sensor_updates.append(axis_settings['y2_sensor'])
+
+            # Update sensor selection if sensors changed
+            if sensor_updates:
+                self.update_sensor_selection(sensor_updates)
+                self.logger.debug("Sensor selection updated from axis settings: %s", sensor_updates)
+
+            # Update axis settings
             self.axis_settings.update(axis_settings)
             self.logger.debug("Axis settings updated: %s", axis_settings)
 
@@ -629,8 +702,14 @@ class PlotWidget(QWidget):
             x_label = f"Time ({time_unit})"
             self.ax1.set_xlabel(x_label, fontweight='bold')
 
-            # Update Y-axis labels (if needed in future)
-            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
+            # Update Y-axis labels based on selected sensors
+            if self.selected_sensors:
+                primary_sensor = self.selected_sensors[0]
+                y_label = self.plot_service._get_y_axis_label(primary_sensor)
+            else:
+                y_label = 'Value'
+
+            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
 
             # Force redraw of labels
             self.canvas.draw_idle()
