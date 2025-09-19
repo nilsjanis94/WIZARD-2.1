@@ -604,14 +604,67 @@ class MainWindow(QMainWindow):
         """Handle X axis type selection change."""
         if axis_type:
             self.logger.debug("X axis changed to: %s", axis_type)
+
+            # If in manual mode, convert existing manual limits to new time unit
+            if (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
+                not self.x_auto_checkbox.isChecked() and
+                hasattr(self, 'x_min_value') and self.x_min_value and
+                hasattr(self, 'x_max_value') and self.x_max_value):
+
+                # Get current values and convert them to the new unit
+                try:
+                    current_min = float(self.x_min_value.text() or "0")
+                    current_max = float(self.x_max_value.text() or "0")
+
+                    # Get old time unit for conversion
+                    old_unit = "Seconds"  # Default
+                    if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
+                        current_text = self.x_axis_combo.currentText()
+                        if current_text and current_text != axis_type:
+                            old_unit = current_text
+
+                    # Convert from old unit to seconds, then to new unit
+                    if old_unit == "Minutes":
+                        current_min *= 60.0
+                        current_max *= 60.0
+                    elif old_unit == "Hours":
+                        current_min *= 3600.0
+                        current_max *= 3600.0
+
+                    # Convert to new unit
+                    if axis_type == "Minutes":
+                        current_min /= 60.0
+                        current_max /= 60.0
+                    elif axis_type == "Hours":
+                        current_min /= 3600.0
+                        current_max /= 3600.0
+
+                    # Update the values in LineEdits
+                    self.x_min_value.blockSignals(True)
+                    self.x_max_value.blockSignals(True)
+                    self.x_min_value.setText(f"{current_min:.2f}")
+                    self.x_max_value.setText(f"{current_max:.2f}")
+                    self.x_min_value.blockSignals(False)
+                    self.x_max_value.blockSignals(False)
+
+                except ValueError:
+                    pass  # Keep existing values if conversion fails
+
             # Update axis settings through controller
             axis_settings = {'x_axis_type': axis_type}
             if self.controller:
                 self.controller.update_axis_settings(axis_settings)
-                # Update Min/Max values for new time unit
-                time_range = self.controller.get_time_range()
-                if time_range:
-                    self.axis_ui_service.update_axis_values(self, time_range)
+
+                # If in auto mode, update values to show current range in new unit
+                if (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
+                    self.x_auto_checkbox.isChecked()):
+                    time_range = self.controller.get_time_range()
+                    if time_range:
+                        self.axis_ui_service.update_axis_values(self, time_range)
+                elif (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
+                      not self.x_auto_checkbox.isChecked()):
+                    # In manual mode, update the displayed values from current plot limits
+                    self.axis_ui_service._update_manual_values_from_plot(self)
 
     def _on_quality_control(self):
         """Handle quality control button click."""

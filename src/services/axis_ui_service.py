@@ -38,6 +38,7 @@ class AxisUIService:
                 time_range = main_window.controller.get_time_range()
 
             if time_range:
+                # Show current auto range in UI controls
                 self.update_axis_values(main_window, time_range)
 
             # Set initial control states based on auto checkboxes
@@ -111,45 +112,19 @@ class AxisUIService:
             # Update control enable/disable state
             self._set_axis_controls_enabled(main_window, axis, not is_auto)
 
-            # When switching modes, ensure values are updated and plot is refreshed
-            if axis == 'x':
-                if hasattr(main_window, 'controller') and main_window.controller:
+            # Update axis auto mode setting
+            if axis == 'x' and hasattr(main_window, 'controller') and main_window.controller:
+                main_window.controller.update_axis_settings({'x_auto': is_auto})
+
+                # When switching modes, ensure values are updated and plot is refreshed
+                if is_auto:
+                    # In auto mode, show the auto-calculated range
                     time_range = main_window.controller.get_time_range()
                     if time_range:
                         self.update_axis_values(main_window, time_range)
-
-                        # Update axis auto mode setting
-                        main_window.controller.update_axis_settings({'x_auto': is_auto})
-
-                        # If switching to manual mode, apply current manual limits
-                        if not is_auto:
-                            if hasattr(main_window, 'x_min_value') and main_window.x_min_value and \
-                               hasattr(main_window, 'x_max_value') and main_window.x_max_value:
-                                min_text = main_window.x_min_value.text()
-                                max_text = main_window.x_max_value.text()
-                                if min_text and max_text:
-                                    try:
-                                        # Get time unit conversion
-                                        time_unit = "Seconds"
-                                        if hasattr(main_window, 'x_axis_combo') and main_window.x_axis_combo:
-                                            current_text = main_window.x_axis_combo.currentText()
-                                            if current_text:
-                                                time_unit = current_text
-
-                                        min_val = float(min_text)
-                                        max_val = float(max_text)
-
-                                        # Convert to seconds
-                                        if time_unit == "Minutes":
-                                            min_val *= 60.0
-                                            max_val *= 60.0
-                                        elif time_unit == "Hours":
-                                            min_val *= 3600.0
-                                            max_val *= 3600.0
-
-                                        main_window.controller.update_x_axis_limits(min_val, max_val)
-                                    except ValueError:
-                                        pass  # Ignore invalid values
+                else:
+                    # In manual mode, show the current plot limits in the selected time unit
+                    self._update_manual_values_from_plot(main_window)
 
             self.logger.debug("Axis %s auto mode changed: %s", axis, is_auto)
 
@@ -197,15 +172,10 @@ class AxisUIService:
                         if current_text:
                             time_unit = current_text
 
-                    # Convert to seconds for internal use
-                    if time_unit == "Minutes":
-                        min_value = min_value * 60.0
-                        max_value = max_value * 60.0
-                    elif time_unit == "Hours":
-                        min_value = min_value * 3600.0
-                        max_value = max_value * 3600.0
+                    # The plot data is already converted to the display unit by format_time_axis
+                    # So we send the values directly in the display unit
 
-                    # Send to controller
+                    # Send to controller - values are already in the correct unit for the plot
                     if hasattr(main_window, 'controller') and main_window.controller:
                         main_window.controller.update_x_axis_limits(min_value, max_value)
                         self.logger.debug("X-axis limits updated: min=%.2f, max=%.2f (%s)",
@@ -272,3 +242,40 @@ class AxisUIService:
 
         except Exception as e:
             self.logger.error("Failed to set axis controls enabled state: %s", e)
+
+    def _update_manual_values_from_plot(self, main_window: 'MainWindow') -> None:
+        """
+        Update manual control values from current plot axis limits.
+
+        Args:
+            main_window: Main window instance
+        """
+        try:
+            # Get current plot axis limits
+            if hasattr(main_window, 'plot_widget') and main_window.plot_widget:
+                xlim = main_window.plot_widget.ax1.get_xlim()
+                current_min, current_max = xlim
+
+                # The plot internal values are ALREADY in the display unit (converted by format_time_axis)
+                # So we can use them directly as display values
+                display_min, display_max = current_min, current_max
+
+                # Update LineEdit values
+                if hasattr(main_window, 'x_min_value') and main_window.x_min_value:
+                    main_window.x_min_value.blockSignals(True)
+                    main_window.x_min_value.setText(f"{display_min:.2f}")
+                    main_window.x_min_value.blockSignals(False)
+
+                if hasattr(main_window, 'x_max_value') and main_window.x_max_value:
+                    main_window.x_max_value.blockSignals(True)
+                    main_window.x_max_value.setText(f"{display_max:.2f}")
+                    main_window.x_max_value.blockSignals(False)
+
+                self.logger.debug("Updated manual values from plot: min=%.2f, max=%.2f (%s)",
+                                display_min, display_max, time_unit)
+            else:
+                self.logger.warning("No plot_widget available for manual values update")
+
+        except Exception as e:
+            print(f"DEBUG: Exception in _update_manual_values_from_plot: {e}")
+            self.logger.error("Failed to update manual values from plot: %s", e)

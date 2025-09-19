@@ -245,8 +245,8 @@ class TestAxisUIService:
 
         service.handle_axis_limits_changed(main_window, 'x', "1.00", "5.00")
 
-        # Should convert minutes to seconds (1min = 60s, 5min = 300s)
-        main_window.controller.update_x_axis_limits.assert_called_with(60.0, 300.0)
+        # Should use values directly in display unit (minutes)
+        main_window.controller.update_x_axis_limits.assert_called_with(1.0, 5.0)
 
     def test_handle_axis_limits_changed_hours_conversion(self):
         """Test limits change with hours to seconds conversion."""
@@ -266,8 +266,8 @@ class TestAxisUIService:
 
         service.handle_axis_limits_changed(main_window, 'x', "1.00", "2.00")
 
-        # Should convert hours to seconds (1h = 3600s, 2h = 7200s)
-        main_window.controller.update_x_axis_limits.assert_called_with(3600.0, 7200.0)
+        # Should use values directly in display unit (hours)
+        main_window.controller.update_x_axis_limits.assert_called_with(1.0, 2.0)
 
     def test_handle_axis_limits_changed_invalid_range(self):
         """Test limits change with invalid range (min >= max)."""
