@@ -171,6 +171,7 @@ class MainWindow(QMainWindow):
         self.y2_axis_combo = self.findChild(QComboBox, "y2_axis_combo")
         self.x_axis_combo = self.findChild(QComboBox, "x_axis_combo")
 
+
         # Create axis_combos dictionary for service usage
         self.axis_combos = {
             "y1_axis_combo": self.y1_axis_combo,
@@ -282,6 +283,25 @@ class MainWindow(QMainWindow):
         """
         # Use UI service for axis control setup
         self.ui_service.setup_axis_controls(self.axis_combos)
+
+        # Initialize auto checkbox states (they might be checked by default in UI)
+        # Y1 Auto Checkbox
+        if self.y1_auto_checkbox:
+            current_state = self.y1_auto_checkbox.isChecked()
+            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
+            self._on_y1_auto_changed(state_value)
+
+        # Y2 Auto Checkbox
+        if self.y2_auto_checkbox:
+            current_state = self.y2_auto_checkbox.isChecked()
+            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
+            self._on_y2_auto_changed(state_value)
+
+        # X Auto Checkbox
+        if self.x_auto_checkbox:
+            current_state = self.x_auto_checkbox.isChecked()
+            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
+            self._on_x_auto_changed(state_value)
 
     def _setup_menu_bar(self):
         """
