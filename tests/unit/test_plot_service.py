@@ -118,11 +118,38 @@ class TestPlotService:
         
         time_data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         time_values, time_labels = service.format_time_axis(time_data)
-        
+
         assert len(time_values) == 5
         # For 5 data points, step = max(1, 5 // 10) = 1, so every point gets a label
         assert len(time_labels) == 5
-        assert time_labels[0] == "T0"
+        assert time_labels[0] == "1.0s"  # New format with seconds unit
+
+    def test_format_time_axis_minutes(self):
+        """Test time axis formatting with minutes unit."""
+        service = PlotService()
+        import pandas as pd
+
+        time_data = pd.Series([60.0, 120.0, 180.0])  # 1, 2, 3 minutes in seconds
+        time_values, time_labels = service.format_time_axis(time_data, "Minutes")
+
+        assert len(time_values) == 3
+        assert time_values[0] == 1.0  # 60 seconds = 1 minute
+        assert time_values[1] == 2.0  # 120 seconds = 2 minutes
+        assert time_labels[0] == "1.0min"
+
+    def test_format_time_axis_hours(self):
+        """Test time axis formatting with hours unit."""
+        service = PlotService()
+        import pandas as pd
+
+        time_data = pd.Series([3600.0, 7200.0])  # 1, 2 hours in seconds
+        time_values, time_labels = service.format_time_axis(time_data, "Hours")
+
+        assert len(time_values) == 2
+        assert time_values[0] == 1.0  # 3600 seconds = 1 hour
+        assert time_values[1] == 2.0  # 7200 seconds = 2 hours
+        assert time_labels[0] == "1.0h"
+
 
     def test_calculate_plot_limits_empty(self):
         """Test plot limits calculation with empty data."""

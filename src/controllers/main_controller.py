@@ -62,7 +62,7 @@ class MainController(QObject):
         if main_window is not None:
             self.main_window = main_window
             # Connect controller to window
-            self.main_window.controller = self
+            self.main_window.set_controller(self)
         else:
             # Fallback: create window (backward compatibility)
             from ..views.main_window import MainWindow
@@ -338,6 +338,25 @@ class MainController(QObject):
         except Exception as e:
             self.logger.error("Error updating axis auto mode: %s", e)
             self.error_handler.handle_error(e, self.main_window, "Axis Update Error")
+
+    def update_axis_settings(self, axis_settings: Dict[str, Any]):
+        """
+        Update axis settings for plotting.
+
+        Args:
+            axis_settings: Dictionary containing axis configuration
+        """
+        try:
+            self.logger.debug("Updating axis settings: %s", axis_settings)
+
+            # Update plot with new axis settings
+            self.main_window.update_plot_axis_settings(axis_settings)
+
+            self.logger.info("Axis settings updated: %s", axis_settings)
+
+        except Exception as e:
+            self.logger.error("Error updating axis settings: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Axis Settings Update Error")
 
     def _on_project_created(self, project_path: str, password: str):
         """

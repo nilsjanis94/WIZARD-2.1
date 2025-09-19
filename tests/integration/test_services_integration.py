@@ -97,7 +97,7 @@ class TestServicesIntegration:
         mock_y2_combo.setCurrentText.assert_called_once_with("Temp")  # PT100 data is in 'Temp' column
         
         mock_x_combo.addItems.assert_called_once()
-        mock_x_combo.setCurrentText.assert_called_once_with("Time")
+        mock_x_combo.setCurrentText.assert_called_once_with("Seconds")
 
     def test_data_processing_workflow(self, sample_tob_data):
         """Test complete data processing workflow."""

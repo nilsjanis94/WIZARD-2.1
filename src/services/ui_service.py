@@ -197,7 +197,7 @@ class UIService:
 
             # Setup Y1 and Y2 axis combos
             for axis_name in ["y1_axis_combo", "y2_axis_combo"]:
-                if axis_name in axis_combos and axis_combos[axis_name]:
+                if axis_name in axis_combos and axis_combos[axis_name] is not None:
                     axis_combos[axis_name].addItems(sensor_options)
                     if axis_name == "y1_axis_combo":
                         axis_combos[axis_name].setCurrentText("NTC01")
@@ -205,10 +205,10 @@ class UIService:
                         axis_combos[axis_name].setCurrentText("Temp")  # PT100 data is in 'Temp' column
 
             # X axis options (time-based)
-            time_options = ["Time", "Depth", "Pressure"]
-            if "x_axis_combo" in axis_combos and axis_combos["x_axis_combo"]:
+            time_options = ["Seconds", "Minutes", "Hours"]
+            if "x_axis_combo" in axis_combos and axis_combos["x_axis_combo"] is not None:
                 axis_combos["x_axis_combo"].addItems(time_options)
-                axis_combos["x_axis_combo"].setCurrentText("Time")
+                axis_combos["x_axis_combo"].setCurrentText("Seconds")
 
             self.logger.debug("Axis controls setup completed")
 

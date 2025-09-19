@@ -365,6 +365,37 @@ class MainWindow(QMainWindow):
         if self.x_auto_checkbox:
             self.x_auto_checkbox.stateChanged.connect(self._on_x_auto_changed)
 
+        # Axis combo box changes - only connect if controller is available
+        if self.controller:
+            self._connect_axis_signals()
+
+    def _connect_axis_signals(self):
+        """
+        Connect axis control signals that require controller.
+        """
+        if self.y1_axis_combo:
+            self.y1_axis_combo.currentTextChanged.connect(self._on_y1_axis_changed)
+
+        if self.y2_axis_combo:
+            self.y2_axis_combo.currentTextChanged.connect(self._on_y2_axis_changed)
+
+        if self.x_axis_combo:
+            self.x_axis_combo.currentTextChanged.connect(self._on_x_axis_changed)
+
+        self.logger.debug("Axis control signals connected")
+
+    def set_controller(self, controller):
+        """
+        Set the controller and connect dependent signals.
+
+        Args:
+            controller: The main controller instance
+        """
+        self.controller = controller
+        # Connect axis signals now that controller is available
+        self._connect_axis_signals()
+        self.logger.debug("Controller set and axis signals connected")
+
         # Action buttons
         if self.quality_control_button:
             self.quality_control_button.clicked.connect(self._on_quality_control)
@@ -540,6 +571,33 @@ class MainWindow(QMainWindow):
         if self.x_min_value and self.x_max_value:
             self.x_min_value.setEnabled(not is_auto)
             self.x_max_value.setEnabled(not is_auto)
+
+    def _on_y1_axis_changed(self, sensor_name: str):
+        """Handle Y1 axis sensor selection change."""
+        if sensor_name:
+            self.logger.debug("Y1 axis changed to: %s", sensor_name)
+            # Update axis settings through controller
+            axis_settings = {'y1_sensor': sensor_name}
+            if self.controller:
+                self.controller.update_axis_settings(axis_settings)
+
+    def _on_y2_axis_changed(self, sensor_name: str):
+        """Handle Y2 axis sensor selection change."""
+        if sensor_name:
+            self.logger.debug("Y2 axis changed to: %s", sensor_name)
+            # Update axis settings through controller
+            axis_settings = {'y2_sensor': sensor_name}
+            if self.controller:
+                self.controller.update_axis_settings(axis_settings)
+
+    def _on_x_axis_changed(self, axis_type: str):
+        """Handle X axis type selection change."""
+        if axis_type:
+            self.logger.debug("X axis changed to: %s", axis_type)
+            # Update axis settings through controller
+            axis_settings = {'x_axis_type': axis_type}
+            if self.controller:
+                self.controller.update_axis_settings(axis_settings)
 
     def _on_quality_control(self):
         """Handle quality control button click."""

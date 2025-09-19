@@ -109,27 +109,36 @@ class PlotService:
         style = self.plot_style_service.get_sensor_style(sensor_name)
         return style['line_width']
 
-    def format_time_axis(self, time_data: pd.Series) -> Tuple[np.ndarray, List[str]]:
+    def format_time_axis(self, time_data: pd.Series, time_unit: str = "Seconds") -> Tuple[np.ndarray, List[str]]:
         """
-        Format time data for plotting.
-        
+        Format time data for plotting with different time units.
+
         Args:
             time_data: Time series data
-            
+            time_unit: Time unit ("Seconds", "Minutes", "Hours")
+
         Returns:
             Tuple of formatted time values and labels
         """
         try:
             if time_data.empty:
                 return np.array([]), []
-            
-            # Convert to numpy array for plotting
-            time_values = time_data.values
-            
+
+            # Convert time data based on unit
+            if time_unit == "Minutes":
+                time_values = time_data.values / 60.0
+                unit_label = "min"
+            elif time_unit == "Hours":
+                time_values = time_data.values / 3600.0
+                unit_label = "h"
+            else:  # Seconds (default)
+                time_values = time_data.values
+                unit_label = "s"
+
             # Create time labels (every 10th point for readability)
             step = max(1, len(time_values) // 10)
-            time_labels = [f"T{i}" for i in range(0, len(time_values), step)]
-            
+            time_labels = [f"{time_values[i]:.1f}{unit_label}" for i in range(0, len(time_values), step)]
+
             return time_values, time_labels
         except Exception as e:
             self.logger.error("Failed to format time axis: %s", e)
@@ -320,20 +329,6 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to update sensor selection: %s", e)
             raise
 
-    def update_axis_settings(self, axis_settings: Dict[str, Any]):
-        """
-        Update axis settings for plotting.
-        
-        Args:
-            axis_settings: Dictionary containing axis configuration
-        """
-        try:
-            self.axis_settings.update(axis_settings)
-            self.logger.debug("Axis settings updated: %s", axis_settings)
-            self._refresh_plot()
-        except Exception as e:
-            self.logger.error("Failed to update axis settings: %s", e)
-            raise
 
     def _refresh_plot(self):
         """Refresh the plot with current data and settings."""
@@ -353,14 +348,18 @@ class PlotWidget(QWidget):
             if time_data is None or time_data.empty:
                 self._clear_plot()
                 return
-            
-            time_values, time_labels = self.plot_service.format_time_axis(time_data)
+
+            # Get time unit from settings
+            time_unit = self.axis_settings.get('x_axis_type', 'Seconds')
+
+            # Format time axis
+            time_values, time_labels = self.plot_service.format_time_axis(time_data, time_unit)
             
             # Plot selected sensors
             self._plot_sensors(time_values)
             
             # Configure axes
-            self._configure_axes(time_values)
+            self._configure_axes(time_values, time_unit)
 
             # Legend removed for cleaner visualization
             # self._add_legend()
@@ -422,7 +421,7 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to plot sensors: %s", e)
             raise
 
-    def _configure_axes(self, time_values: np.ndarray):
+    def _configure_axes(self, time_values: np.ndarray, time_unit: str = "Seconds"):
         """Configure the plot axes."""
         try:
             # X-axis configuration
@@ -440,7 +439,8 @@ class PlotWidget(QWidget):
                 pass
 
             # Set labels
-            self.ax1.set_xlabel('Time', fontweight='bold')
+            x_label = f"Time ({time_unit})"
+            self.ax1.set_xlabel(x_label, fontweight='bold')
             self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
             
             # Configure grid
@@ -523,3 +523,45 @@ class PlotWidget(QWidget):
         except Exception as e:
             self.logger.error("Failed to get plot info: %s", e)
             return {}
+
+    def update_axis_settings(self, axis_settings: Dict[str, Any]):
+        """
+        Update axis settings for plotting.
+
+        Args:
+            axis_settings: Dictionary containing axis configuration
+        """
+        try:
+            self.axis_settings.update(axis_settings)
+            self.logger.debug("Axis settings updated: %s", axis_settings)
+
+            # Always refresh plot when axis settings change
+            # This ensures time scaling and labels are updated correctly
+            self._refresh_plot()
+
+            # Also update axis labels immediately for better responsiveness
+            self._update_axis_labels()
+        except Exception as e:
+            self.logger.error("Failed to update axis settings: %s", e)
+            raise
+
+    def _update_axis_labels(self):
+        """Update axis labels without full plot refresh."""
+        try:
+            if not self.ax1:
+                return
+
+            # Update X-axis label based on time unit
+            time_unit = self.axis_settings.get('x_axis_type', 'Seconds')
+            x_label = f"Time ({time_unit})"
+            self.ax1.set_xlabel(x_label, fontweight='bold')
+
+            # Update Y-axis labels (if needed in future)
+            self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
+
+            # Force redraw of labels
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+        except Exception as e:
+            self.logger.error("Failed to update axis labels: %s", e)
