@@ -39,6 +39,15 @@ def setup_application() -> QApplication:
     app.setOrganizationName("FIELAX")
     app.setOrganizationDomain("fielax.com")
 
+    # Set cross-platform style for consistent appearance and better styling support
+    from PyQt6.QtWidgets import QStyleFactory
+    available_styles = QStyleFactory.keys()
+    if "Fusion" in available_styles:
+        app.setStyle("Fusion")
+        print("🎨 Using cross-platform Fusion style for consistent appearance")
+    else:
+        print(f"ℹ️ Fusion style not available. Available styles: {available_styles}")
+
     # Set application icon
     icon_path = Path(__file__).parent.parent / "resources" / "icons" / "wizard.ico"
     if icon_path.exists():
