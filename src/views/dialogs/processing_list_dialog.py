@@ -49,7 +49,6 @@ class ProcessingListDialog(QDialog):
 
         # Title label
         title_label = QLabel("TOB Files in Project")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
         layout.addWidget(title_label)
 
         # Table widget
@@ -111,7 +110,6 @@ class ProcessingListDialog(QDialog):
 
         # Title label
         title_label = QLabel("TOB Files in Project")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
         layout.addWidget(title_label)
 
         # Table widget

@@ -40,7 +40,6 @@ class ProgressDialog(QDialog):
         # Message label
         self.message_label = QLabel(message)
         self.message_label.setWordWrap(True)
-        self.message_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(self.message_label)
 
         # Progress bar

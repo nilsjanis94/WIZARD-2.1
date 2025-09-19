@@ -2135,12 +2135,6 @@
                  <height>0</height>
                 </size>
                </property>
-               <property name="styleSheet">
-                <string notr="true">QComboBox QAbstractItemView::item:hover {
-    background-color: #0078d4;
-    color: #ffffff;
-}</string>
-               </property>
               </widget>
              </item>
              <item>
@@ -2293,12 +2287,6 @@
                  <height>0</height>
                 </size>
                </property>
-               <property name="styleSheet">
-                <string notr="true">QComboBox QAbstractItemView::item:hover {
-    background-color: #0078d4;
-    color: #ffffff;
-}</string>
-               </property>
               </widget>
              </item>
              <item>
@@ -2450,12 +2438,6 @@
                  <width>56</width>
                  <height>0</height>
                 </size>
-               </property>
-               <property name="styleSheet">
-                <string notr="true">QComboBox QAbstractItemView::item:hover {
-    background-color: #0078d4;
-    color: #ffffff;
-}</string>
                </property>
               </widget>
              </item>

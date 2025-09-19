@@ -107,7 +107,6 @@ class PasswordDialog(QDialog):
         )
         info_label = QLabel(info_text)
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(info_label)
 
         # Form layout

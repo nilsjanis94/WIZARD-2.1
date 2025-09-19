@@ -40,13 +40,11 @@ class ErrorDialog(QDialog):
 
         # Title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #d32f2f;")
         layout.addWidget(title_label)
 
         # Message label
         message_label = QLabel(message)
         message_label.setWordWrap(True)
-        message_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(message_label)
 
         # Details (if provided)
@@ -96,13 +94,11 @@ class WarningDialog(QDialog):
 
         # Title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #f57c00;")
         layout.addWidget(title_label)
 
         # Message label
         message_label = QLabel(message)
         message_label.setWordWrap(True)
-        message_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(message_label)
 
         # Details (if provided)
@@ -152,13 +148,11 @@ class InfoDialog(QDialog):
 
         # Title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #1976d2;")
         layout.addWidget(title_label)
 
         # Message label
         message_label = QLabel(message)
         message_label.setWordWrap(True)
-        message_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(message_label)
 
         # Details (if provided)
