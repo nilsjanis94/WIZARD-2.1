@@ -68,9 +68,11 @@ class DataService:
             Dictionary containing time range information
         """
         try:
-            time_col = data_model.get_time_column()
-            if time_col and data_model.data is not None:
-                time_data = data_model.data[time_col]
+            time_col_name = data_model.get_time_column_name()
+            if time_col_name and data_model.data is not None:
+                time_data = data_model.data[time_col_name]
+                if len(time_data) == 0:
+                    return {}
                 return {
                     "min": time_data.min(),
                     "max": time_data.max(),

@@ -254,14 +254,20 @@ class PlotWidget(QWidget):
             # Create figure with subplots
             self.figure = Figure(figsize=(12, 8), dpi=100)
             self.figure.patch.set_facecolor('white')
-            
+
+            # Set tight layout and minimal margins by default
+            self.figure.tight_layout(pad=0.5)
+
             # Create single subplot (main y-axis only)
             self.ax1 = self.figure.add_subplot(111)
             # ax2 removed for cleaner single-axis visualization
-            
+
+            # Set minimal margins
+            self.ax1.margins(x=0, y=0.05)
+
             # Create canvas
             self.canvas = FigureCanvas(self.figure)
-            
+
             self.logger.debug("Plot canvas created successfully")
         except Exception as e:
             self.logger.error("Failed to create plot canvas: %s", e)
@@ -426,11 +432,16 @@ class PlotWidget(QWidget):
         try:
             # X-axis configuration
             if self.axis_settings.get('x_auto', True):
-                self.ax1.set_xlim(auto=True)
+                # Always start from 0, not from data minimum
+                if len(time_values) > 0:
+                    x_max = time_values.max()
+                    self.ax1.set_xlim(0, x_max)
+                else:
+                    self.ax1.set_xlim(auto=True)
             else:
                 # Manual x-axis limits would be set here
                 pass
-            
+
             # Y-axis configuration
             if self.axis_settings.get('y1_auto', True):
                 self.ax1.set_ylim(auto=True)
@@ -442,10 +453,14 @@ class PlotWidget(QWidget):
             x_label = f"Time ({time_unit})"
             self.ax1.set_xlabel(x_label, fontweight='bold')
             self.ax1.set_ylabel('Temperature (°C)', fontweight='bold', color='black')
-            
+
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
-            
+
+            # Remove margins and use tight layout for no wasted space
+            self.ax1.margins(x=0, y=0.05)  # Small y-margin for labels, no x-margin
+            self.figure.tight_layout(pad=0.5)  # Minimal padding
+
             self.logger.debug("Axes configured successfully")
         except Exception as e:
             self.logger.error("Failed to configure axes: %s", e)
@@ -543,6 +558,37 @@ class PlotWidget(QWidget):
             self._update_axis_labels()
         except Exception as e:
             self.logger.error("Failed to update axis settings: %s", e)
+            raise
+
+    def update_x_limits(self, min_value: float, max_value: float):
+        """
+        Update X-axis limits manually.
+
+        Args:
+            min_value: Minimum X-axis value in seconds
+            max_value: Maximum X-axis value in seconds
+        """
+        try:
+            if not self.ax1:
+                self.logger.warning("No axes available for X-limits update")
+                return
+
+            self.logger.debug("Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Set X-axis limits
+            self.ax1.set_xlim(min_value, max_value)
+
+            # Apply tight layout and margins for no wasted space
+            self.ax1.margins(x=0, y=0.05)  # No x-margin, small y-margin
+            self.figure.tight_layout(pad=0.5)  # Minimal padding
+
+            # Redraw the plot
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+            self.logger.info("X-axis limits updated successfully")
+        except Exception as e:
+            self.logger.error("Failed to update X-axis limits: %s", e)
             raise
 
     def _update_axis_labels(self):

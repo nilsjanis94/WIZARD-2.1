@@ -179,8 +179,9 @@ class MainController(QObject):
                 self.main_window.update_plot_sensors(selected_sensors)
                 self.logger.debug("Auto-selected %d sensors for plotting: %s", len(selected_sensors), selected_sensors)
 
-            # Switch to plot mode
+            # Switch to plot mode and show data loaded
             self.main_window.ui_state_manager.show_plot_mode()
+            self.main_window.show_data_loaded()
 
             self.logger.debug("View updated with TOB data successfully")
 
@@ -246,6 +247,18 @@ class MainController(QObject):
             Current TOB data model or None if no data loaded
         """
         return self.tob_data_model
+
+    def get_time_range(self) -> Dict[str, Any]:
+        """
+        Get the time range of the currently loaded data.
+
+        Returns:
+            Dictionary with min, max, duration, and count or empty dict if no data
+        """
+        if not self.tob_data_model:
+            return {}
+
+        return self.data_service._get_time_range(self.tob_data_model)
 
     def handle_sensor_selection_changed(self, sensor_name: str, is_selected: bool):
         """
@@ -357,6 +370,26 @@ class MainController(QObject):
         except Exception as e:
             self.logger.error("Error updating axis settings: %s", e)
             self.error_handler.handle_error(e, self.main_window, "Axis Settings Update Error")
+
+    def update_x_axis_limits(self, min_value: float, max_value: float):
+        """
+        Update X-axis limits manually.
+
+        Args:
+            min_value: Minimum X-axis value in seconds
+            max_value: Maximum X-axis value in seconds
+        """
+        try:
+            self.logger.debug("Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Update plot with new X-axis limits
+            self.main_window.update_plot_x_limits(min_value, max_value)
+
+            self.logger.info("X-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+
+        except Exception as e:
+            self.logger.error("Error updating X-axis limits: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "X-Axis Limits Update Error")
 
     def _on_project_created(self, project_path: str, password: str):
         """
