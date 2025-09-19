@@ -328,3 +328,155 @@ class TestAxisUIService:
         # Controls should be disabled
         main_window.x_min_value.setEnabled.assert_called_with(False)
         main_window.x_max_value.setEnabled.assert_called_with(False)
+
+    def test_set_axis_controls_enabled_y1(self):
+        """Test setting Y1 axis control enabled states."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock UI elements
+        main_window.y1_min_value = MagicMock(spec=QLineEdit)
+        main_window.y1_max_value = MagicMock(spec=QLineEdit)
+
+        service._set_axis_controls_enabled(main_window, 'y1', True)
+
+        # Controls should be enabled
+        main_window.y1_min_value.setEnabled.assert_called_with(True)
+        main_window.y1_max_value.setEnabled.assert_called_with(True)
+
+    def test_set_axis_controls_enabled_y2(self):
+        """Test setting Y2 axis control enabled states."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock UI elements
+        main_window.y2_min_value = MagicMock(spec=QLineEdit)
+        main_window.y2_max_value = MagicMock(spec=QLineEdit)
+
+        service._set_axis_controls_enabled(main_window, 'y2', True)
+
+        # Controls should be enabled
+        main_window.y2_min_value.setEnabled.assert_called_with(True)
+        main_window.y2_max_value.setEnabled.assert_called_with(True)
+
+    def test_handle_axis_auto_mode_changed_y1_auto_on(self):
+        """Test Y1 auto mode change to auto on."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock controller
+        main_window.controller = MagicMock()
+
+        # Mock checkboxes
+        main_window.y1_auto_checkbox = MagicMock(spec=QCheckBox)
+
+        # Mock plot widget for Y-axis updates
+        main_window.plot_widget = MagicMock()
+        main_window.plot_widget.ax1 = MagicMock()
+        main_window.plot_widget.ax1.get_ylim.return_value = (10.0, 50.0)
+
+        # Mock LineEdits
+        main_window.y1_min_value = MagicMock(spec=QLineEdit)
+        main_window.y1_max_value = MagicMock(spec=QLineEdit)
+
+        with patch.object(service, '_update_y_axes_from_plot') as mock_update_y:
+            service.handle_axis_auto_mode_changed(main_window, 'y1', True)
+
+            # Should update axis settings
+            main_window.controller.update_axis_settings.assert_called_with({'y1_auto': True})
+            # Should update Y-axis values from plot
+            mock_update_y.assert_called_once_with(main_window)
+
+    def test_handle_axis_auto_mode_changed_y1_auto_off(self):
+        """Test Y1 auto mode change to auto off."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock controller
+        main_window.controller = MagicMock()
+
+        # Mock checkboxes and plot widget
+        main_window.y1_auto_checkbox = MagicMock(spec=QCheckBox)
+        main_window.plot_widget = MagicMock()
+        main_window.plot_widget.ax1 = MagicMock()
+        main_window.plot_widget.ax1.get_xlim.return_value = (0.0, 100.0)  # Need X limits too
+        main_window.plot_widget.ax1.get_ylim.return_value = (10.0, 50.0)
+
+        # Mock LineEdits
+        main_window.x_min_value = MagicMock(spec=QLineEdit)  # Need X controls too
+        main_window.x_max_value = MagicMock(spec=QLineEdit)
+        main_window.y1_min_value = MagicMock(spec=QLineEdit)
+        main_window.y1_max_value = MagicMock(spec=QLineEdit)
+
+        service.handle_axis_auto_mode_changed(main_window, 'y1', False)
+
+        # Should update axis settings and update manual values
+        main_window.controller.update_axis_settings.assert_called_with({'y1_auto': False})
+        main_window.y1_min_value.setText.assert_called_with("10.00")
+        main_window.y1_max_value.setText.assert_called_with("50.00")
+
+    def test_handle_axis_limits_changed_y1_valid(self):
+        """Test Y1 axis limits change with valid values."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock controller
+        main_window.controller = MagicMock()
+
+        # Mock checkbox (auto mode off)
+        main_window.y1_auto_checkbox = MagicMock(spec=QCheckBox)
+        main_window.y1_auto_checkbox.isChecked.return_value = False
+
+        service.handle_axis_limits_changed(main_window, 'y1', "15.5", "45.8")
+
+        # Should call controller with converted values
+        main_window.controller.update_y1_axis_limits.assert_called_with(15.5, 45.8)
+
+    def test_handle_axis_limits_changed_y1_auto_mode(self):
+        """Test Y1 axis limits change ignored when auto mode is on."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock checkbox (auto mode on)
+        main_window.y1_auto_checkbox = MagicMock(spec=QCheckBox)
+        main_window.y1_auto_checkbox.isChecked.return_value = True
+
+        service.handle_axis_limits_changed(main_window, 'y1', "10", "50")
+
+        # Should not call controller when auto mode is on
+        main_window.controller.update_y1_axis_limits.assert_not_called()
+
+    def test_update_manual_values_from_plot_with_y_axes(self):
+        """Test updating manual values from plot including Y axes."""
+        service = AxisUIService()
+        main_window = MagicMock()
+
+        # Mock plot widget with both axes
+        main_window.plot_widget = MagicMock()
+        main_window.plot_widget.ax1 = MagicMock()
+        main_window.plot_widget.ax2 = MagicMock()
+
+        # Mock axis limits
+        main_window.plot_widget.ax1.get_xlim.return_value = (0.0, 100.0)
+        main_window.plot_widget.ax1.get_ylim.return_value = (20.0, 80.0)
+        main_window.plot_widget.ax2.get_ylim.return_value = (5.0, 25.0)
+
+        # Mock LineEdits
+        main_window.x_min_value = MagicMock(spec=QLineEdit)
+        main_window.x_max_value = MagicMock(spec=QLineEdit)
+        main_window.y1_min_value = MagicMock(spec=QLineEdit)
+        main_window.y1_max_value = MagicMock(spec=QLineEdit)
+        main_window.y2_min_value = MagicMock(spec=QLineEdit)
+        main_window.y2_max_value = MagicMock(spec=QLineEdit)
+
+        service._update_manual_values_from_plot(main_window, 'x')
+        service._update_manual_values_from_plot(main_window, 'y1')
+        service._update_manual_values_from_plot(main_window, 'y2')
+
+        # Should update all LineEdits with correct values
+        main_window.x_min_value.setText.assert_called_with("0.00")
+        main_window.x_max_value.setText.assert_called_with("100.00")
+        main_window.y1_min_value.setText.assert_called_with("20.00")
+        main_window.y1_max_value.setText.assert_called_with("80.00")
+        main_window.y2_min_value.setText.assert_called_with("5.00")
+        main_window.y2_max_value.setText.assert_called_with("25.00")

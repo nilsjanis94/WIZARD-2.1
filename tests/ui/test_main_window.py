@@ -290,3 +290,65 @@ class TestMainWindow:
                 
                 # Verify error was handled gracefully
                 assert True
+
+    def test_update_plot_y1_limits_with_widget(self, qt_app):
+        """Test Y1 axis limits update when plot widget exists."""
+        controller = MagicMock(spec=MainController)
+
+        with patch('src.views.main_window.uic.loadUi'):
+            window = MainWindow(controller)
+
+            # Mock plot widget
+            window.plot_widget = MagicMock()
+
+            # Test the method
+            window.update_plot_y1_limits(10.5, 45.8)
+
+            # Verify plot widget was called
+            window.plot_widget.update_y1_limits.assert_called_once_with(10.5, 45.8)
+
+    def test_update_plot_y1_limits_no_widget(self, qt_app):
+        """Test Y1 axis limits update when plot widget doesn't exist."""
+        controller = MagicMock(spec=MainController)
+
+        with patch('src.views.main_window.uic.loadUi'):
+            window = MainWindow(controller)
+
+            # No plot widget
+            window.plot_widget = None
+
+            # Should not raise exception
+            window.update_plot_y1_limits(10.0, 50.0)
+
+            # Verify warning was logged (this would be in logs, but we can't easily test logging)
+
+    def test_update_plot_y2_limits_with_widget(self, qt_app):
+        """Test Y2 axis limits update when plot widget exists."""
+        controller = MagicMock(spec=MainController)
+
+        with patch('src.views.main_window.uic.loadUi'):
+            window = MainWindow(controller)
+
+            # Mock plot widget
+            window.plot_widget = MagicMock()
+
+            # Test the method
+            window.update_plot_y2_limits(5.2, 25.7)
+
+            # Verify plot widget was called
+            window.plot_widget.update_y2_limits.assert_called_once_with(5.2, 25.7)
+
+    def test_update_plot_y2_limits_no_widget(self, qt_app):
+        """Test Y2 axis limits update when plot widget doesn't exist."""
+        controller = MagicMock(spec=MainController)
+
+        with patch('src.views.main_window.uic.loadUi'):
+            window = MainWindow(controller)
+
+            # No plot widget
+            window.plot_widget = None
+
+            # Should not raise exception
+            window.update_plot_y2_limits(5.0, 25.0)
+
+            # Verify warning was logged

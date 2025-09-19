@@ -394,6 +394,16 @@ class MainWindow(QMainWindow):
         if self.x_max_value:
             self.x_max_value.textChanged.connect(self._on_x_axis_limits_changed)
 
+        if self.y1_min_value:
+            self.y1_min_value.textChanged.connect(self._on_y1_axis_limits_changed)
+        if self.y1_max_value:
+            self.y1_max_value.textChanged.connect(self._on_y1_axis_limits_changed)
+
+        if self.y2_min_value:
+            self.y2_min_value.textChanged.connect(self._on_y2_axis_limits_changed)
+        if self.y2_max_value:
+            self.y2_max_value.textChanged.connect(self._on_y2_axis_limits_changed)
+
         self.logger.debug("Axis control signals connected")
 
     def set_controller(self, controller):
@@ -559,20 +569,28 @@ class MainWindow(QMainWindow):
         is_auto = state == 2
         self.logger.debug("Y1 axis auto mode: %s", is_auto)
 
-        # Enable/disable manual controls
-        if self.y1_min_value and self.y1_max_value:
-            self.y1_min_value.setEnabled(not is_auto)
-            self.y1_max_value.setEnabled(not is_auto)
+        # Delegate to axis UI service for consistent handling
+        if hasattr(self, 'axis_ui_service') and self.axis_ui_service:
+            self.axis_ui_service.handle_axis_auto_mode_changed(self, 'y1', is_auto)
+        else:
+            # Fallback: Enable/disable manual controls directly
+            if self.y1_min_value and self.y1_max_value:
+                self.y1_min_value.setEnabled(not is_auto)
+                self.y1_max_value.setEnabled(not is_auto)
 
     def _on_y2_auto_changed(self, state: int):
         """Handle Y2 axis auto mode change."""
         is_auto = state == 2
         self.logger.debug("Y2 axis auto mode: %s", is_auto)
 
-        # Enable/disable manual controls
-        if self.y2_min_value and self.y2_max_value:
-            self.y2_min_value.setEnabled(not is_auto)
-            self.y2_max_value.setEnabled(not is_auto)
+        # Delegate to axis UI service for consistent handling
+        if hasattr(self, 'axis_ui_service') and self.axis_ui_service:
+            self.axis_ui_service.handle_axis_auto_mode_changed(self, 'y2', is_auto)
+        else:
+            # Fallback: Enable/disable manual controls directly
+            if self.y2_min_value and self.y2_max_value:
+                self.y2_min_value.setEnabled(not is_auto)
+                self.y2_max_value.setEnabled(not is_auto)
 
     def _on_x_auto_changed(self, state: int):
         """Handle X axis auto mode change."""
@@ -740,6 +758,36 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error("Failed to handle X-axis limits change: %s", e)
 
+    def _on_y1_axis_limits_changed(self):
+        """
+        Handle manual changes to Y1-axis min/max limits.
+        """
+        try:
+            # Get values from LineEdits
+            min_text = self.y1_min_value.text() if self.y1_min_value else ""
+            max_text = self.y1_max_value.text() if self.y1_max_value else ""
+
+            # Use axis UI service to handle the limits change
+            self.axis_ui_service.handle_axis_limits_changed(self, 'y1', min_text, max_text)
+
+        except Exception as e:
+            self.logger.error("Failed to handle Y1-axis limits change: %s", e)
+
+    def _on_y2_axis_limits_changed(self):
+        """
+        Handle manual changes to Y2-axis min/max limits.
+        """
+        try:
+            # Get values from LineEdits
+            min_text = self.y2_min_value.text() if self.y2_min_value else ""
+            max_text = self.y2_max_value.text() if self.y2_max_value else ""
+
+            # Use axis UI service to handle the limits change
+            self.axis_ui_service.handle_axis_limits_changed(self, 'y2', min_text, max_text)
+
+        except Exception as e:
+            self.logger.error("Failed to handle Y2-axis limits change: %s", e)
+
     def show_data_loaded(self):
         """
         Show that data has been loaded and switch to plot view.
@@ -838,6 +886,42 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error("Failed to update plot X-axis limits: %s", e)
             self.error_handler.handle_error(e, self, "Plot X-Axis Limits Update Error")
+
+    def update_plot_y1_limits(self, min_value: float, max_value: float):
+        """
+        Update Y1-axis limits for plotting.
+
+        Args:
+            min_value: Minimum Y1-axis value
+            max_value: Maximum Y1-axis value
+        """
+        try:
+            if self.plot_widget:
+                self.plot_widget.update_y1_limits(min_value, max_value)
+                self.logger.debug("Plot Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+            else:
+                self.logger.warning("Plot widget not available for Y1-axis limits update")
+        except Exception as e:
+            self.logger.error("Failed to update plot Y1-axis limits: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Y1-Axis Limits Update Error")
+
+    def update_plot_y2_limits(self, min_value: float, max_value: float):
+        """
+        Update Y2-axis limits for plotting.
+
+        Args:
+            min_value: Minimum Y2-axis value
+            max_value: Maximum Y2-axis value
+        """
+        try:
+            if self.plot_widget:
+                self.plot_widget.update_y2_limits(min_value, max_value)
+                self.logger.debug("Plot Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+            else:
+                self.logger.warning("Plot widget not available for Y2-axis limits update")
+        except Exception as e:
+            self.logger.error("Failed to update plot Y2-axis limits: %s", e)
+            self.error_handler.handle_error(e, self, "Plot Y2-Axis Limits Update Error")
 
     def get_plot_info(self) -> Dict[str, Any]:
         """

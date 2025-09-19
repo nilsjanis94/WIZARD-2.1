@@ -391,6 +391,46 @@ class MainController(QObject):
             self.logger.error("Error updating X-axis limits: %s", e)
             self.error_handler.handle_error(e, self.main_window, "X-Axis Limits Update Error")
 
+    def update_y1_axis_limits(self, min_value: float, max_value: float):
+        """
+        Update Y1-axis limits manually.
+
+        Args:
+            min_value: Minimum Y1-axis value
+            max_value: Maximum Y1-axis value
+        """
+        try:
+            self.logger.debug("Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Update plot with new Y1-axis limits
+            self.main_window.update_plot_y1_limits(min_value, max_value)
+
+            self.logger.info("Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+
+        except Exception as e:
+            self.logger.error("Error updating Y1-axis limits: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Y1-Axis Limits Update Error")
+
+    def update_y2_axis_limits(self, min_value: float, max_value: float):
+        """
+        Update Y2-axis limits manually.
+
+        Args:
+            min_value: Minimum Y2-axis value
+            max_value: Maximum Y2-axis value
+        """
+        try:
+            self.logger.debug("Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Update plot with new Y2-axis limits
+            self.main_window.update_plot_y2_limits(min_value, max_value)
+
+            self.logger.info("Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+
+        except Exception as e:
+            self.logger.error("Error updating Y2-axis limits: %s", e)
+            self.error_handler.handle_error(e, self.main_window, "Y2-Axis Limits Update Error")
+
     def _on_project_created(self, project_path: str, password: str):
         """
         Handle project created signal from view.

@@ -185,6 +185,10 @@ class TestPlotService:
         assert max_limit > 5.0
 
 
+    # Note: update_y1_limits and update_y2_limits are implemented in PlotWidget, not PlotService
+    # because they require canvas operations that are not available in PlotService
+
+
 # Note: PlotWidget tests are skipped as they require PyQt6 widgets
 # which are difficult to mock in unit tests. Integration tests would
 # be more appropriate for testing the PlotWidget functionality.

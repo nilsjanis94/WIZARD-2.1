@@ -59,42 +59,44 @@ class AxisUIService:
             time_range: Dictionary with min/max time values
         """
         try:
-            if not time_range or 'min' not in time_range or 'max' not in time_range:
-                return
+            # Update X-axis values if time_range provided
+            if time_range and 'min' in time_range and 'max' in time_range:
+                # Get current time unit
+                time_unit = "Seconds"
+                if hasattr(main_window, 'x_axis_combo') and main_window.x_axis_combo:
+                    current_text = main_window.x_axis_combo.currentText()
+                    if current_text:
+                        time_unit = current_text
 
-            # Get current time unit
-            time_unit = "Seconds"
-            if hasattr(main_window, 'x_axis_combo') and main_window.x_axis_combo:
-                current_text = main_window.x_axis_combo.currentText()
-                if current_text:
-                    time_unit = current_text
+                # Convert time values
+                min_value = float(time_range['min'])
+                max_value = float(time_range['max'])
 
-            # Convert time values
-            min_value = float(time_range['min'])
-            max_value = float(time_range['max'])
+                if time_unit == "Minutes":
+                    min_value = min_value / 60.0
+                    max_value = max_value / 60.0
+                elif time_unit == "Hours":
+                    min_value = min_value / 3600.0
+                    max_value = max_value / 3600.0
 
-            if time_unit == "Minutes":
-                min_value = min_value / 60.0
-                max_value = max_value / 60.0
-            elif time_unit == "Hours":
-                min_value = min_value / 3600.0
-                max_value = max_value / 3600.0
+                # Update X-axis values (always show, enable/disable based on auto mode)
+                if hasattr(main_window, 'x_min_value') and main_window.x_min_value:
+                    main_window.x_min_value.blockSignals(True)
+                    main_window.x_min_value.setText(f"{min_value:.2f}")
+                    main_window.x_min_value.blockSignals(False)
 
-            # Update X-axis values (always show, enable/disable based on auto mode)
-            if hasattr(main_window, 'x_min_value') and main_window.x_min_value:
-                main_window.x_min_value.blockSignals(True)
-                main_window.x_min_value.setText(f"{min_value:.2f}")
-                main_window.x_min_value.blockSignals(False)
+                if hasattr(main_window, 'x_max_value') and main_window.x_max_value:
+                    main_window.x_max_value.blockSignals(True)
+                    main_window.x_max_value.setText(f"{max_value:.2f}")
+                    main_window.x_max_value.blockSignals(False)
 
-            if hasattr(main_window, 'x_max_value') and main_window.x_max_value:
-                main_window.x_max_value.blockSignals(True)
-                main_window.x_max_value.setText(f"{max_value:.2f}")
-                main_window.x_max_value.blockSignals(False)
+                self.logger.debug("X-axis values updated: min=%.2f, max=%.2f (%s)", min_value, max_value, time_unit)
+
+            # Update Y-axis values from current plot limits (if plot exists and axes are in manual mode)
+            self._update_y_axes_from_plot(main_window)
 
             # Update control states
             self._update_control_states(main_window)
-
-            self.logger.debug("Axis values updated: min=%.2f, max=%.2f (%s)", min_value, max_value, time_unit)
 
         except Exception as e:
             self.logger.error("Failed to update axis values: %s", e)
@@ -112,7 +114,7 @@ class AxisUIService:
             # Update control enable/disable state
             self._set_axis_controls_enabled(main_window, axis, not is_auto)
 
-            # Update axis auto mode setting
+            # Update axis auto mode setting and handle mode switching
             if axis == 'x' and hasattr(main_window, 'controller') and main_window.controller:
                 main_window.controller.update_axis_settings({'x_auto': is_auto})
 
@@ -124,7 +126,20 @@ class AxisUIService:
                         self.update_axis_values(main_window, time_range)
                 else:
                     # In manual mode, show the current plot limits in the selected time unit
-                    self._update_manual_values_from_plot(main_window)
+                    self._update_manual_values_from_plot(main_window, 'x')
+
+            elif axis in ['y1', 'y2'] and hasattr(main_window, 'controller') and main_window.controller:
+                # Update axis auto mode setting
+                axis_setting_key = f'{axis}_auto'
+                main_window.controller.update_axis_settings({axis_setting_key: is_auto})
+
+                # When switching modes, ensure values are updated and plot is refreshed
+                if is_auto:
+                    # In auto mode, the plot has been auto-scaled, update LineEdits with new auto values
+                    self._update_y_axes_from_plot(main_window)
+                else:
+                    # In manual mode, show the current plot limits
+                    self._update_manual_values_from_plot(main_window, axis)
 
             self.logger.debug("Axis %s auto mode changed: %s", axis, is_auto)
 
@@ -149,6 +164,16 @@ class AxisUIService:
                     main_window.x_auto_checkbox and
                     main_window.x_auto_checkbox.isChecked()):
                     return
+            elif axis == 'y1':
+                if (hasattr(main_window, 'y1_auto_checkbox') and
+                    main_window.y1_auto_checkbox and
+                    main_window.y1_auto_checkbox.isChecked()):
+                    return
+            elif axis == 'y2':
+                if (hasattr(main_window, 'y2_auto_checkbox') and
+                    main_window.y2_auto_checkbox and
+                    main_window.y2_auto_checkbox.isChecked()):
+                    return
 
             if not min_text or not max_text:
                 return
@@ -164,7 +189,7 @@ class AxisUIService:
                                       axis, min_value, max_value)
                     return
 
-                # Get time unit conversion for X-axis
+                # Handle different axes
                 if axis == 'x':
                     time_unit = "Seconds"
                     if hasattr(main_window, 'x_axis_combo') and main_window.x_axis_combo:
@@ -181,12 +206,68 @@ class AxisUIService:
                         self.logger.debug("X-axis limits updated: min=%.2f, max=%.2f (%s)",
                                         min_value, max_value, time_unit)
 
+                elif axis in ['y1', 'y2']:
+                    # For Y-axes, send values directly to controller (no unit conversion needed)
+                    if hasattr(main_window, 'controller') and main_window.controller:
+                        if axis == 'y1':
+                            main_window.controller.update_y1_axis_limits(min_value, max_value)
+                        elif axis == 'y2':
+                            main_window.controller.update_y2_axis_limits(min_value, max_value)
+                        self.logger.debug("%s-axis limits updated: min=%.2f, max=%.2f",
+                                        axis.upper(), min_value, max_value)
+
             except ValueError:
                 self.logger.warning("Invalid %s limit values: min='%s', max='%s'",
                                   axis, min_text, max_text)
 
         except Exception as e:
             self.logger.error("Failed to handle %s axis limits change: %s", axis, e)
+
+    def _update_y_axes_from_plot(self, main_window: 'MainWindow') -> None:
+        """
+        Update Y-axis control values from current plot limits.
+
+        Updates axes that are currently in manual mode, or always for initial setup.
+        """
+        try:
+            if not hasattr(main_window, 'plot_widget') or not main_window.plot_widget:
+                return
+
+            # Update Y1 axis values from current plot limits
+            ylim1 = main_window.plot_widget.ax1.get_ylim()
+            y1_min, y1_max = ylim1
+
+            if hasattr(main_window, 'y1_min_value') and main_window.y1_min_value:
+                main_window.y1_min_value.blockSignals(True)
+                main_window.y1_min_value.setText(f"{y1_min:.2f}")
+                main_window.y1_min_value.blockSignals(False)
+
+            if hasattr(main_window, 'y1_max_value') and main_window.y1_max_value:
+                main_window.y1_max_value.blockSignals(True)
+                main_window.y1_max_value.setText(f"{y1_max:.2f}")
+                main_window.y1_max_value.blockSignals(False)
+
+            self.logger.debug("Y1-axis values updated from plot: min=%.2f, max=%.2f", y1_min, y1_max)
+
+            # Update Y2 axis values if ax2 exists
+            if hasattr(main_window.plot_widget, 'ax2') and main_window.plot_widget.ax2:
+                ylim2 = main_window.plot_widget.ax2.get_ylim()
+                y2_min, y2_max = ylim2
+
+                if hasattr(main_window, 'y2_min_value') and main_window.y2_min_value:
+                    main_window.y2_min_value.blockSignals(True)
+                    main_window.y2_min_value.setText(f"{y2_min:.2f}")
+                    main_window.y2_min_value.blockSignals(False)
+
+                if hasattr(main_window, 'y2_max_value') and main_window.y2_max_value:
+                    main_window.y2_max_value.blockSignals(True)
+                    main_window.y2_max_value.setText(f"{y2_max:.2f}")
+                    main_window.y2_max_value.blockSignals(False)
+
+                self.logger.debug("Y2-axis values updated from plot: min=%.2f, max=%.2f", y2_min, y2_max)
+
+        except Exception as e:
+            self.logger.error("Failed to update Y-axes from plot: %s", e)
 
     def _update_control_states(self, main_window: 'MainWindow') -> None:
         """
@@ -243,36 +324,72 @@ class AxisUIService:
         except Exception as e:
             self.logger.error("Failed to set axis controls enabled state: %s", e)
 
-    def _update_manual_values_from_plot(self, main_window: 'MainWindow') -> None:
+    def _update_manual_values_from_plot(self, main_window: 'MainWindow', axis: str) -> None:
         """
-        Update manual control values from current plot axis limits.
+        Update manual control values from current plot axis limits for specific axis.
 
         Args:
             main_window: Main window instance
+            axis: Axis to update ('x', 'y1', 'y2')
         """
         try:
             # Get current plot axis limits
             if hasattr(main_window, 'plot_widget') and main_window.plot_widget:
-                xlim = main_window.plot_widget.ax1.get_xlim()
-                current_min, current_max = xlim
+                if axis == 'x':
+                    # Update X-axis values
+                    xlim = main_window.plot_widget.ax1.get_xlim()
+                    x_min, x_max = xlim
 
-                # The plot internal values are ALREADY in the display unit (converted by format_time_axis)
-                # So we can use them directly as display values
-                display_min, display_max = current_min, current_max
+                    # The plot internal values are ALREADY in the display unit (converted by format_time_axis)
+                    # So we can use them directly as display values
+                    if hasattr(main_window, 'x_min_value') and main_window.x_min_value:
+                        main_window.x_min_value.blockSignals(True)
+                        main_window.x_min_value.setText(f"{x_min:.2f}")
+                        main_window.x_min_value.blockSignals(False)
 
-                # Update LineEdit values
-                if hasattr(main_window, 'x_min_value') and main_window.x_min_value:
-                    main_window.x_min_value.blockSignals(True)
-                    main_window.x_min_value.setText(f"{display_min:.2f}")
-                    main_window.x_min_value.blockSignals(False)
+                    if hasattr(main_window, 'x_max_value') and main_window.x_max_value:
+                        main_window.x_max_value.blockSignals(True)
+                        main_window.x_max_value.setText(f"{x_max:.2f}")
+                        main_window.x_max_value.blockSignals(False)
 
-                if hasattr(main_window, 'x_max_value') and main_window.x_max_value:
-                    main_window.x_max_value.blockSignals(True)
-                    main_window.x_max_value.setText(f"{display_max:.2f}")
-                    main_window.x_max_value.blockSignals(False)
+                    self.logger.debug("Updated X-axis manual values from plot: min=%.2f, max=%.2f", x_min, x_max)
 
-                self.logger.debug("Updated manual values from plot: min=%.2f, max=%.2f (%s)",
-                                display_min, display_max, time_unit)
+                elif axis == 'y1':
+                    # Update Y1-axis values
+                    ylim1 = main_window.plot_widget.ax1.get_ylim()
+                    y1_min, y1_max = ylim1
+
+                    if hasattr(main_window, 'y1_min_value') and main_window.y1_min_value:
+                        main_window.y1_min_value.blockSignals(True)
+                        main_window.y1_min_value.setText(f"{y1_min:.2f}")
+                        main_window.y1_min_value.blockSignals(False)
+
+                    if hasattr(main_window, 'y1_max_value') and main_window.y1_max_value:
+                        main_window.y1_max_value.blockSignals(True)
+                        main_window.y1_max_value.setText(f"{y1_max:.2f}")
+                        main_window.y1_max_value.blockSignals(False)
+
+                    self.logger.debug("Updated Y1-axis manual values from plot: min=%.2f, max=%.2f", y1_min, y1_max)
+
+                elif axis == 'y2':
+                    # Update Y2-axis values (if ax2 exists)
+                    if hasattr(main_window.plot_widget, 'ax2') and main_window.plot_widget.ax2:
+                        ylim2 = main_window.plot_widget.ax2.get_ylim()
+                        y2_min, y2_max = ylim2
+
+                        if hasattr(main_window, 'y2_min_value') and main_window.y2_min_value:
+                            main_window.y2_min_value.blockSignals(True)
+                            main_window.y2_min_value.setText(f"{y2_min:.2f}")
+                            main_window.y2_min_value.blockSignals(False)
+
+                        if hasattr(main_window, 'y2_max_value') and main_window.y2_max_value:
+                            main_window.y2_max_value.blockSignals(True)
+                            main_window.y2_max_value.setText(f"{y2_max:.2f}")
+                            main_window.y2_max_value.blockSignals(False)
+
+                        self.logger.debug("Updated Y2-axis manual values from plot: min=%.2f, max=%.2f", y2_min, y2_max)
+                    else:
+                        self.logger.warning("Y2 axis requested but ax2 not available")
             else:
                 self.logger.warning("No plot_widget available for manual values update")
 

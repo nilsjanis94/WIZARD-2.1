@@ -611,3 +611,65 @@ class PlotWidget(QWidget):
 
         except Exception as e:
             self.logger.error("Failed to update axis labels: %s", e)
+
+    def update_y1_limits(self, min_value: float, max_value: float):
+        """
+        Update Y1-axis limits manually.
+
+        Args:
+            min_value: Minimum Y1-axis value
+            max_value: Maximum Y1-axis value
+        """
+        try:
+            if not self.ax1:
+                self.logger.warning("No axes available for Y1-limits update")
+                return
+
+            self.logger.debug("Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Set Y1-axis limits
+            self.ax1.set_ylim(min_value, max_value)
+
+            # Apply margins
+            self.ax1.margins(x=0.05, y=0)  # Small x-margin, no y-margin
+
+            # Redraw the plot
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+            self.logger.info("Y1-axis limits updated successfully")
+
+        except Exception as e:
+            self.logger.error("Failed to update Y1-axis limits: %s", e)
+            raise
+
+    def update_y2_limits(self, min_value: float, max_value: float):
+        """
+        Update Y2-axis limits manually.
+
+        Args:
+            min_value: Minimum Y2-axis value
+            max_value: Maximum Y2-axis value
+        """
+        try:
+            if not self.ax2:
+                self.logger.warning("No axes available for Y2-limits update")
+                return
+
+            self.logger.debug("Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+
+            # Set Y2-axis limits
+            self.ax2.set_ylim(min_value, max_value)
+
+            # Apply margins
+            self.ax2.margins(x=0.05, y=0)  # Small x-margin, no y-margin
+
+            # Redraw the plot
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+            self.logger.info("Y2-axis limits updated successfully")
+
+        except Exception as e:
+            self.logger.error("Failed to update Y2-axis limits: %s", e)
+            raise
