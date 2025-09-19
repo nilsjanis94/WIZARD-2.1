@@ -402,18 +402,45 @@ class PlotWidget(QWidget):
             data = self.tob_data_model.data
             
             for sensor in self.selected_sensors:
+                # Special handling for NTCs group - plot all NTC sensors
+                if sensor == "NTCs":
+                    ntc_sensors = [col for col in data.columns if col.startswith('NTC') and col[3:].isdigit()]
+                    for ntc_sensor in ntc_sensors:
+                        if ntc_sensor not in data.columns:
+                            continue
+
+                        sensor_data = data[ntc_sensor].dropna()
+                        if sensor_data.empty:
+                            continue
+
+                        # Get styling for individual NTC sensor
+                        color = self.plot_service.get_sensor_color(ntc_sensor)
+                        line_style = self.plot_service.get_line_style(ntc_sensor)
+                        line_width = self.plot_service.get_line_width(ntc_sensor)
+
+                        # All sensors plot on main axis (ax1)
+                        ax = self.ax1
+
+                        # Plot the data
+                        ax.plot(time_values[:len(sensor_data)], sensor_data.values,
+                               color=color, linestyle=line_style, linewidth=line_width,
+                               label=ntc_sensor, alpha=0.8)
+
+                    continue  # Skip to next sensor in selected_sensors
+
+                # Normal sensor handling
                 if sensor not in data.columns:
                     continue
-                
+
                 sensor_data = data[sensor].dropna()
                 if sensor_data.empty:
                     continue
-                
+
                 # Get styling
                 color = self.plot_service.get_sensor_color(sensor)
                 line_style = self.plot_service.get_line_style(sensor)
                 line_width = self.plot_service.get_line_width(sensor)
-                
+
                 # All sensors plot on main axis (ax1)
                 ax = self.ax1
                 

@@ -155,10 +155,8 @@ class UIService:
             # Y1 and Y2 axis options (all available sensors and calculated values)
             sensor_options = [
                 # Temperature sensors
-                "NTC01", "NTC02", "NTC03", "NTC04", "NTC05", "NTC06", "NTC07", "NTC08",
-                "NTC09", "NTC10", "NTC11", "NTC12", "NTC13", "NTC14", "NTC15", "NTC16",
-                "NTC17", "NTC18", "NTC19", "NTC20", "NTC21", "NTC22",
-                "Temp",  # PT100 data is in 'Temp' column
+                "NTCs",    # All NTC temperature sensors (NTC01-NTC22)
+                "Temp",    # PT100 data is in 'Temp' column
 
                 # Other sensors
                 "Press",   # Pressure sensor
