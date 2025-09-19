@@ -39,6 +39,9 @@ class DataService:
             if data_model.data is None:
                 return {}
 
+            # Add calculated columns for plotting (like HP-Power)
+            self.analytics_service.add_calculated_columns(data_model)
+
             processed_data = {
                 "raw_data": data_model.data,
                 "sensors": data_model.sensors,

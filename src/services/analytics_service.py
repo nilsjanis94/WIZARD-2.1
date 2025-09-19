@@ -146,6 +146,58 @@ class AnalyticsService:
             self.logger.error("Unexpected error calculating HP-Power: %s", e)
             return 0.0
 
+    def add_calculated_columns(self, data_model: TOBDataModel) -> None:
+        """
+        Add calculated columns to the TOB data for plotting purposes.
+
+        This method calculates derived values like HP-Power and adds them as new columns
+        to the data model, making them available for plotting like regular sensors.
+
+        Args:
+            data_model: TOBDataModel instance to add calculated columns to
+        """
+        try:
+            if data_model.data is None:
+                self.logger.warning("No data available for calculated columns")
+                return
+
+            # Calculate HP-Power column if voltage and current data available
+            if 'HP-Power' not in data_model.data.columns:
+                voltage_col = None
+                current_col = None
+
+                # Look for heating voltage (Vheat) and current (Iheat)
+                for col in ['Vheat', 'Heating_Voltage', 'Heat_Voltage']:
+                    if col in data_model.data.columns:
+                        voltage_col = col
+                        break
+
+                for col in ['Iheat', 'Heating_Current', 'Heat_Current']:
+                    if col in data_model.data.columns:
+                        current_col = col
+                        break
+
+                if voltage_col is not None and current_col is not None:
+                    # Calculate instantaneous power P = U × I
+                    voltage_data = data_model.data[voltage_col]
+                    current_data = data_model.data[current_col]
+                    hp_power_data = voltage_data * current_data
+
+                    # Add the calculated column to the data
+                    data_model.data['HP-Power'] = hp_power_data
+
+                    self.logger.info(f"Added HP-Power column calculated from {voltage_col} × {current_col}")
+                else:
+                    self.logger.warning("Cannot add HP-Power column: voltage/current data not found")
+
+            # Future: Add other calculated columns here
+            # - Efficiency metrics
+            # - Derived temperature calculations
+            # - Statistical measures over time windows
+
+        except Exception as e:
+            self.logger.error("Error adding calculated columns: %s", e)
+
     def _calculate_max_vaccu(self, data_model: TOBDataModel) -> float:
         """
         Calculate maximum battery voltage value.
