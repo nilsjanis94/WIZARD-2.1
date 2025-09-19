@@ -8,7 +8,8 @@ import logging
 import platform
 from typing import Any, Dict, Optional
 
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QPainter, QPen, QColor, QPixmap
 from PyQt6.QtWidgets import (QCheckBox, QComboBox, QLabel, QLineEdit,
                              QPushButton, QWidget)
 
@@ -290,3 +291,88 @@ class UIService:
         except Exception as e:
             self.logger.error("Could not test font availability: %s", e)
             return False
+
+    def update_label_pixmap(self, label: QLabel, style_info: Dict[str, Any]):
+        """
+        Update a QLabel with a pixmap showing the styled line.
+
+        Args:
+            label: The QLabel to update
+            style_info: Style information (color, line_style, line_width)
+        """
+        # Get label dimensions
+        width = label.width()
+        height = label.height()
+
+        if width <= 0 or height <= 0:
+            # If dimensions are not set yet, use default values
+            width = 30
+            height = 16
+
+        # Create pixmap
+        pixmap = QPixmap(width, height)
+        pixmap.fill(Qt.GlobalColor.transparent)  # Transparent background
+
+        # Paint the line
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        color = QColor(style_info.get('color', '#000000'))
+        line_style_str = style_info.get('line_style', '-')
+        line_width = style_info.get('line_width', 1.5)
+
+        qt_line_style = Qt.PenStyle.SolidLine
+        if line_style_str == '--':
+            qt_line_style = Qt.PenStyle.DashLine
+        elif line_style_str == ':':
+            qt_line_style = Qt.PenStyle.DotLine
+        elif line_style_str == '-.':
+            qt_line_style = Qt.PenStyle.DashDotLine
+
+        pen = QPen(color, line_width)
+        pen.setStyle(qt_line_style)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+
+        y_center = height / 2
+        painter.drawLine(2, int(y_center), width - 2, int(y_center))
+
+        painter.end()
+
+        # Set pixmap on label
+        label.setPixmap(pixmap)
+        label.setScaledContents(True)  # Scale pixmap to label size
+
+        self.logger.debug(f"Updated pixmap for label with style: {style_info}")
+
+    def setup_label_indicator(self, label: QLabel, style_info: Dict[str, Any]) -> QLabel:
+        """
+        Set up a QLabel as a style indicator with automatic resize handling.
+
+        Args:
+            label: The QLabel to set up
+            style_info: Initial style information
+
+        Returns:
+            The configured QLabel
+        """
+        # Store style info on the label
+        label._style_info = style_info
+
+        # Set initial pixmap
+        self.update_label_pixmap(label, style_info)
+
+        # Handle resize events
+        original_resize_event = label.resizeEvent
+
+        def styled_resize_event(event):
+            if original_resize_event:
+                original_resize_event(event)
+            # Update pixmap when label is resized
+            if hasattr(label, '_style_info'):
+                self.update_label_pixmap(label, label._style_info)
+
+        label.resizeEvent = styled_resize_event
+
+        self.logger.debug(f"Set up label indicator with initial style: {style_info}")
+        return label

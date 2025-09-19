@@ -156,8 +156,9 @@ class MainWindow(QMainWindow):
         # Initialize plot style service (central style definitions)
         self.plot_style_service = PlotStyleService()
 
-        # Create style indicators for NTC checkboxes
-        self._setup_style_indicators()
+        # Create style indicators for NTC checkboxes (delayed setup)
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(100, self._setup_style_indicators)  # Delay by 100ms
 
         # Data metrics widgets
         self.mean_hp_power_value = self.findChild(QLineEdit, "mean_hp_power_value")
@@ -689,9 +690,11 @@ class MainWindow(QMainWindow):
 
     def _setup_style_indicators(self):
         """
-        Create visual style indicators next to NTC checkboxes for legend functionality.
+        Replace UI placeholder labels with visual style indicators for legend functionality.
         """
-        from PyQt6.QtGui import QFont
+        from PyQt6.QtWidgets import QLabel
+        from PyQt6.QtGui import QPainter, QPen, QColor
+        from PyQt6.QtCore import Qt
 
         self.style_indicators = {}
 
@@ -700,52 +703,57 @@ class MainWindow(QMainWindow):
                 # Get style info from plot style service
                 style_info = self.plot_style_service.get_sensor_style(sensor_name)
 
-                # Create indicator label
-                indicator = QLabel()
-                indicator.setFixedSize(30, 16)  # Small indicator size
+                # Find the corresponding UI placeholder label
+                label_name = self._get_style_label_name(sensor_name)
+                placeholder_label = self.findChild(QLabel, label_name)
 
-                # Set line pattern based on style
-                if style_info.get('line_style') == '--':
-                    line_text = "▬▬"  # Dashed pattern for PT100
-                elif style_info.get('line_style') == '-.':
-                    line_text = "▬•"  # Dash-dot pattern
-                elif style_info.get('line_style') == ':':
-                    line_text = "•••"  # Dotted pattern
+                self.logger.debug(f"Setting up indicator for {sensor_name}: looking for label '{label_name}'")
+
+                if placeholder_label:
+                    self.logger.debug(f"Found placeholder label {label_name} with text '{placeholder_label.text()}' at {placeholder_label.geometry()}")
+
+                    # Set up the label as a style indicator using UI service
+                    indicator = self.ui_service.setup_label_indicator(placeholder_label, style_info)
+
+                    self.logger.debug(f"Successfully set up {label_name} as style indicator")
+
                 else:
-                    line_text = "▬▬▬"  # Solid pattern for NTC
-
-                indicator.setText(line_text)
-                indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                # Style the indicator with sensor color
-                indicator.setStyleSheet(f"""
-                    QLabel {{
-                        color: {style_info.get('color', '#000000')};
-                        background-color: rgba(255, 255, 255, 0.1);
-                        border: 1px solid rgba(0, 0, 0, 0.1);
-                        border-radius: 2px;
-                        font-weight: bold;
-                    }}
-                """)
-
-                # Set font for better line visibility
-                font = QFont()
-                font.setPixelSize(10)
-                font.setBold(True)
-                indicator.setFont(font)
-
-                # Position indicator next to checkbox
-                checkbox_pos = checkbox.pos()
-                indicator.move(checkbox_pos.x() + checkbox.width() + 5, checkbox_pos.y() + 2)
-                indicator.setParent(self)
-                indicator.show()
+                    self.logger.warning(f"UI placeholder label {label_name} not found for sensor {sensor_name}")
+                    # Create hidden fallback
+                    indicator = QLabel()
+                    indicator.setParent(self)
+                    indicator.hide()
 
                 self.style_indicators[sensor_name] = indicator
 
-            self.logger.debug(f"Created {len(self.style_indicators)} style indicators")
+            self.logger.debug(f"Set up style indicators for {len(self.style_indicators)} sensors")
 
         except Exception as e:
-            self.logger.error(f"Failed to setup style indicators: {e}")
+            self.logger.error(f"Error setting up style indicators: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
+            ErrorHandler.handle_error(e, "Style Indicator Setup")
+
+
+    def _get_style_label_name(self, sensor_name: str) -> str:
+        """
+        Get the UI label name for a sensor.
+
+        Args:
+            sensor_name: Sensor name (e.g., 'NTC01', 'Temp')
+
+        Returns:
+            UI label name (e.g., 'ntc01_style_label', 'pt100_style_label')
+        """
+        if sensor_name == "Temp":
+            return "pt100_style_label"
+        elif sensor_name.startswith("NTC"):
+            # Extract number and format as two digits
+            number = sensor_name[3:]  # Remove "NTC"
+            return f"ntc{number}_style_label"
+        else:
+            self.logger.warning(f"Unknown sensor name format: {sensor_name}")
+            return f"{sensor_name.lower()}_style_label"
 
     def update_style_indicators(self):
         """
@@ -758,33 +766,16 @@ class MainWindow(QMainWindow):
             for sensor_name, indicator in self.style_indicators.items():
                 style_info = self.plot_style_service.get_sensor_style(sensor_name)
 
-                # Update line pattern
-                if style_info.get('line_style') == '--':
-                    line_text = "▬▬"
-                elif style_info.get('line_style') == '-.':
-                    line_text = "▬•"
-                elif style_info.get('line_style') == ':':
-                    line_text = "•••"
-                else:
-                    line_text = "▬▬▬"
-
-                indicator.setText(line_text)
-
-                # Update color
-                indicator.setStyleSheet(f"""
-                    QLabel {{
-                        color: {style_info.get('color', '#000000')};
-                        background-color: rgba(255, 255, 255, 0.1);
-                        border: 1px solid rgba(0, 0, 0, 0.1);
-                        border-radius: 2px;
-                        font-weight: bold;
-                    }}
-                """)
+                # Update style info and pixmap using UI service
+                if hasattr(indicator, '_style_info'):
+                    indicator._style_info = style_info
+                    self.ui_service.update_label_pixmap(indicator, style_info)
 
             self.logger.debug("Style indicators updated")
 
         except Exception as e:
-            self.logger.error(f"Failed to update style indicators: {e}")
+            self.logger.error(f"Error updating style indicators: {e}")
+            ErrorHandler.handle_error(e, "Style Indicator Update")
 
     def display_status_message(self, message: str, timeout: int = 5000):
         """

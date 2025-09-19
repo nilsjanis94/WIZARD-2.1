@@ -173,5 +173,74 @@ class TestUIService:
         
         service = UIService()
         result = service.test_font_availability("Arial")
-        
+
         assert result is False
+
+    @patch('src.services.ui_service.QPainter')
+    @patch('src.services.ui_service.QPixmap')
+    @patch('src.services.ui_service.QPen')
+    @patch('src.services.ui_service.QColor')
+    def test_update_label_pixmap(self, mock_qcolor, mock_qpen, mock_qpixmap, mock_qpainter):
+        """Test updating label pixmap with style information."""
+        # Mock QLabel
+        mock_label = MagicMock(spec=QLabel)
+        mock_label.width.return_value = 30
+        mock_label.height.return_value = 16
+
+        # Mock QPixmap and related classes
+        mock_pixmap_instance = MagicMock()
+        mock_qpixmap.return_value = mock_pixmap_instance
+
+        mock_painter_instance = MagicMock()
+        mock_qpainter.return_value = mock_painter_instance
+
+        mock_color_instance = MagicMock()
+        mock_qcolor.return_value = mock_color_instance
+
+        mock_pen_instance = MagicMock()
+        mock_qpen.return_value = mock_pen_instance
+
+        service = UIService()
+        style_info = {
+            'color': '#FF0000',
+            'line_style': '--',
+            'line_width': 2.0
+        }
+
+        service.update_label_pixmap(mock_label, style_info)
+
+        # Verify QPixmap was created with correct dimensions
+        mock_qpixmap.assert_called_once_with(30, 16)
+        mock_pixmap_instance.fill.assert_called_once()
+
+        # Verify painter was used
+        mock_qpainter.assert_called_once_with(mock_pixmap_instance)
+
+        # Verify label.setPixmap was called
+        mock_label.setPixmap.assert_called_once_with(mock_pixmap_instance)
+        mock_label.setScaledContents.assert_called_once_with(True)
+
+    def test_setup_label_indicator(self, qt_app):
+        """Test setting up a label as style indicator."""
+        # Create real QLabel for this test
+        label = QLabel()
+        label.resize(30, 16)
+
+        service = UIService()
+        style_info = {
+            'color': '#00FF00',
+            'line_style': '-',
+            'line_width': 1.5
+        }
+
+        result = service.setup_label_indicator(label, style_info)
+
+        # Verify return value
+        assert result == label
+
+        # Verify style info was stored
+        assert hasattr(label, '_style_info')
+        assert label._style_info == style_info
+
+        # Verify pixmap was set (indirectly via the fact that setPixmap was called)
+        # This is tested more thoroughly in test_update_label_pixmap
