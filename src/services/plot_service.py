@@ -27,33 +27,29 @@ class PlotService:
     for both NTC and PT100 sensors.
     """
     
-    def __init__(self):
+    def __init__(self, plot_style_service=None):
         """Initialize the plot service."""
         self.logger = logging.getLogger(__name__)
+
+        # Use provided style service or create default one
+        self.plot_style_service = plot_style_service
+        if not self.plot_style_service:
+            from .plot_style_service import PlotStyleService
+            self.plot_style_service = PlotStyleService()
+
         self.logger.info("PlotService initialized")
-        
-        # Color schemes for different sensor types
-        self.ntc_colors = [
-            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-            '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-            '#c49c94', '#f7b6d3', '#c7c7c7', '#dbdb8d', '#9edae5',
-            '#ad494a', '#8c6d31'
-        ]
-        
-        self.pt100_color = '#ff6b6b'
-        self.time_color = '#2c3e50'
 
-        # Line styles for different sensor types
-        self.ntc_line_style = '-'
-        self.pt100_line_style = '--'
-        self.time_line_style = '-'
+    def get_sensor_style(self, sensor_name: str) -> Dict[str, Any]:
+        """
+        Get the visual style information for a sensor from the style service.
 
-        
-        # Line widths
-        self.ntc_line_width = 1.5
-        self.pt100_line_width = 2.0
-        self.time_line_width = 1.0
+        Args:
+            sensor_name: Name of the sensor (e.g., 'NTC01', 'Temp')
+
+        Returns:
+            Dictionary with 'color', 'line_style', and 'line_width'
+        """
+        return self.plot_style_service.get_sensor_style(sensor_name)
 
     def create_plot_widget(self, parent: QWidget) -> 'PlotWidget':
         """
@@ -84,17 +80,8 @@ class PlotService:
         Returns:
             str: Color code for the sensor
         """
-        if sensor_name.startswith('NTC'):
-            try:
-                # Extract NTC number and use modulo to cycle through colors
-                ntc_num = int(sensor_name[3:])
-                return self.ntc_colors[(ntc_num - 1) % len(self.ntc_colors)]
-            except (ValueError, IndexError):
-                return self.ntc_colors[0]
-        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
-            return self.pt100_color
-        else:
-            return self.ntc_colors[0]
+        style = self.plot_style_service.get_sensor_style(sensor_name)
+        return style['color']
 
     def get_line_style(self, sensor_name: str) -> str:
         """
@@ -106,12 +93,8 @@ class PlotService:
         Returns:
             str: Line style for the sensor
         """
-        if sensor_name.startswith('NTC'):
-            return self.ntc_line_style
-        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
-            return self.pt100_line_style
-        else:
-            return self.ntc_line_style
+        style = self.plot_style_service.get_sensor_style(sensor_name)
+        return style['line_style']
 
     def get_line_width(self, sensor_name: str) -> float:
         """
@@ -123,12 +106,8 @@ class PlotService:
         Returns:
             float: Line width for the sensor
         """
-        if sensor_name.startswith('NTC'):
-            return self.ntc_line_width
-        elif sensor_name == 'Temp':  # PT100 data is typically in "Temp" column
-            return self.pt100_line_width
-        else:
-            return self.ntc_line_width
+        style = self.plot_style_service.get_sensor_style(sensor_name)
+        return style['line_width']
 
     def format_time_axis(self, time_data: pd.Series) -> Tuple[np.ndarray, List[str]]:
         """

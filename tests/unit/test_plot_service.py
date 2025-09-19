@@ -19,10 +19,13 @@ class TestPlotService:
         """Test PlotService initialization."""
         service = PlotService()
         assert service is not None
-        assert hasattr(service, 'ntc_colors')
-        assert hasattr(service, 'pt100_color')
-        assert hasattr(service, 'time_color')
-        assert len(service.ntc_colors) == 22  # NTC01 to NTC22
+        assert hasattr(service, 'plot_style_service')
+        assert service.plot_style_service is not None
+        # Test that we can get styles
+        style = service.get_sensor_style('NTC01')
+        assert 'color' in style
+        assert 'line_style' in style
+        assert 'line_width' in style
 
     def test_create_plot_widget(self):
         """Test plot widget creation."""
@@ -41,62 +44,60 @@ class TestPlotService:
     def test_get_sensor_color_ntc(self):
         """Test color assignment for NTC sensors."""
         service = PlotService()
-        
-        # Test NTC01 (first color)
+
+        # Test NTC01 (group 1-5: black)
         color = service.get_sensor_color('NTC01')
-        assert color == service.ntc_colors[0]
-        
-        # Test NTC22 (last color)
+        assert color == '#000000'  # Black
+
+        # Test NTC22 (group 19-22: dark red)
         color = service.get_sensor_color('NTC22')
-        assert color == service.ntc_colors[21]
+        assert color == '#8B0000'  # Dark Red
         
-        # Test NTC with invalid number (should cycle through colors)
+        # Test NTC with invalid number (should use default style)
         color = service.get_sensor_color('NTC99')
-        # NTC99 -> 99-1 = 98, 98 % 22 = 10, so should be colors[10]
-        expected_index = (99 - 1) % len(service.ntc_colors)
-        assert color == service.ntc_colors[expected_index]
+        assert color == '#1f77b4'  # Default fallback color
 
     def test_get_sensor_color_pt100(self):
         """Test color assignment for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
 
         color = service.get_sensor_color('Temp')  # PT100 data is in 'Temp' column
-        assert color == service.pt100_color
+        assert color == '#FFFF00'  # PT100 yellow color
 
     def test_get_sensor_color_unknown(self):
         """Test color assignment for unknown sensor."""
         service = PlotService()
-        
+
         color = service.get_sensor_color('UNKNOWN')
-        assert color == service.ntc_colors[0]  # Default to first NTC color
+        assert color == '#1f77b4'  # Default fallback color
 
     def test_get_line_style_ntc(self):
         """Test line style for NTC sensors."""
         service = PlotService()
-        
+
         style = service.get_line_style('NTC01')
-        assert style == service.ntc_line_style
+        assert style == '--'  # NTC01 uses dashed lines (first in repeating pattern)
 
     def test_get_line_style_pt100(self):
         """Test line style for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
 
         style = service.get_line_style('Temp')  # PT100 data is in 'Temp' column
-        assert style == service.pt100_line_style
+        assert style == '-'  # PT100 uses solid lines
 
     def test_get_line_width_ntc(self):
         """Test line width for NTC sensors."""
         service = PlotService()
-        
+
         width = service.get_line_width('NTC01')
-        assert width == service.ntc_line_width
+        assert width == 1.5  # NTC sensors use 1.5 width
 
     def test_get_line_width_pt100(self):
         """Test line width for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
 
         width = service.get_line_width('Temp')  # PT100 data is in 'Temp' column
-        assert width == service.pt100_line_width
+        assert width == 2.0  # PT100 uses thicker lines (2.0)
 
     def test_format_time_axis_empty(self):
         """Test time axis formatting with empty data."""

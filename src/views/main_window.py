@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
 
 from ..services.data_service import DataService
 from ..services.plot_service import PlotService
+from ..services.plot_style_service import PlotStyleService
 from ..services.ui_service import UIService
 from ..services.ui_state_manager import UIStateManager
 from ..utils.error_handler import ErrorHandler
@@ -151,6 +152,12 @@ class MainWindow(QMainWindow):
         self.ntc_pt100_checkbox = self.findChild(QCheckBox, "ntc_pt100_checkbox")
         if self.ntc_pt100_checkbox:
             self.ntc_checkboxes["Temp"] = self.ntc_pt100_checkbox
+
+        # Initialize plot style service (central style definitions)
+        self.plot_style_service = PlotStyleService()
+
+        # Create style indicators for NTC checkboxes
+        self._setup_style_indicators()
 
         # Data metrics widgets
         self.mean_hp_power_value = self.findChild(QLineEdit, "mean_hp_power_value")
@@ -621,6 +628,7 @@ class MainWindow(QMainWindow):
         try:
             if self.plot_widget:
                 self.plot_widget.update_data(tob_data_model)
+                self.update_style_indicators()  # Update visual indicators
                 self.logger.debug("Plot data updated successfully")
             else:
                 self.logger.warning("Plot widget not available for data update")
@@ -638,6 +646,7 @@ class MainWindow(QMainWindow):
         try:
             if self.plot_widget:
                 self.plot_widget.update_sensor_selection(selected_sensors)
+                self.update_style_indicators()  # Update visual indicators
                 self.logger.debug("Plot sensors updated: %s", selected_sensors)
             else:
                 self.logger.warning("Plot widget not available for sensor update")
@@ -677,6 +686,105 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error("Failed to get plot info: %s", e)
             return {'error': str(e)}
+
+    def _setup_style_indicators(self):
+        """
+        Create visual style indicators next to NTC checkboxes for legend functionality.
+        """
+        from PyQt6.QtGui import QFont
+
+        self.style_indicators = {}
+
+        try:
+            for sensor_name, checkbox in self.ntc_checkboxes.items():
+                # Get style info from plot style service
+                style_info = self.plot_style_service.get_sensor_style(sensor_name)
+
+                # Create indicator label
+                indicator = QLabel()
+                indicator.setFixedSize(30, 16)  # Small indicator size
+
+                # Set line pattern based on style
+                if style_info.get('line_style') == '--':
+                    line_text = "▬▬"  # Dashed pattern for PT100
+                elif style_info.get('line_style') == '-.':
+                    line_text = "▬•"  # Dash-dot pattern
+                elif style_info.get('line_style') == ':':
+                    line_text = "•••"  # Dotted pattern
+                else:
+                    line_text = "▬▬▬"  # Solid pattern for NTC
+
+                indicator.setText(line_text)
+                indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                # Style the indicator with sensor color
+                indicator.setStyleSheet(f"""
+                    QLabel {{
+                        color: {style_info.get('color', '#000000')};
+                        background-color: rgba(255, 255, 255, 0.1);
+                        border: 1px solid rgba(0, 0, 0, 0.1);
+                        border-radius: 2px;
+                        font-weight: bold;
+                    }}
+                """)
+
+                # Set font for better line visibility
+                font = QFont()
+                font.setPixelSize(10)
+                font.setBold(True)
+                indicator.setFont(font)
+
+                # Position indicator next to checkbox
+                checkbox_pos = checkbox.pos()
+                indicator.move(checkbox_pos.x() + checkbox.width() + 5, checkbox_pos.y() + 2)
+                indicator.setParent(self)
+                indicator.show()
+
+                self.style_indicators[sensor_name] = indicator
+
+            self.logger.debug(f"Created {len(self.style_indicators)} style indicators")
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup style indicators: {e}")
+
+    def update_style_indicators(self):
+        """
+        Update all style indicators when plot styles change.
+        """
+        if not hasattr(self, 'style_indicators'):
+            return
+
+        try:
+            for sensor_name, indicator in self.style_indicators.items():
+                style_info = self.plot_style_service.get_sensor_style(sensor_name)
+
+                # Update line pattern
+                if style_info.get('line_style') == '--':
+                    line_text = "▬▬"
+                elif style_info.get('line_style') == '-.':
+                    line_text = "▬•"
+                elif style_info.get('line_style') == ':':
+                    line_text = "•••"
+                else:
+                    line_text = "▬▬▬"
+
+                indicator.setText(line_text)
+
+                # Update color
+                indicator.setStyleSheet(f"""
+                    QLabel {{
+                        color: {style_info.get('color', '#000000')};
+                        background-color: rgba(255, 255, 255, 0.1);
+                        border: 1px solid rgba(0, 0, 0, 0.1);
+                        border-radius: 2px;
+                        font-weight: bold;
+                    }}
+                """)
+
+            self.logger.debug("Style indicators updated")
+
+        except Exception as e:
+            self.logger.error(f"Failed to update style indicators: {e}")
 
     def display_status_message(self, message: str, timeout: int = 5000):
         """
