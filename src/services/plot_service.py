@@ -638,7 +638,7 @@ class PlotWidget(QWidget):
             sensor_updates = []
             if 'y1_sensor' in axis_settings:
                 sensor_updates.append(axis_settings['y1_sensor'])
-            if 'y2_sensor' in axis_settings:
+            if 'y2_sensor' in axis_settings and axis_settings['y2_sensor'] != 'None':
                 sensor_updates.append(axis_settings['y2_sensor'])
 
             # Update sensor selection if sensors changed

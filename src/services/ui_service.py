@@ -172,14 +172,16 @@ class UIService:
                 "HP-Power", # Calculated heating power (Vheat * Iheat)
             ]
 
-            # Setup Y1 and Y2 axis combos
-            for axis_name in ["y1_axis_combo", "y2_axis_combo"]:
-                if axis_name in axis_combos and axis_combos[axis_name] is not None:
-                    axis_combos[axis_name].addItems(sensor_options)
-                    if axis_name == "y1_axis_combo":
-                        axis_combos[axis_name].setCurrentText("NTC01")
-                    else:  # y2_axis_combo
-                        axis_combos[axis_name].setCurrentText("Temp")  # PT100 data is in 'Temp' column
+            # Setup Y1 axis combo
+            if "y1_axis_combo" in axis_combos and axis_combos["y1_axis_combo"] is not None:
+                axis_combos["y1_axis_combo"].addItems(sensor_options)
+                axis_combos["y1_axis_combo"].setCurrentText("NTC01")
+
+            # Setup Y2 axis combo (same options as Y1 plus "None")
+            if "y2_axis_combo" in axis_combos and axis_combos["y2_axis_combo"] is not None:
+                y2_options = ["None"] + sensor_options
+                axis_combos["y2_axis_combo"].addItems(y2_options)
+                axis_combos["y2_axis_combo"].setCurrentText("None")  # Default to no Y2 axis
 
             # X axis options (time-based)
             time_options = ["Seconds", "Minutes", "Hours"]
