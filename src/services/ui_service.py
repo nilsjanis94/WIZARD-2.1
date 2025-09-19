@@ -113,41 +113,25 @@ class UIService:
             widget: The main widget to fix visibility for
         """
         try:
-            # Fix QLabel widgets
+            # Fix QLabel widgets - only ensure visibility
             labels = widget.findChildren(QLabel)
             for label in labels:
                 label.setVisible(True)
-                current_style = label.styleSheet() or ""
-                if "color:" not in current_style:
-                    label.setStyleSheet(current_style + "color: black;")
 
-            # Fix QCheckBox widgets
+            # Fix QCheckBox widgets - only ensure visibility
             checkboxes = widget.findChildren(QCheckBox)
             for checkbox in checkboxes:
                 checkbox.setVisible(True)
-                current_style = checkbox.styleSheet() or ""
-                if "color:" not in current_style:
-                    checkbox.setStyleSheet(current_style + "color: black;")
 
-            # Fix QPushButton widgets
+            # Fix QPushButton widgets - only ensure visibility
             buttons = widget.findChildren(QPushButton)
             for button in buttons:
                 button.setVisible(True)
-                current_style = button.styleSheet() or ""
-                if "color:" not in current_style:
-                    button.setStyleSheet(
-                        current_style + "color: black; background-color: lightgray;"
-                    )
 
-            # Fix QLineEdit widgets
+            # Fix QLineEdit widgets - only ensure visibility
             line_edits = widget.findChildren(QLineEdit)
             for line_edit in line_edits:
                 line_edit.setVisible(True)
-                current_style = line_edit.styleSheet() or ""
-                if "color:" not in current_style:
-                    line_edit.setStyleSheet(
-                        current_style + "color: black; background-color: white;"
-                    )
 
             self.logger.info(
                 "UI visibility fixed: %d labels, %d checkboxes, %d buttons, %d line edits",
