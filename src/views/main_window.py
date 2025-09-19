@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
                              QFrame, QLabel, QLineEdit, QMainWindow,
                              QPushButton, QWidget)
 
+from ..services.axis_ui_service import AxisUIService
 from ..services.data_service import DataService
 from ..services.plot_service import PlotService
 from ..services.plot_style_service import PlotStyleService
@@ -58,6 +59,7 @@ class MainWindow(QMainWindow):
         # Initialize services
         self.ui_state_manager = UIStateManager()
         self.ui_service = UIService()
+        self.axis_ui_service = AxisUIService()
         self.data_service = DataService()
         self.plot_service = PlotService()
 
@@ -284,24 +286,8 @@ class MainWindow(QMainWindow):
         # Use UI service for axis control setup
         self.ui_service.setup_axis_controls(self.axis_combos)
 
-        # Initialize auto checkbox states (they might be checked by default in UI)
-        # Y1 Auto Checkbox
-        if self.y1_auto_checkbox:
-            current_state = self.y1_auto_checkbox.isChecked()
-            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
-            self._on_y1_auto_changed(state_value)
-
-        # Y2 Auto Checkbox
-        if self.y2_auto_checkbox:
-            current_state = self.y2_auto_checkbox.isChecked()
-            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
-            self._on_y2_auto_changed(state_value)
-
-        # X Auto Checkbox
-        if self.x_auto_checkbox:
-            current_state = self.x_auto_checkbox.isChecked()
-            state_value = 2 if current_state else 0  # Qt.CheckState.Checked = 2, Unchecked = 0
-            self._on_x_auto_changed(state_value)
+        # Use axis UI service for control initialization
+        self.axis_ui_service.setup_axis_controls(self)
 
     def _setup_menu_bar(self):
         """
@@ -593,14 +579,8 @@ class MainWindow(QMainWindow):
         is_auto = state == 2
         self.logger.debug("X axis auto mode: %s", is_auto)
 
-        # Enable/disable manual controls
-        if self.x_min_value and self.x_max_value:
-            self.x_min_value.setEnabled(not is_auto)
-            self.x_max_value.setEnabled(not is_auto)
-
-        # When switching to manual mode, ensure current auto values are displayed
-        if not is_auto and self.controller:
-            self._set_initial_axis_values()
+        # Use axis UI service to handle the mode change
+        self.axis_ui_service.handle_axis_auto_mode_changed(self, 'x', is_auto)
 
     def _on_y1_axis_changed(self, sensor_name: str):
         """Handle Y1 axis sensor selection change."""
@@ -629,7 +609,9 @@ class MainWindow(QMainWindow):
             if self.controller:
                 self.controller.update_axis_settings(axis_settings)
                 # Update Min/Max values for new time unit
-                self._update_x_axis_min_max_values()
+                time_range = self.controller.get_time_range()
+                if time_range:
+                    self.axis_ui_service.update_axis_values(self, time_range)
 
     def _on_quality_control(self):
         """Handle quality control button click."""
@@ -688,149 +670,19 @@ class MainWindow(QMainWindow):
 
         self.logger.debug("Data metrics updated")
 
-    def _set_initial_axis_values(self):
-        """
-        Set initial axis values based on loaded data.
-        """
-        try:
-            if not self.controller or not hasattr(self.controller, 'get_current_tob_data'):
-                return
 
-            tob_data_model = self.controller.get_current_tob_data()
-            if not tob_data_model or tob_data_model.data is None:
-                return
-
-            # Get time range from controller
-            time_range = self.controller.get_time_range()
-            if not time_range or 'min' not in time_range or 'max' not in time_range:
-                return
-
-            # Get current time unit from X-axis combo
-            time_unit = "Seconds"  # Default
-            if self.x_axis_combo and self.x_axis_combo.currentText():
-                time_unit = self.x_axis_combo.currentText()
-
-            # Convert time values based on unit
-            min_value = time_range['min']
-            max_value = time_range['max']
-
-            if time_unit == "Minutes":
-                min_value = min_value / 60.0
-                max_value = max_value / 60.0
-            elif time_unit == "Hours":
-                min_value = min_value / 3600.0
-                max_value = max_value / 3600.0
-
-            # Always set X-axis min/max values for display, but only enable editing when auto is off
-            if self.x_min_value:
-                self.x_min_value.blockSignals(True)
-                self.x_min_value.setText(f"{min_value:.2f}")
-                self.x_min_value.blockSignals(False)
-            if self.x_max_value:
-                self.x_max_value.blockSignals(True)
-                self.x_max_value.setText(f"{max_value:.2f}")
-                self.x_max_value.blockSignals(False)
-
-            # Enable/disable editing based on auto mode
-            if self.x_auto_checkbox:
-                is_auto = self.x_auto_checkbox.isChecked()
-                if self.x_min_value:
-                    self.x_min_value.setEnabled(not is_auto)
-                if self.x_max_value:
-                    self.x_max_value.setEnabled(not is_auto)
-
-            self.logger.debug("Initial X-axis values set: min=%.2f, max=%.2f (%s)", min_value, max_value, time_unit)
-
-        except Exception as e:
-            self.logger.error("Failed to set initial axis values: %s", e)
-
-    def _update_x_axis_min_max_values(self):
-        """
-        Update X-axis Min/Max values based on current time unit.
-        """
-        try:
-            if not self.controller:
-                return
-
-            # Get time range from controller
-            time_range = self.controller.get_time_range()
-            if not time_range or 'min' not in time_range or 'max' not in time_range:
-                return
-
-            # Get current time unit from X-axis combo
-            time_unit = "Seconds"  # Default
-            if self.x_axis_combo and self.x_axis_combo.currentText():
-                time_unit = self.x_axis_combo.currentText()
-
-            # Convert time values based on unit
-            min_value = time_range['min']
-            max_value = time_range['max']
-
-            if time_unit == "Minutes":
-                min_value = min_value / 60.0
-                max_value = max_value / 60.0
-            elif time_unit == "Hours":
-                min_value = min_value / 3600.0
-                max_value = max_value / 3600.0
-
-            # Always set X-axis min/max values for display
-            if self.x_min_value:
-                self.x_min_value.blockSignals(True)
-                self.x_min_value.setText(f"{min_value:.2f}")
-                self.x_min_value.blockSignals(False)
-            if self.x_max_value:
-                self.x_max_value.blockSignals(True)
-                self.x_max_value.setText(f"{max_value:.2f}")
-                self.x_max_value.blockSignals(False)
-
-            self.logger.debug("X-axis Min/Max updated: min=%.2f, max=%.2f (%s)", min_value, max_value, time_unit)
-
-        except Exception as e:
-            self.logger.error("Failed to update X-axis Min/Max values: %s", e)
 
     def _on_x_axis_limits_changed(self):
         """
         Handle manual changes to X-axis min/max limits.
         """
         try:
-            if not self.controller or not self.x_auto_checkbox or self.x_auto_checkbox.isChecked():
-                return
-
             # Get values from LineEdits
             min_text = self.x_min_value.text() if self.x_min_value else ""
             max_text = self.x_max_value.text() if self.x_max_value else ""
 
-            if not min_text or not max_text:
-                return
-
-            try:
-                min_value = float(min_text)
-                max_value = float(max_text)
-
-                # Validate that min < max
-                if min_value >= max_value:
-                    self.logger.warning("Invalid X-axis range: min (%.2f) must be less than max (%.2f)", min_value, max_value)
-                    return
-
-                # Get current time unit for conversion back to seconds
-                time_unit = "Seconds"
-                if self.x_axis_combo and self.x_axis_combo.currentText():
-                    time_unit = self.x_axis_combo.currentText()
-
-                # Convert back to seconds for internal use
-                if time_unit == "Minutes":
-                    min_value = min_value * 60.0
-                    max_value = max_value * 60.0
-                elif time_unit == "Hours":
-                    min_value = min_value * 3600.0
-                    max_value = max_value * 3600.0
-
-                # Send to controller
-                self.controller.update_x_axis_limits(min_value, max_value)
-                self.logger.debug("X-axis limits updated: min=%.2f, max=%.2f (%s)", min_value, max_value, time_unit)
-
-            except ValueError:
-                self.logger.warning("Invalid X-axis limit values: min='%s', max='%s'", min_text, max_text)
+            # Use axis UI service to handle the limits change
+            self.axis_ui_service.handle_axis_limits_changed(self, 'x', min_text, max_text)
 
         except Exception as e:
             self.logger.error("Failed to handle X-axis limits change: %s", e)
@@ -841,7 +693,13 @@ class MainWindow(QMainWindow):
         """
         self.is_data_loaded = True
         self._show_plot_area()
-        self._set_initial_axis_values()
+
+        # Update axis values using axis UI service
+        if self.controller:
+            time_range = self.controller.get_time_range()
+            if time_range:
+                self.axis_ui_service.update_axis_values(self, time_range)
+
         self.statusbar.showMessage("Data loaded successfully")
         self.logger.info("Data loaded, switched to plot view")
 
