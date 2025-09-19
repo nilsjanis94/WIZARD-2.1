@@ -152,31 +152,26 @@ class UIService:
             axis_combos: Dictionary containing axis combo boxes
         """
         try:
-            # Y1 and Y2 axis options (temperature sensors)
+            # Y1 and Y2 axis options (all available sensors and calculated values)
             sensor_options = [
-                "NTC01",
-                "NTC02",
-                "NTC03",
-                "NTC04",
-                "NTC05",
-                "NTC06",
-                "NTC07",
-                "NTC08",
-                "NTC09",
-                "NTC10",
-                "NTC11",
-                "NTC12",
-                "NTC13",
-                "NTC14",
-                "NTC15",
-                "NTC16",
-                "NTC17",
-                "NTC18",
-                "NTC19",
-                "NTC20",
-                "NTC21",
-                "NTC22",
+                # Temperature sensors
+                "NTC01", "NTC02", "NTC03", "NTC04", "NTC05", "NTC06", "NTC07", "NTC08",
+                "NTC09", "NTC10", "NTC11", "NTC12", "NTC13", "NTC14", "NTC15", "NTC16",
+                "NTC17", "NTC18", "NTC19", "NTC20", "NTC21", "NTC22",
                 "Temp",  # PT100 data is in 'Temp' column
+
+                # Other sensors
+                "Press",   # Pressure sensor
+                "Vheat",   # Heating voltage
+                "Iheat",   # Heating current
+                "TiltX",   # Tilt sensor X-axis
+                "TiltY",   # Tilt sensor Y-axis
+                "ACCz",    # Acceleration Z-axis
+                "Vbatt",   # Battery voltage
+                "Vaccu",   # Accumulator voltage
+
+                # Calculated values
+                "HP-Power", # Calculated heating power (Vheat * Iheat)
             ]
 
             # Setup Y1 and Y2 axis combos
