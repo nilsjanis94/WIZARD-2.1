@@ -77,10 +77,10 @@ class PlotService:
     def get_sensor_color(self, sensor_name: str) -> str:
         """
         Get the appropriate color for a sensor.
-        
+
         Args:
-            sensor_name: Name of the sensor (e.g., 'NTC01', 'PT100')
-            
+            sensor_name: Name of the sensor (e.g., 'NTC01', 'Temp' for PT100)
+
         Returns:
             str: Color code for the sensor
         """
@@ -99,10 +99,10 @@ class PlotService:
     def get_line_style(self, sensor_name: str) -> str:
         """
         Get the appropriate line style for a sensor.
-        
+
         Args:
-            sensor_name: Name of the sensor (e.g., 'NTC01', 'PT100')
-            
+            sensor_name: Name of the sensor (e.g., 'NTC01', 'Temp' for PT100)
+
         Returns:
             str: Line style for the sensor
         """
@@ -116,10 +116,10 @@ class PlotService:
     def get_line_width(self, sensor_name: str) -> float:
         """
         Get the appropriate line width for a sensor.
-        
+
         Args:
-            sensor_name: Name of the sensor (e.g., 'NTC01', 'PT100')
-            
+            sensor_name: Name of the sensor (e.g., 'NTC01', 'Temp' for PT100)
+
         Returns:
             float: Line width for the sensor
         """
@@ -213,7 +213,7 @@ class PlotWidget(QWidget):
         self.axis_settings: Dict[str, Any] = {
             'x_axis': 'Time',
             'y1_axis': 'NTC01',
-            'y2_axis': 'PT100',
+            'y2_axis': 'Temp',  # PT100 data is in 'Temp' column
             'x_auto': True,
             'y1_auto': True,
             'y2_auto': True

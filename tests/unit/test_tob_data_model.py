@@ -94,11 +94,11 @@ class TestTOBDataModel:
         assert ntc_sensors == []
 
     def test_get_pt100_sensor(self):
-        """Test getting PT100 sensor name."""
-        model = TOBDataModel(sensors=["NTC01", "PT100", "NTC02"])
-        
+        """Test getting PT100 sensor name (mapped to 'Temp')."""
+        model = TOBDataModel(sensors=["NTC01", "Temp", "NTC02"])  # PT100 data is in 'Temp' column
+
         pt100 = model.get_pt100_sensor()
-        assert pt100 == "PT100"
+        assert pt100 == "Temp"
 
     def test_get_pt100_sensor_none(self):
         """Test getting PT100 sensor when none exists."""

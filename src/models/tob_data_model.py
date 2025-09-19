@@ -65,9 +65,14 @@ class TOBDataModel(BaseModel):
         Returns:
             PT100 sensor name or None if not found
         """
-        # Simple approach: look for "Temp" column (most common PT100 naming)
-        if "Temp" in self.data.columns:
+        # First check sensors list if available
+        if "Temp" in self.sensors:
             return "Temp"
+
+        # Fallback: check data columns if data exists
+        if self.data is not None and "Temp" in self.data.columns:
+            return "Temp"
+
         return None
 
     def get_time_column(self) -> Optional[pd.Series]:

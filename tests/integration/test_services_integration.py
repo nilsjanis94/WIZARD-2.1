@@ -94,7 +94,7 @@ class TestServicesIntegration:
         mock_y1_combo.setCurrentText.assert_called_once_with("NTC01")
         
         mock_y2_combo.addItems.assert_called_once()
-        mock_y2_combo.setCurrentText.assert_called_once_with("PT100")
+        mock_y2_combo.setCurrentText.assert_called_once_with("Temp")  # PT100 data is in 'Temp' column
         
         mock_x_combo.addItems.assert_called_once()
         mock_x_combo.setCurrentText.assert_called_once_with("Time")

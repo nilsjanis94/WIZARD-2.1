@@ -141,7 +141,7 @@ class TestAnalyticsService:
         assert result == 0.0
 
     def test_calculate_tilt_status_no_ntc_sensors(self):
-        """Test tilt status calculation with no NTC sensors."""
+        """Test tilt stability calculation with no NTC sensors."""
         service = AnalyticsService()
 
         mock_model = MagicMock(spec=TOBDataModel)
@@ -150,7 +150,7 @@ class TestAnalyticsService:
 
         result = service._calculate_tilt_status(mock_model)
 
-        assert result == "Unknown"
+        assert np.isnan(result)  # Should return nan when no sensors available
 
     def test_calculate_mean_press_no_pressure_data(self):
         """Test pressure calculation with no pressure data."""

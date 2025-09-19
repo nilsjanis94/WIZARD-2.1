@@ -191,7 +191,7 @@ class UIService:
                 "NTC20",
                 "NTC21",
                 "NTC22",
-                "PT100",
+                "Temp",  # PT100 data is in 'Temp' column
             ]
 
             # Setup Y1 and Y2 axis combos
@@ -201,7 +201,7 @@ class UIService:
                     if axis_name == "y1_axis_combo":
                         axis_combos[axis_name].setCurrentText("NTC01")
                     else:  # y2_axis_combo
-                        axis_combos[axis_name].setCurrentText("PT100")
+                        axis_combos[axis_name].setCurrentText("Temp")  # PT100 data is in 'Temp' column
 
             # X axis options (time-based)
             time_options = ["Time", "Depth", "Pressure"]

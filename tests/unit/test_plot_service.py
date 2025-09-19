@@ -57,10 +57,10 @@ class TestPlotService:
         assert color == service.ntc_colors[expected_index]
 
     def test_get_sensor_color_pt100(self):
-        """Test color assignment for PT100 sensor."""
+        """Test color assignment for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
-        
-        color = service.get_sensor_color('PT100')
+
+        color = service.get_sensor_color('Temp')  # PT100 data is in 'Temp' column
         assert color == service.pt100_color
 
     def test_get_sensor_color_unknown(self):
@@ -78,10 +78,10 @@ class TestPlotService:
         assert style == service.ntc_line_style
 
     def test_get_line_style_pt100(self):
-        """Test line style for PT100 sensor."""
+        """Test line style for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
-        
-        style = service.get_line_style('PT100')
+
+        style = service.get_line_style('Temp')  # PT100 data is in 'Temp' column
         assert style == service.pt100_line_style
 
     def test_get_line_width_ntc(self):
@@ -92,10 +92,10 @@ class TestPlotService:
         assert width == service.ntc_line_width
 
     def test_get_line_width_pt100(self):
-        """Test line width for PT100 sensor."""
+        """Test line width for PT100 sensor (mapped to 'Temp' column)."""
         service = PlotService()
-        
-        width = service.get_line_width('PT100')
+
+        width = service.get_line_width('Temp')  # PT100 data is in 'Temp' column
         assert width == service.pt100_line_width
 
     def test_format_time_axis_empty(self):
