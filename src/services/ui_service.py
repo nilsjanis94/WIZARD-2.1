@@ -150,6 +150,12 @@ class UIService:
         Args:
             widget: The widget to set text colors for
         """
+        import os
+        # Skip GUI operations in headless CI environment
+        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+            self.logger.debug("Skipping text color fixes in headless environment")
+            return
+
         try:
             # Use explicit RGB black for maximum compatibility across platforms
             text_color = QColor(0, 0, 0)  # RGB black instead of Qt.GlobalColor.black
