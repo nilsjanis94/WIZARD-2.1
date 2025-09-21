@@ -92,7 +92,7 @@ jobs:
             exit(1)
         "
 
-    - name: Basic functionality test (models only)
+    - name: Basic functionality test (models only) - Updated 2025
       run: |
         python -c "
         import sys
