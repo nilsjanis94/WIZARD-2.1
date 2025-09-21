@@ -1,7 +1,7 @@
 # WIZARD-2.1 Development Makefile
 # Provides convenient commands for development tasks
 
-.PHONY: help install run clean logs cache test test-unit test-integration test-ui test-coverage test-fast lint format format-check import-sort import-check type-check style-check security-check quality docs dev setup
+.PHONY: help install run clean logs cache test test-unit test-integration test-ui test-coverage test-all test-fast lint format format-check import-sort import-check type-check style-check security-check quality docs dev setup
 
 # Default target
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  test-unit   Run unit tests only"
 	@echo "  test-integration Run integration tests only"
 	@echo "  test-ui     Run UI tests only"
+	@echo "  test-all    Run unit + integration tests"
 	@echo "  test-coverage Run tests with coverage report"
 	@echo "  test-fast   Run fast tests (exclude slow tests)"
 	@echo ""
@@ -101,6 +102,10 @@ test-ui:
 test-coverage:
 	@echo "Running tests with coverage..."
 	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
+
+test-all:
+	@echo "Running all tests (unit + integration)..."
+	pytest tests/unit/ tests/integration/ -v
 
 test-fast:
 	@echo "Running fast tests (excluding slow tests)..."

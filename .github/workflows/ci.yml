@@ -35,7 +35,8 @@ jobs:
         rm -rf docs/ 2>/dev/null || true
         rm -rf scripts/ 2>/dev/null || true
         rm -rf tests/ui/ 2>/dev/null || true
-        rm -rf tests/integration/ 2>/dev/null || true
+        # Keep integration tests for Phase 3B
+        # rm -rf tests/integration/ 2>/dev/null || true
         echo "✓ Cleaned up unnecessary files"
 
     - name: Set up Python ${{ matrix.python-version }}
@@ -79,10 +80,10 @@ jobs:
         # Run all unit tests now that PyQt6 is available (Phase 3A)
         pytest tests/unit/ -v --tb=short --durations=5
 
-    - name: Run integration tests (Phase 3A)
+    - name: Run integration tests (Phase 3B)
       run: |
-        # Run integration tests that may require more setup
-        pytest tests/integration/ -v --tb=short --durations=5 || echo "Some integration tests may require additional setup"
+        # Run integration tests for service interactions (Phase 3B)
+        pytest tests/integration/ -v --tb=short --durations=5
 
     - name: Basic model functionality test
       run: |
