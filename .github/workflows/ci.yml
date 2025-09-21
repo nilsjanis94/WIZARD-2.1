@@ -15,7 +15,23 @@ jobs:
         python-version: [3.13]
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # Only fetch the latest commit to speed up checkout
+        fetch-depth: 1
+        # Set a reasonable timeout
+        timeout-minutes: 5
+        # Exclude large directories that aren't needed for tests
+        sparse-checkout: |
+          src/
+          tests/
+          requirements.txt
+          requirements-dev.txt
+          setup.py
+          pytest.ini
+          .github/
+        sparse-checkout-cone-mode: false
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
