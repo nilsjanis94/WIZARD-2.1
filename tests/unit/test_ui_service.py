@@ -85,7 +85,7 @@ class TestUIService:
         
         # Verify default selections
         mock_y1_combo.setCurrentText.assert_called_with("NTC01")
-        mock_y2_combo.setCurrentText.assert_called_with("Temp")  # PT100 data is in 'Temp' column
+        mock_y2_combo.setCurrentText.assert_called_with("None")  # Default to no Y2 axis
         mock_x_combo.setCurrentText.assert_called_with("Seconds")
 
     def test_setup_axis_controls_with_none(self):

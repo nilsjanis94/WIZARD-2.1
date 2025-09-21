@@ -36,6 +36,7 @@ def qt_app() -> Generator[QApplication, None, None]:
 
     This fixture ensures that PyQt6 widgets can be created during tests.
     Skips if PyQt6 is not available.
+    In headless CI environment, creates a minimal QApplication to avoid GUI operations.
     """
     if not PYQT6_AVAILABLE:
         pytest.skip("PyQt6 not available")
@@ -43,7 +44,13 @@ def qt_app() -> Generator[QApplication, None, None]:
     # Check if QApplication already exists
     app = QApplication.instance()
     if app is None:
-        app = QApplication([])
+        # In headless environment, avoid GUI operations that might cause crashes
+        import os
+        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+            # Set minimal Qt arguments for headless operation
+            app = QApplication(['--platform', 'offscreen'])
+        else:
+            app = QApplication([])
 
     yield app
 
