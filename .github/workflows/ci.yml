@@ -43,6 +43,15 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Set up headless display (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb libegl1-mesa libgl1-mesa-glx libglib2.0-0 libgtk-3-0 libx11-xcb1 libxss1 libasound2
+        export DISPLAY=:99
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        sleep 3
+
     - name: Install testing dependencies
       timeout-minutes: 5
       run: |
@@ -61,10 +70,6 @@ jobs:
       run: |
         pip install -e . || echo "Project installation failed, continuing with basic tests"
 
-    - name: Set up Qt for headless testing
-      run: |
-        echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
-        echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
 
     - name: Run all unit tests (Phase 3A)
       run: |
