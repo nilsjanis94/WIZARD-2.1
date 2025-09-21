@@ -16,11 +16,7 @@ class TestTOBIntegration:
     @pytest.fixture
     def mock_controller(self, qt_app):
         """Create a mock controller for testing."""
-        import os
-        # Skip Qt-dependent tests in headless environment
-        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
-            pytest.skip("Skipping Qt-dependent integration tests in headless environment")
-
+        # qt_app fixture already skips in headless environment, so this will be skipped too
         with patch("src.views.main_window.MainWindow") as mock_window:
             mock_window.return_value = MagicMock()
             controller = MainController()

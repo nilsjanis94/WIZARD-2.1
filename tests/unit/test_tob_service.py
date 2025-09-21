@@ -1,13 +1,19 @@
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
-import pandas as pd
-import numpy as np
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
 
+import numpy as np
+import pandas as pd
+import pytest
+
+from src.exceptions.tob_exceptions import (
+    TOBDataError,
+    TOBError,
+    TOBFileNotFoundError,
+    TOBHeaderError,
+    TOBParsingError,
+    TOBValidationError,
+)
 from src.services.tob_service import TOBService
-from src.exceptions.tob_exceptions import (TOBError, TOBFileNotFoundError, 
-                                         TOBParsingError, TOBValidationError,
-                                         TOBDataError, TOBHeaderError)
 
 
 @pytest.mark.unit
@@ -22,31 +28,32 @@ class TestTOBService:
     def test_validate_tob_file_valid(self):
         """Test validating a valid TOB file."""
         service = TOBService()
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('pathlib.Path.is_file', return_value=True), \
-             patch('pathlib.Path.stat') as mock_stat:
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "pathlib.Path.is_file", return_value=True
+        ), patch("pathlib.Path.stat") as mock_stat:
+
             mock_stat.return_value.st_size = 1024  # Non-zero file size
-            
+
             result = service.validate_tob_file("test.tob")
             assert result is True
 
     def test_validate_tob_file_invalid_extension(self):
         """Test validating file with invalid extension."""
         service = TOBService()
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('pathlib.Path.is_file', return_value=True):
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "pathlib.Path.is_file", return_value=True
+        ):
+
             result = service.validate_tob_file("test.txt")
             assert result is False
 
     def test_validate_tob_file_not_found(self):
         """Test validating non-existent file."""
         service = TOBService()
-        
-        with patch('pathlib.Path.exists', return_value=False):
+
+        with patch("pathlib.Path.exists", return_value=False):
             result = service.validate_tob_file("nonexistent.tob")
             assert result is False
 
@@ -60,32 +67,44 @@ class TestTOBService:
         """Test detecting mixed data lines."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method _detect_column_names removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method _detect_column_names removed - now using tob_dataloader"
+    )
     def test_detect_column_names(self):
         """Test detecting column names from header line."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method _parse_data_line removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method _parse_data_line removed - now using tob_dataloader"
+    )
     def test_parse_data_line(self):
         """Test parsing data line into numeric values."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method _clean_dataframe removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method _clean_dataframe removed - now using tob_dataloader"
+    )
     def test_clean_dataframe(self):
         """Test cleaning DataFrame."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method get_available_sensors removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method get_available_sensors removed - now using tob_dataloader"
+    )
     def test_get_available_sensors(self):
         """Test detecting available sensors."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method get_available_sensors removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method get_available_sensors removed - now using tob_dataloader"
+    )
     def test_get_available_sensors_empty(self):
         """Test detecting sensors in empty DataFrame."""
         pytest.skip("Method removed - using tob_dataloader")
 
-    @pytest.mark.skip(reason="Method get_available_sensors removed - now using tob_dataloader")
+    @pytest.mark.skip(
+        reason="Method get_available_sensors removed - now using tob_dataloader"
+    )
     def test_get_available_sensors_none(self):
         """Test detecting sensors with None DataFrame."""
         pytest.skip("Method removed - using tob_dataloader")
@@ -139,53 +158,54 @@ class TestTOBService:
     def test_get_file_info_success(self):
         """Test getting file information."""
         service = TOBService()
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('pathlib.Path.stat') as mock_stat:
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "pathlib.Path.stat"
+        ) as mock_stat:
+
             mock_stat.return_value.st_size = 1024
             mock_stat.return_value.st_ctime = 1234567890
             mock_stat.return_value.st_mtime = 1234567890
-            
+
             info = service.get_file_info("test.tob")
-            
-            assert info['file_path'] == "test.tob"
-            assert info['file_name'] == "test.tob"
-            assert info['file_size'] == 1024
-            assert info['file_extension'] == '.tob'
+
+            assert info["file_path"] == "test.tob"
+            assert info["file_name"] == "test.tob"
+            assert info["file_size"] == 1024
+            assert info["file_extension"] == ".tob"
 
     def test_get_file_info_not_found(self):
         """Test getting file info for non-existent file."""
         service = TOBService()
-        
-        with patch('pathlib.Path.exists', return_value=False):
+
+        with patch("pathlib.Path.exists", return_value=False):
             with pytest.raises(TOBFileNotFoundError):
                 service.get_file_info("nonexistent.tob")
 
     def test_estimate_processing_time(self):
         """Test estimating processing time."""
         service = TOBService()
-        
-        with patch('pathlib.Path.stat') as mock_stat:
+
+        with patch("pathlib.Path.stat") as mock_stat:
             mock_stat.return_value.st_size = 1024 * 1024  # 1MB
-            
+
             time = service.estimate_processing_time("test.tob")
             assert time == 1.0  # 1 second for 1MB
 
     def test_estimate_processing_time_large_file(self):
         """Test estimating processing time for large file."""
         service = TOBService()
-        
-        with patch('pathlib.Path.stat') as mock_stat:
+
+        with patch("pathlib.Path.stat") as mock_stat:
             mock_stat.return_value.st_size = 500 * 1024 * 1024  # 500MB
-            
+
             time = service.estimate_processing_time("test.tob")
             assert time == 300.0  # Capped at 5 minutes
 
     def test_estimate_processing_time_error(self):
         """Test estimating processing time with error."""
         service = TOBService()
-        
-        with patch('pathlib.Path.stat', side_effect=OSError("Stat error")):
+
+        with patch("pathlib.Path.stat", side_effect=OSError("Stat error")):
             time = service.estimate_processing_time("test.tob")
             assert time == 10.0  # Default fallback

@@ -2,13 +2,14 @@
 Unit tests for AnalyticsService.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
 from unittest.mock import MagicMock
 
-from src.services.analytics_service import AnalyticsService
+import numpy as np
+import pandas as pd
+import pytest
+
 from src.models.tob_data_model import TOBDataModel
+from src.services.analytics_service import AnalyticsService
 
 
 class TestAnalyticsService:
@@ -40,8 +41,22 @@ class TestAnalyticsService:
 
         # Add Vheat and Iheat columns to sample data
         sample_data = sample_tob_data.copy()
-        sample_data['Vheat'] = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005]  # Constant low voltage
-        sample_data['Iheat'] = [-0.002, -0.002, -0.002, 15.0, 15.0, 15.0]  # Some current pulses
+        sample_data["Vheat"] = [
+            0.005,
+            0.005,
+            0.005,
+            0.005,
+            0.005,
+            0.005,
+        ]  # Constant low voltage
+        sample_data["Iheat"] = [
+            -0.002,
+            -0.002,
+            -0.002,
+            15.0,
+            15.0,
+            15.0,
+        ]  # Some current pulses
 
         mock_model = MagicMock(spec=TOBDataModel)
         mock_model.data = pd.DataFrame(sample_data)
@@ -57,7 +72,14 @@ class TestAnalyticsService:
 
         # Add Vaccu column with battery voltage data
         sample_data = sample_tob_data.copy()
-        sample_data['Vaccu'] = [23.5, 23.8, 24.0, 24.2, 24.1, 23.9]  # Battery voltage values
+        sample_data["Vaccu"] = [
+            23.5,
+            23.8,
+            24.0,
+            24.2,
+            24.1,
+            23.9,
+        ]  # Battery voltage values
 
         mock_model = MagicMock(spec=TOBDataModel)
         mock_model.data = pd.DataFrame(sample_data)
@@ -73,9 +95,9 @@ class TestAnalyticsService:
 
         # Add tilt sensor columns
         sample_data = sample_tob_data.copy()
-        sample_data['TiltX'] = [2.0, 2.1, 2.0, 2.2, 2.1, 2.0]  # Low variation
-        sample_data['TiltY'] = [4.0, 4.1, 4.0, 4.2, 4.1, 4.0]  # Low variation
-        sample_data['ACCz'] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0]  # Very stable
+        sample_data["TiltX"] = [2.0, 2.1, 2.0, 2.2, 2.1, 2.0]  # Low variation
+        sample_data["TiltY"] = [4.0, 4.1, 4.0, 4.2, 4.1, 4.0]  # Low variation
+        sample_data["ACCz"] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0]  # Very stable
 
         mock_model = MagicMock(spec=TOBDataModel)
         mock_model.data = pd.DataFrame(sample_data)
@@ -93,7 +115,14 @@ class TestAnalyticsService:
 
         # Add Press column with pressure data
         sample_data = sample_tob_data.copy()
-        sample_data['Press'] = [15.1, 15.2, 15.0, 15.3, 15.1, 15.2]  # Vacuum pressure values
+        sample_data["Press"] = [
+            15.1,
+            15.2,
+            15.0,
+            15.3,
+            15.1,
+            15.2,
+        ]  # Vacuum pressure values
 
         mock_model = MagicMock(spec=TOBDataModel)
         mock_model.data = pd.DataFrame(sample_data)
