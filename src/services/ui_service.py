@@ -239,6 +239,12 @@ class UIService:
         Args:
             combo_box: The QComboBox to fix colors for
         """
+        import os
+        # Skip GUI operations in headless CI environment
+        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+            self.logger.debug("Skipping combobox color fixes in headless environment")
+            return
+
         try:
             # Use explicit RGB black for maximum cross-platform compatibility
             text_color = QColor(0, 0, 0)
