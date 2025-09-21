@@ -73,12 +73,12 @@ jobs:
             print('✓ TOBDataModel can be instantiated')
 
             from models.project_model import ProjectModel
-            project = ProjectModel(name="Test Project", description="CI Test Project")
+            project = ProjectModel(name='Test Project', description='CI Test Project')
             print('✓ ProjectModel can be instantiated')
 
             # Verify the project has the expected attributes
-            assert project.name == "Test Project"
-            assert project.description == "CI Test Project"
+            assert project.name == 'Test Project'
+            assert project.description == 'CI Test Project'
             print('✓ ProjectModel attributes work correctly')
 
             # Skip services for now due to relative import issues in CI
