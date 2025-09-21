@@ -53,7 +53,7 @@ jobs:
         if (Test-Path "docs") { Remove-Item -Recurse -Force "docs" -ErrorAction SilentlyContinue }
         if (Test-Path "scripts") { Remove-Item -Recurse -Force "scripts" -ErrorAction SilentlyContinue }
         if (Test-Path "tests/ui") { Remove-Item -Recurse -Force "tests/ui" -ErrorAction SilentlyContinue }
-        Write-Host "✓ Cleaned up unnecessary files"
+        Write-Host "Cleaned up unnecessary files successfully"
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
@@ -75,7 +75,7 @@ jobs:
       run: |
         # Windows can handle Qt GUI tests natively without special setup
         # Just ensure we have proper environment variables
-        Write-Host "✓ Windows GUI testing environment ready"
+        Write-Host "Windows GUI testing environment ready"
 
     - name: Install testing dependencies
       timeout-minutes: 5
