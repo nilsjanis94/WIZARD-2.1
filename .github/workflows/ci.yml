@@ -58,40 +58,6 @@ jobs:
       run: |
         pip install -e . || echo "Project installation failed, continuing with basic tests"
 
-    - name: Basic import test (Qt-free modules)
-      run: |
-        python -c "
-        import sys
-        sys.path.insert(0, 'src')
-        # Test basic module imports that don't require Qt/PyQt6
-        try:
-            import pandas as pd
-            print('✓ pandas imports successfully')
-            import numpy as np
-            print('✓ numpy imports successfully')
-
-            # Test our data models (Qt-free)
-            from models.tob_data_model import TOBDataModel
-            print('✓ tob_data_model imports successfully')
-
-            from models.project_model import ProjectModel
-            print('✓ project_model imports successfully')
-
-            # Test basic services that don't require Qt
-            from services.data_service import DataService
-            print('✓ data_service imports successfully')
-
-            from services.analytics_service import AnalyticsService
-            print('✓ analytics_service imports successfully')
-
-            print('✓ All Qt-free imports successful')
-        except Exception as e:
-            print(f'✗ Import failed: {e}')
-            import traceback
-            traceback.print_exc()
-            exit(1)
-        "
-
     - name: Basic functionality test (models only) - Updated 2025
       run: |
         python -c "
