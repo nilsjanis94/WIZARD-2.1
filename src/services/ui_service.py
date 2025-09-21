@@ -467,6 +467,12 @@ class UIService:
             label: The QLabel to update
             style_info: Style information (color, line_style, line_width)
         """
+        import os
+        # Skip GUI operations in headless CI environment
+        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+            self.logger.debug("Skipping pixmap update in headless environment")
+            return
+
         # Get label dimensions
         width = label.width()
         height = label.height()

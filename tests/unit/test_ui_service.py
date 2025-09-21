@@ -226,17 +226,19 @@ class TestUIService:
         mock_label.setPixmap.assert_called_once_with(mock_pixmap_instance)
         mock_label.setScaledContents.assert_called_once_with(True)
 
-    def test_setup_label_indicator(self, qt_app):
-        """Test setting up a label as style indicator."""
+    def test_setup_label_indicator_logic_only(self):
+        """Test setting up a label as style indicator - logic only."""
         import os
         # Skip this test in headless CI environment as Qt GUI operations may fail
         if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
             import pytest
             pytest.skip("Skipping GUI test in headless environment")
 
-        # Create real QLabel for this test
-        label = QLabel()
-        label.resize(30, 16)
+        # Test only the logic without Qt GUI operations
+        from unittest.mock import MagicMock, patch
+
+        # Mock QLabel to avoid Qt GUI operations
+        mock_label = MagicMock()
 
         service = UIService()
         style_info = {
@@ -245,14 +247,20 @@ class TestUIService:
             'line_width': 1.5
         }
 
-        result = service.setup_label_indicator(label, style_info)
+        # Mock update_label_pixmap to avoid Qt operations
+        with patch.object(service, 'update_label_pixmap') as mock_update:
+            result = service.setup_label_indicator(mock_label, style_info)
 
         # Verify return value
-        assert result == label
+        assert result == mock_label
 
         # Verify style info was stored
-        assert hasattr(label, '_style_info')
-        assert label._style_info == style_info
+        assert hasattr(mock_label, '_style_info')
+        assert mock_label._style_info == style_info
 
-        # Verify pixmap was set (indirectly via the fact that setPixmap was called)
-        # This is tested more thoroughly in test_update_label_pixmap
+        # Verify update_label_pixmap was called
+        mock_update.assert_called_once_with(mock_label, style_info)
+
+        # Verify resizeEvent was set
+        assert hasattr(mock_label, 'resizeEvent')
+        assert callable(mock_label.resizeEvent)
