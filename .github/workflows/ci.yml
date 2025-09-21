@@ -97,27 +97,31 @@ jobs:
         pip install -e . || echo "Project installation failed, continuing with basic tests"
 
 
-    - name: Run all unit tests (Phase 3A)
+    - name: Run all unit tests (Linux - headless)
+      if: runner.os == 'Linux'
       run: |
-        # Set matplotlib backend for headless testing (Linux only)
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          export MPLBACKEND=Agg
-        fi
-        # Run all unit tests now that PyQt6 is available (Phase 3A)
-        # On Windows: include coverage, on Linux: skip coverage due to Qt issues
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          python -m pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=35
-        else
-          python -m pytest tests/unit/ -v --tb=short --durations=5
-        fi
+        # Set matplotlib backend for headless testing
+        export MPLBACKEND=Agg
+        # Run unit tests without coverage due to Qt issues
+        python -m pytest tests/unit/ -v --tb=short --durations=5
 
-    - name: Run integration tests (Phase 3B)
+    - name: Run all unit tests (Windows - with coverage)
+      if: runner.os == 'Windows'
       run: |
-        # Run integration tests for service interactions (Phase 3B)
-        # On Windows: Qt-dependent tests can run natively
-        # On Linux: Qt-dependent tests are skipped in headless environment
-        # Run without coverage to avoid issues with Qt-dependent tests
+        # Windows can handle Qt tests natively, run with coverage
+        python -m pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=35
+
+    - name: Run integration tests (Linux - headless)
+      if: runner.os == 'Linux'
+      run: |
+        # Run integration tests - Qt-dependent tests are skipped in headless environment
         python -m pytest tests/integration/ -v --tb=short --durations=5 --no-cov || echo "Integration tests completed (Qt-dependent tests may be skipped in headless)"
+
+    - name: Run integration tests (Windows - with Qt support)
+      if: runner.os == 'Windows'
+      run: |
+        # Run integration tests - Qt-dependent tests can run natively on Windows
+        python -m pytest tests/integration/ -v --tb=short --durations=5 --no-cov || echo "Integration tests completed"
 
     - name: Basic model functionality test
       run: |
