@@ -84,7 +84,8 @@ jobs:
       run: |
         # Run integration tests for service interactions (Phase 3B)
         # Qt-dependent tests are automatically skipped in headless environment
-        python -m pytest tests/integration/ -v --tb=short --durations=5 || echo "Integration tests completed (Qt-dependent tests may be skipped in headless)"
+        # Run without coverage to avoid issues with Qt-dependent tests
+        python -m pytest tests/integration/ -v --tb=short --durations=5 --no-cov || echo "Integration tests completed (Qt-dependent tests may be skipped in headless)"
 
     - name: Basic model functionality test
       run: |
