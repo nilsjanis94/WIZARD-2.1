@@ -51,6 +51,7 @@ jobs:
         pip install --quiet pandas>=2.2.0
         pip install --quiet numpy>=1.26.0
         pip install --quiet pydantic>=2.5.0
+        pip install --quiet cryptography>=42.0.0
         # Install pytest for proper unit testing
         pip install --quiet pytest>=7.4.3 pytest-cov>=4.1.0
 
