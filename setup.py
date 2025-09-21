@@ -28,7 +28,17 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/fielax/wizard-2.1",
-    packages=find_packages(where="src"),
+    # Explicitly define packages to avoid installing tob_dataloader and other unrelated packages
+    packages=[
+        "controllers",
+        "exceptions",
+        "models",
+        "services",
+        "utils",
+        "views",
+        "views.dialogs",
+        "views.widgets",
+    ],
     package_dir={"": "src"},
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -51,6 +61,8 @@ setup(
             "pytest-cov>=4.1.0",
         ],
     },
+    # Create a simple main module wrapper for the console script
+    py_modules=["main"],
     entry_points={
         "console_scripts": [
             "wizard-2.1=main:main",
