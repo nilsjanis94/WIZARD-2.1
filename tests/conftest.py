@@ -12,30 +12,41 @@ from pathlib import Path
 from typing import Generator, Optional
 from unittest.mock import MagicMock, patch
 
-import pytest
-from PyQt6.QtWidgets import QApplication
-
-# Add src to Python path
+# Add src to Python path first
 src_dir = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_dir))
 
 from src.utils.logging_config import setup_logging
+
+# Optional PyQt6 imports
+try:
+    from PyQt6.QtWidgets import QApplication
+    PYQT6_AVAILABLE = True
+except ImportError:
+    QApplication = None
+    PYQT6_AVAILABLE = False
+
+import pytest
 
 
 @pytest.fixture(scope="session")
 def qt_app() -> Generator[QApplication, None, None]:
     """
     Provide a QApplication instance for the entire test session.
-    
+
     This fixture ensures that PyQt6 widgets can be created during tests.
+    Skips if PyQt6 is not available.
     """
+    if not PYQT6_AVAILABLE:
+        pytest.skip("PyQt6 not available")
+
     # Check if QApplication already exists
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
-    
+
     yield app
-    
+
     # Cleanup is handled by pytest-qt
 
 
