@@ -24,19 +24,15 @@ class AxisUIService:
         """Initialize the Axis UI Service."""
         self.logger = logging.getLogger(__name__)
 
-    def setup_axis_controls(self, main_window: "MainWindow") -> None:
+    def setup_axis_controls(self, main_window: "MainWindow", time_range: Optional[Dict[str, Any]] = None) -> None:
         """
         Initialize axis control widgets and their states.
 
         Args:
             main_window: Main window instance with axis controls
+            time_range: Optional time range data for initial values
         """
         try:
-            # Get current data range for initial values
-            time_range = None
-            if hasattr(main_window, "controller") and main_window.controller:
-                time_range = main_window.controller.get_time_range()
-
             if time_range:
                 # Show current auto range in UI controls
                 self.update_axis_values(main_window, time_range)

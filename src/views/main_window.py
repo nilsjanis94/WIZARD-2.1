@@ -341,7 +341,11 @@ class MainWindow(QMainWindow):
         self.ui_service.setup_axis_controls(self.axis_combos)
 
         # Use axis UI service for control initialization
-        self.axis_ui_service.setup_axis_controls(self)
+        # Get time range if controller is available
+        time_range = None
+        if hasattr(self, "controller") and self.controller:
+            time_range = self.controller.get_time_range()
+        self.axis_ui_service.setup_axis_controls(self, time_range)
 
     def _setup_menu_bar(self):
         """

@@ -202,8 +202,6 @@ class MainController(QObject):
             self.file_load_progress.emit(60)
             self.data_processed.emit(processed_data)
 
-            # Update view with loaded data
-            self._update_view_with_tob_data()
             self.file_load_progress.emit(80)
 
             # Calculate metrics
@@ -227,9 +225,29 @@ class MainController(QObject):
                 self.main_window.get_metrics_widgets(), metrics
             )
 
-            # Emit sensors updated signal
+            # Update plot with loaded data
             if self.tob_data_model:
+                # Update plot data
+                self.plot_controller.update_plot_data(self.tob_data_model)
+
+                # Auto-select sensors (NTC sensors and PT100)
+                selected_sensors = [
+                    sensor for sensor in self.tob_data_model.sensors
+                    if sensor.startswith("NTC")
+                ]
+                pt100_sensor = self.tob_data_model.get_pt100_sensor()
+                if pt100_sensor:
+                    selected_sensors.append(pt100_sensor)
+
+                if selected_sensors:
+                    self.plot_controller.update_selected_sensors(selected_sensors)
+
+                # Emit sensors updated signal
                 self.sensors_updated.emit(self.tob_data_model.sensors)
+
+            # Show plot mode and indicate data loaded
+            self.show_plot_mode.emit()
+            self.main_window.show_data_loaded()
 
             self.file_load_progress.emit(100)
 
@@ -332,66 +350,6 @@ class MainController(QObject):
             self.file_load_error.emit("UnexpectedError", error_msg)
             self.error_handler.handle_error(e, self.main_window, "File Loading Error")
 
-    def _update_view_with_tob_data(self):
-        """
-        Update the view with loaded TOB data.
-        """
-        try:
-            if not self.tob_data_model:
-                self.logger.warning("No TOB data model available for view update")
-                return
-
-            # Update project information
-            metadata = self.tob_data_model.get_metadata()
-            self.main_window.update_project_info(
-                project_name=Path(metadata.get("file_path", "")).stem,
-                location="TOB Data",
-                comment=f"Data points: {metadata.get('data_points', 0)}",
-            )
-
-            # Update data metrics
-            if self.tob_data_model.data is not None:
-                metrics = self.data_service._calculate_metrics(self.tob_data_model)
-                self.main_window.update_data_metrics(metrics)
-
-            # Update sensor checkboxes (delegated to plot controller)
-            self.plot_controller.update_sensor_checkboxes(self.main_window)
-
-            # Update plot with data (will emit signals)
-            self.plot_controller.update_plot_data(self.tob_data_model)
-
-            # Update sensor selection for plotting (automatically select all NTC sensors and PT100)
-            selected_sensors = [
-                sensor
-                for sensor in self.tob_data_model.sensors
-                if sensor.startswith("NTC")
-            ]
-
-            # Add PT100 sensor if available
-            pt100_sensor = self.tob_data_model.get_pt100_sensor()
-            if pt100_sensor:
-                selected_sensors.append(pt100_sensor)
-                self.logger.debug("PT100 sensor added to selection: %s", pt100_sensor)
-
-            if selected_sensors:
-                self.plot_controller.update_selected_sensors(
-                    selected_sensors
-                )  # Will emit signal
-                self.logger.debug(
-                    "Auto-selected %d sensors for plotting: %s",
-                    len(selected_sensors),
-                    selected_sensors,
-                )
-
-            # Switch to plot mode and show data loaded
-            self.show_plot_mode.emit()  # Signal to show plot mode
-            self.main_window.show_data_loaded()
-
-            self.logger.debug("View updated with TOB data successfully")
-
-        except Exception as e:
-            self.logger.error("Error updating view with TOB data: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "View Update Error")
 
     def open_tob_file(self, file_path: str):
         """
@@ -612,9 +570,9 @@ class MainController(QObject):
             if project_data.get("tob_data"):
                 self.tob_data_model.set_data(project_data["tob_data"])
 
-            # Update view
-            self._update_view_with_data()
-            self._update_view_with_project_info()
+                # Process TOB data and calculate metrics (same as file loading)
+                self.tob_controller.process_tob_data(self.tob_data_model)
+                self.tob_controller.calculate_metrics(self.tob_data_model)
 
             self.main_window.show_status_message("Project opened successfully")
             self.logger.info("Project opened successfully")
@@ -626,39 +584,6 @@ class MainController(QObject):
             )
             self.main_window.show_status_message("Error opening project")
 
-    def _update_view_with_data(self):
-        """
-        Update the view with loaded data.
-        """
-        if not self.tob_data_model.has_data():
-            return
-
-        # Calculate data metrics
-        metrics = self.data_service.calculate_metrics(self.tob_data_model.get_data())
-
-        # Update view
-        self.main_window.update_data_metrics(metrics)
-        self.main_window.show_data_loaded()
-
-        self.logger.debug("View updated with data")
-
-    def _update_view_with_project_info(self):
-        """
-        Update the view with project information.
-        """
-        if not self.project_model.has_data():
-            return
-
-        project_data = self.project_model.get_data()
-
-        # Update project info in view
-        project_name = project_data.get("name", "Unknown Project")
-        location = project_data.get("location", "Unknown Location")
-        comment = project_data.get("comment", "")
-
-        self.main_window.update_project_info(project_name, location, comment)
-
-        self.logger.debug("View updated with project info")
 
     def update_sensor_selection(self, sensor_name: str, is_selected: bool):
         """
