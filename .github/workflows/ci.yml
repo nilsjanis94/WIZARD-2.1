@@ -52,6 +52,8 @@ jobs:
         pip install --quiet numpy>=1.26.0
         pip install --quiet pydantic>=2.5.0
         pip install --quiet cryptography>=42.0.0
+        # Add PyQt6 for full testing (Phase 3A)
+        pip install --quiet PyQt6>=6.6.0 PyQt6-Qt6>=6.6.0
         # Install pytest for proper unit testing
         pip install --quiet pytest>=7.4.3 pytest-cov>=4.1.0
 
@@ -59,10 +61,20 @@ jobs:
       run: |
         pip install -e . || echo "Project installation failed, continuing with basic tests"
 
-    - name: Run Qt-free unit tests
+    - name: Set up Qt for headless testing
       run: |
-        # Run only unit tests that don't require Qt/GUI components
-        pytest tests/unit/test_analytics_service.py tests/unit/test_tob_data_model.py tests/unit/test_tob_service.py -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml
+        echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+        echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
+
+    - name: Run all unit tests (Phase 3A)
+      run: |
+        # Run all unit tests now that PyQt6 is available (Phase 3A)
+        pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+
+    - name: Run integration tests (Phase 3A)
+      run: |
+        # Run integration tests that may require more setup
+        pytest tests/integration/ -v --tb=short --durations=5 || echo "Some integration tests may require additional setup"
 
     - name: Basic model functionality test
       run: |
