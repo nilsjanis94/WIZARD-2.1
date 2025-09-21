@@ -11,8 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Temporarily exclude macOS and Windows due to runner instability
-        os: [ubuntu-latest]  # windows-latest, macos-latest
+        # Test on multiple platforms for better coverage
+        os: [ubuntu-latest, windows-latest]  # macos-latest temporarily disabled
         python-version: [3.13]
 
     steps:
@@ -39,6 +39,22 @@ jobs:
         # rm -rf tests/integration/ 2>/dev/null || true
         echo "✓ Cleaned up unnecessary files"
 
+    - name: Clean up unnecessary files (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        # Remove large directories that aren't needed for tests
+        Write-Host "Cleaning up unnecessary files on Windows..."
+        if (Test-Path "tob_dataloader") { Remove-Item -Recurse -Force "tob_dataloader" -ErrorAction SilentlyContinue }
+        if (Test-Path "venv") { Remove-Item -Recurse -Force "venv" -ErrorAction SilentlyContinue }
+        if (Test-Path "data") { Remove-Item -Recurse -Force "data" -ErrorAction SilentlyContinue }
+        if (Test-Path "logs") { Remove-Item -Recurse -Force "logs" -ErrorAction SilentlyContinue }
+        if (Test-Path "ui") { Remove-Item -Recurse -Force "ui" -ErrorAction SilentlyContinue }
+        if (Test-Path "docs") { Remove-Item -Recurse -Force "docs" -ErrorAction SilentlyContinue }
+        if (Test-Path "scripts") { Remove-Item -Recurse -Force "scripts" -ErrorAction SilentlyContinue }
+        if (Test-Path "tests/ui") { Remove-Item -Recurse -Force "tests/ui" -ErrorAction SilentlyContinue }
+        Write-Host "✓ Cleaned up unnecessary files"
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -52,6 +68,14 @@ jobs:
         export DISPLAY=:99
         Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
         sleep 3
+
+    - name: Set up GUI testing environment (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        # Windows can handle Qt GUI tests natively without special setup
+        # Just ensure we have proper environment variables
+        Write-Host "✓ Windows GUI testing environment ready"
 
     - name: Install testing dependencies
       timeout-minutes: 5
@@ -75,15 +99,23 @@ jobs:
 
     - name: Run all unit tests (Phase 3A)
       run: |
-        # Set matplotlib backend for headless testing
-        export MPLBACKEND=Agg
+        # Set matplotlib backend for headless testing (Linux only)
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          export MPLBACKEND=Agg
+        fi
         # Run all unit tests now that PyQt6 is available (Phase 3A)
-        python -m pytest tests/unit/ -v --tb=short --durations=5
+        # On Windows: include coverage, on Linux: skip coverage due to Qt issues
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          python -m pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=35
+        else
+          python -m pytest tests/unit/ -v --tb=short --durations=5
+        fi
 
     - name: Run integration tests (Phase 3B)
       run: |
         # Run integration tests for service interactions (Phase 3B)
-        # Qt-dependent tests are automatically skipped in headless environment
+        # On Windows: Qt-dependent tests can run natively
+        # On Linux: Qt-dependent tests are skipped in headless environment
         # Run without coverage to avoid issues with Qt-dependent tests
         python -m pytest tests/integration/ -v --tb=short --durations=5 --no-cov || echo "Integration tests completed (Qt-dependent tests may be skipped in headless)"
 
@@ -120,6 +152,7 @@ jobs:
         "
 
     - name: Upload coverage to Codecov
+      if: runner.os == 'Windows'
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
