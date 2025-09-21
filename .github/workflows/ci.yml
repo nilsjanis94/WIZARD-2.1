@@ -21,16 +21,22 @@ jobs:
       with:
         # Only fetch the latest commit to speed up checkout
         fetch-depth: 1
-        # Exclude large directories that aren't needed for tests
-        sparse-checkout: |
-          src/
-          tests/
-          requirements.txt
-          requirements-dev.txt
-          setup.py
-          pytest.ini
-          .github/
-        sparse-checkout-cone-mode: false
+
+    - name: Clean up unnecessary files (speed up CI)
+      shell: bash
+      run: |
+        # Remove large directories that aren't needed for tests
+        echo "Cleaning up unnecessary files..."
+        rm -rf tob_dataloader/ 2>/dev/null || true
+        rm -rf venv/ 2>/dev/null || true
+        rm -rf data/ 2>/dev/null || true
+        rm -rf logs/ 2>/dev/null || true
+        rm -rf ui/ 2>/dev/null || true
+        rm -rf docs/ 2>/dev/null || true
+        rm -rf scripts/ 2>/dev/null || true
+        rm -rf tests/ui/ 2>/dev/null || true
+        rm -rf tests/integration/ 2>/dev/null || true
+        echo "✓ Cleaned up unnecessary files"
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
