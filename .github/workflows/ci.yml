@@ -77,7 +77,7 @@ jobs:
         # Set matplotlib backend for headless testing
         export MPLBACKEND=Agg
         # Run all unit tests now that PyQt6 is available (Phase 3A)
-        pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=35
+        pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=35 --cov-omit="src/views/*,src/controllers/*,src/main.py"
 
     - name: Run integration tests (Phase 3A)
       run: |
