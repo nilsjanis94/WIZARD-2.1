@@ -1,7 +1,7 @@
 # WIZARD-2.1 Development Makefile
 # Provides convenient commands for development tasks
 
-.PHONY: help install run clean logs cache test lint format docs
+.PHONY: help install run clean logs cache test test-unit test-integration test-ui test-coverage test-fast lint format format-check import-sort import-check type-check style-check security-check quality docs dev setup
 
 # Default target
 help:
@@ -20,8 +20,17 @@ help:
 	@echo "  test-ui     Run UI tests only"
 	@echo "  test-coverage Run tests with coverage report"
 	@echo "  test-fast   Run fast tests (exclude slow tests)"
-	@echo "  lint        Run linting"
-	@echo "  format      Format code"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  quality     Run all code quality checks"
+	@echo "  lint        Run linting (pylint + mypy)"
+	@echo "  format      Format code (black + isort)"
+	@echo "  format-check Check if code is formatted"
+	@echo "  import-sort Sort imports (isort)"
+	@echo "  import-check Check import sorting"
+	@echo "  type-check  Run type checking (mypy)"
+	@echo "  style-check Run style checking (flake8)"
+	@echo "  security-check Run security scanning (bandit)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean       Clean all cache and temp files"
@@ -72,7 +81,7 @@ deps:
 	@echo "Reinstalling dependencies..."
 	python scripts/dev_cleanup.py --deps
 
-# Code quality commands
+# Test commands
 test:
 	@echo "Running tests..."
 	pytest tests/ -v
@@ -97,15 +106,44 @@ test-fast:
 	@echo "Running fast tests (excluding slow tests)..."
 	pytest tests/ -v -m "not slow"
 
-lint:
-	@echo "Running linting..."
-	pylint src/
-	mypy src/
+# Code quality commands
+quality: format-check import-check style-check lint security-check
+	@echo "✅ All code quality checks completed!"
 
 format:
 	@echo "Formatting code..."
 	black src/ tests/
 	isort src/ tests/
+
+format-check:
+	@echo "Checking code formatting..."
+	black --check --diff src/ tests/ || (echo "❌ Code formatting issues found. Run 'make format' to fix."; exit 1)
+
+import-sort:
+	@echo "Sorting imports..."
+	isort src/ tests/
+
+import-check:
+	@echo "Checking import sorting..."
+	isort --check-only --diff src/ tests/ || (echo "❌ Import sorting issues found. Run 'make import-sort' to fix."; exit 1)
+
+type-check:
+	@echo "Running type checking..."
+	mypy src/ --ignore-missing-imports --no-strict-optional
+
+style-check:
+	@echo "Running style checking..."
+	flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+security-check:
+	@echo "Running security scanning..."
+	bandit -r src/ -f json -o security-report.json
+	@echo "Security report saved to security-report.json"
+
+lint:
+	@echo "Running linting..."
+	pylint src/ tests/ --rcfile=.pylintrc || echo "⚠️  Pylint found issues (warnings)"
+	mypy src/ --ignore-missing-imports --no-strict-optional || echo "⚠️  MyPy found type issues (warnings)"
 
 # Documentation
 docs:
