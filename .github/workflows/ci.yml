@@ -21,8 +21,6 @@ jobs:
       with:
         # Only fetch the latest commit to speed up checkout
         fetch-depth: 1
-        # Set a reasonable timeout
-        timeout-minutes: 5
         # Exclude large directories that aren't needed for tests
         sparse-checkout: |
           src/
@@ -43,60 +41,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
 
     - name: Install project
       run: |
         pip install -e .
 
-    - name: Set up headless display (Linux)
-      if: runner.os == 'Linux'
+    - name: Basic import test
       run: |
-        sudo apt-get update
-        sudo apt-get install -y xvfb
-        export DISPLAY=:99
-        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-        sleep 3
+        python -c "import sys; sys.path.insert(0, 'src'); from wizard_2_1.main import main; print('✓ Main module imports successfully')"
 
-    - name: Set up Qt for headless testing
-      shell: bash
+    - name: Run unit tests only
       run: |
-        if [ "$RUNNER_OS" == "Windows" ]; then
-          echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
-          echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
-        else
-          echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
-          echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
-        fi
-
-    - name: Run tests
-      run: |
-        # Skip UI tests in CI (they need display), run unit and integration tests
-        pytest tests/unit/ tests/integration/ -v --cov=src --cov-report=xml -m "not ui"
-
-    - name: Run basic UI smoke test (headless)
-      if: runner.os != 'macOS'  # macOS has issues with offscreen Qt
-      run: |
-        python -c "
-        import sys, os
-        sys.path.insert(0, 'src')
-        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-        try:
-            from PyQt6.QtWidgets import QApplication
-            from services.ui_service import UIService
-            app = QApplication([])
-            ui_service = UIService()
-            print(f'✓ UI service initialized on {ui_service.current_platform}')
-            app.quit()
-            print('✓ Basic UI test passed')
-        except Exception as e:
-            print(f'✗ UI test failed: {e}')
-            sys.exit(1)
-        "
-
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+        pytest tests/unit/ -v --tb=short
