@@ -85,31 +85,31 @@ deps:
 # Test commands
 test:
 	@echo "Running tests..."
-	pytest tests/ -v
+	python -m pytest tests/ -v
 
 test-unit:
 	@echo "Running unit tests..."
-	pytest tests/unit/ -v -m unit
+	python -m pytest tests/unit/ -v -m unit
 
 test-integration:
 	@echo "Running integration tests..."
-	pytest tests/integration/ -v -m integration
+	python -m pytest tests/integration/ -v -m integration
 
 test-ui:
 	@echo "Running UI tests..."
-	pytest tests/ui/ -v -m ui
+	python -m pytest tests/ui/ -v -m ui
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
+	python -m pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
 
 test-all:
 	@echo "Running all tests (unit + integration)..."
-	pytest tests/unit/ tests/integration/ -v
+	python -m pytest tests/unit/ tests/integration/ -v
 
 test-fast:
 	@echo "Running fast tests (excluding slow tests)..."
-	pytest tests/ -v -m "not slow"
+	python -m pytest tests/ -v -m "not slow"
 
 # Code quality commands
 quality: format-check import-check style-check lint security-check
@@ -117,38 +117,38 @@ quality: format-check import-check style-check lint security-check
 
 format:
 	@echo "Formatting code..."
-	black src/ tests/
-	isort src/ tests/
+	python -m black src/ tests/
+	python -m isort src/ tests/
 
 format-check:
 	@echo "Checking code formatting..."
-	black --check --diff src/ tests/ || (echo "❌ Code formatting issues found. Run 'make format' to fix."; exit 1)
+	python -m black --check --diff src/ tests/ || (echo "❌ Code formatting issues found. Run 'make format' to fix."; exit 1)
 
 import-sort:
 	@echo "Sorting imports..."
-	isort src/ tests/
+	python -m isort src/ tests/
 
 import-check:
 	@echo "Checking import sorting..."
-	isort --check-only --diff src/ tests/ || (echo "❌ Import sorting issues found. Run 'make import-sort' to fix."; exit 1)
+	python -m isort --check-only --diff src/ tests/ || (echo "❌ Import sorting issues found. Run 'make import-sort' to fix."; exit 1)
 
 type-check:
 	@echo "Running type checking..."
-	mypy src/ --ignore-missing-imports --no-strict-optional
+	python -m mypy src/ --ignore-missing-imports --no-strict-optional
 
 style-check:
 	@echo "Running style checking..."
-	flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+	python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
 security-check:
 	@echo "Running security scanning..."
-	bandit -r src/ -f json -o security-report.json
+	python -m bandit -r src/ -f json -o security-report.json
 	@echo "Security report saved to security-report.json"
 
 lint:
 	@echo "Running linting..."
-	pylint src/ tests/ --rcfile=.pylintrc || echo "⚠️  Pylint found issues (warnings)"
-	mypy src/ --ignore-missing-imports --no-strict-optional || echo "⚠️  MyPy found type issues (warnings)"
+	python -m pylint src/ tests/ --rcfile=.pylintrc || echo "⚠️  Pylint found issues (warnings)"
+	python -m mypy src/ --ignore-missing-imports --no-strict-optional || echo "⚠️  MyPy found type issues (warnings)"
 
 # Documentation
 docs:

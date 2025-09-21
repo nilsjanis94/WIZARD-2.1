@@ -78,12 +78,12 @@ jobs:
         # Set matplotlib backend for headless testing
         export MPLBACKEND=Agg
         # Run all unit tests now that PyQt6 is available (Phase 3A)
-        pytest tests/unit/ -v --tb=short --durations=5
+        python -m pytest tests/unit/ -v --tb=short --durations=5
 
     - name: Run integration tests (Phase 3B)
       run: |
         # Run integration tests for service interactions (Phase 3B)
-        pytest tests/integration/ -v --tb=short --durations=5
+        python -m pytest tests/integration/ -v --tb=short --durations=5
 
     - name: Basic model functionality test
       run: |
@@ -141,85 +141,45 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
-    - name: Check code formatting with black
+    - name: Run all code quality checks
       run: |
-        if ! black --check --diff src/ tests/; then
-          echo "⚠️  Code formatting issues found. Consider running: black src/ tests/"
+        echo "🛠️  Running comprehensive code quality checks..."
+
+        # Code formatting check
+        if ! python -m black --check --diff src/ tests/; then
+          echo "⚠️  Code formatting issues found. Consider running: make format"
           echo "This is a warning - CI continues..."
         fi
 
-    - name: Check import sorting with isort
-      run: |
-        if ! isort --check-only --diff src/ tests/; then
-          echo "⚠️  Import sorting issues found. Consider running: isort src/ tests/"
+        # Import sorting check
+        if ! python -m isort --check-only --diff src/ tests/; then
+          echo "⚠️  Import sorting issues found. Consider running: make import-sort"
           echo "This is a warning - CI continues..."
         fi
 
-    - name: Check code style with flake8
-      run: |
-        if ! flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics; then
-          echo "⚠️  Code style issues found. Consider fixing flake8 errors."
+        # Code style check
+        if ! python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics; then
+          echo "⚠️  Code style issues found. Review flake8 output above."
           echo "This is a warning - CI continues..."
         fi
 
-  type-check:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python 3.13
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.13
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
-
-    - name: Type check with mypy
-      run: |
-        if ! mypy src/ --ignore-missing-imports --no-strict-optional; then
+        # Type checking
+        if ! python -m mypy src/ --ignore-missing-imports --no-strict-optional; then
           echo "⚠️  Type checking issues found. Consider adding type annotations."
-          echo "Found $(mypy src/ --ignore-missing-imports --no-strict-optional 2>&1 | grep -c "error:") type errors"
+          echo "Found $(python -m mypy src/ --ignore-missing-imports --no-strict-optional 2>&1 | grep -c "error:") type errors"
           echo "This is a warning - CI continues..."
         fi
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+        # Linting
+        if ! python -m pylint src/ tests/ --rcfile=.pylintrc; then
+          echo "⚠️  Linting issues found. Review pylint output above."
+          echo "This is a warning - CI continues..."
+        fi
 
-    - name: Set up Python 3.13
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.13
+        # Security scanning
+        if ! python -m bandit -r src/ -f json -o security-report.json; then
+          echo "⚠️  Security issues found. Review security-report.json"
+          echo "This is a warning - CI continues..."
+        fi
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
-
-    - name: Lint code with pylint
-      run: pylint src/ tests/ --rcfile=.pylintrc || true  # Don't fail on first run
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python 3.13
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.13
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
-
-    - name: Security scan with bandit
-      run: bandit -r src/ -f json -o security-report.json || true  # Don't fail on first run
+        echo "✅ Code quality checks completed!"
