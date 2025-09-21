@@ -185,7 +185,9 @@ class TOBDataModel(BaseModel):
         # Check for missing values
         missing_data = self.data.isnull().sum()
         if missing_data.any():
-            validation_results["warnings"].append(f"Missing data in columns: {missing_data[missing_data > 0].to_dict()}")
+            validation_results["warnings"].append(
+                f"Missing data in columns: {missing_data[missing_data > 0].to_dict()}"
+            )
 
         # Check for duplicate timestamps
         time_col_name = self.get_time_column_name()

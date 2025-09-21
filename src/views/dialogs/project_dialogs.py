@@ -7,9 +7,17 @@ Dialog classes for project management.
 from typing import Optional, Tuple
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout,
-                             QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                             QTextEdit, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 
 class ProjectDialog(QDialog):

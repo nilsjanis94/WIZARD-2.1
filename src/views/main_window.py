@@ -12,9 +12,18 @@ from typing import Any, Dict, List, Optional
 from PyQt6 import uic
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
-                             QFrame, QLabel, QLineEdit, QMainWindow,
-                             QPushButton, QWidget)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QWidget,
+)
 
 from ..services.axis_ui_service import AxisUIService
 from ..services.data_service import DataService
@@ -92,10 +101,13 @@ class MainWindow(QMainWindow):
             self.ui_state_manager.set_containers(
                 self.welcome_container, self.plot_container
             )
-            
+
             # Debug logging for UI state manager setup
-            self.logger.info("UI state manager containers set - welcome: %s, plot: %s", 
-                           self.welcome_container is not None, self.plot_container is not None)
+            self.logger.info(
+                "UI state manager containers set - welcome: %s, plot: %s",
+                self.welcome_container is not None,
+                self.plot_container is not None,
+            )
 
             # Initialize UI state
             self._initialize_ui_state()
@@ -128,12 +140,16 @@ class MainWindow(QMainWindow):
         self.plot_container = self.findChild(QFrame, "plot_container")
         self.plot_canvas_container = self.findChild(QWidget, "plot_canvas_container")
         self.plot_info_container = self.findChild(QFrame, "plot_info_container")
-        
+
         # Debug logging for plot containers
         self.logger.info("Plot container found: %s", self.plot_container is not None)
-        self.logger.info("Plot canvas container found: %s", self.plot_canvas_container is not None)
-        self.logger.info("Plot info container found: %s", self.plot_info_container is not None)
-        
+        self.logger.info(
+            "Plot canvas container found: %s", self.plot_canvas_container is not None
+        )
+        self.logger.info(
+            "Plot info container found: %s", self.plot_info_container is not None
+        )
+
         # Initialize plot widget
         self.plot_widget = None
         self._initialize_plot_widget()
@@ -160,6 +176,7 @@ class MainWindow(QMainWindow):
 
         # Create style indicators for NTC checkboxes (delayed setup)
         from PyQt6.QtCore import QTimer
+
         QTimer.singleShot(100, self._setup_style_indicators)  # Delay by 100ms
 
         # Data metrics widgets
@@ -172,7 +189,6 @@ class MainWindow(QMainWindow):
         self.y1_axis_combo = self.findChild(QComboBox, "y1_axis_combo")
         self.y2_axis_combo = self.findChild(QComboBox, "y2_axis_combo")
         self.x_axis_combo = self.findChild(QComboBox, "x_axis_combo")
-
 
         # Create axis_combos dictionary for service usage
         self.axis_combos = {
@@ -241,17 +257,19 @@ class MainWindow(QMainWindow):
         """
         try:
             self.logger.info("Initializing plot widget...")
-            
+
             if self.plot_canvas_container:
                 self.logger.info("Plot canvas container found, creating plot widget")
-                
+
                 # Create plot widget
-                self.plot_widget = self.plot_service.create_plot_widget(self.plot_canvas_container)
+                self.plot_widget = self.plot_service.create_plot_widget(
+                    self.plot_canvas_container
+                )
                 self.logger.info("Plot widget created successfully")
-                
+
                 # Add plot widget to the container layout
                 from PyQt6.QtWidgets import QVBoxLayout
-                
+
                 # Check if container already has a layout
                 existing_layout = self.plot_canvas_container.layout()
                 if existing_layout:
@@ -261,20 +279,24 @@ class MainWindow(QMainWindow):
                         if child.widget():
                             child.widget().deleteLater()
                     existing_layout.deleteLater()
-                
+
                 # Create new layout
                 layout = QVBoxLayout()
                 layout.addWidget(self.plot_widget)
                 layout.setContentsMargins(0, 0, 0, 0)
                 self.plot_canvas_container.setLayout(layout)
-                
+
                 # Make sure the plot widget is visible
                 self.plot_widget.setVisible(True)
                 self.plot_canvas_container.setVisible(True)
-                
-                self.logger.info("Plot widget initialized and made visible successfully")
+
+                self.logger.info(
+                    "Plot widget initialized and made visible successfully"
+                )
             else:
-                self.logger.warning("Plot canvas container not found, plot widget not initialized")
+                self.logger.warning(
+                    "Plot canvas container not found, plot widget not initialized"
+                )
         except Exception as e:
             self.logger.error("Failed to initialize plot widget: %s", e)
             self.error_handler.handle_error(e, self, "Plot Widget Initialization Error")
@@ -557,7 +579,9 @@ class MainWindow(QMainWindow):
             state: Checkbox state (0 = unchecked, 2 = checked)
         """
         is_selected = state == 2
-        self.logger.debug("View: sensor %s selection changed: %s", sensor_name, is_selected)
+        self.logger.debug(
+            "View: sensor %s selection changed: %s", sensor_name, is_selected
+        )
 
         # MVC: View informs Controller about UI event
         # Controller handles the logic and updates views
@@ -570,8 +594,8 @@ class MainWindow(QMainWindow):
         self.logger.debug("Y1 axis auto mode: %s", is_auto)
 
         # Delegate to axis UI service for consistent handling
-        if hasattr(self, 'axis_ui_service') and self.axis_ui_service:
-            self.axis_ui_service.handle_axis_auto_mode_changed(self, 'y1', is_auto)
+        if hasattr(self, "axis_ui_service") and self.axis_ui_service:
+            self.axis_ui_service.handle_axis_auto_mode_changed(self, "y1", is_auto)
         else:
             # Fallback: Enable/disable manual controls directly
             if self.y1_min_value and self.y1_max_value:
@@ -584,8 +608,8 @@ class MainWindow(QMainWindow):
         self.logger.debug("Y2 axis auto mode: %s", is_auto)
 
         # Delegate to axis UI service for consistent handling
-        if hasattr(self, 'axis_ui_service') and self.axis_ui_service:
-            self.axis_ui_service.handle_axis_auto_mode_changed(self, 'y2', is_auto)
+        if hasattr(self, "axis_ui_service") and self.axis_ui_service:
+            self.axis_ui_service.handle_axis_auto_mode_changed(self, "y2", is_auto)
         else:
             # Fallback: Enable/disable manual controls directly
             if self.y2_min_value and self.y2_max_value:
@@ -598,14 +622,14 @@ class MainWindow(QMainWindow):
         self.logger.debug("X axis auto mode: %s", is_auto)
 
         # Use axis UI service to handle the mode change
-        self.axis_ui_service.handle_axis_auto_mode_changed(self, 'x', is_auto)
+        self.axis_ui_service.handle_axis_auto_mode_changed(self, "x", is_auto)
 
     def _on_y1_axis_changed(self, sensor_name: str):
         """Handle Y1 axis sensor selection change."""
         if sensor_name:
             self.logger.debug("Y1 axis changed to: %s", sensor_name)
             # Update axis settings through controller
-            axis_settings = {'y1_sensor': sensor_name}
+            axis_settings = {"y1_sensor": sensor_name}
             if self.controller:
                 self.controller.update_axis_settings(axis_settings)
 
@@ -620,10 +644,15 @@ class MainWindow(QMainWindow):
             self.logger.debug("X axis changed to: %s", axis_type)
 
             # If in manual mode, convert existing manual limits to new time unit
-            if (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
-                not self.x_auto_checkbox.isChecked() and
-                hasattr(self, 'x_min_value') and self.x_min_value and
-                hasattr(self, 'x_max_value') and self.x_max_value):
+            if (
+                hasattr(self, "x_auto_checkbox")
+                and self.x_auto_checkbox
+                and not self.x_auto_checkbox.isChecked()
+                and hasattr(self, "x_min_value")
+                and self.x_min_value
+                and hasattr(self, "x_max_value")
+                and self.x_max_value
+            ):
 
                 # Get current values and convert them to the new unit
                 try:
@@ -632,7 +661,7 @@ class MainWindow(QMainWindow):
 
                     # Get old time unit for conversion
                     old_unit = "Seconds"  # Default
-                    if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
+                    if hasattr(self, "x_axis_combo") and self.x_axis_combo:
                         current_text = self.x_axis_combo.currentText()
                         if current_text and current_text != axis_type:
                             old_unit = current_text
@@ -665,18 +694,24 @@ class MainWindow(QMainWindow):
                     pass  # Keep existing values if conversion fails
 
             # Update axis settings through controller
-            axis_settings = {'x_axis_type': axis_type}
+            axis_settings = {"x_axis_type": axis_type}
             if self.controller:
                 self.controller.update_axis_settings(axis_settings)
 
                 # If in auto mode, update values to show current range in new unit
-                if (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
-                    self.x_auto_checkbox.isChecked()):
+                if (
+                    hasattr(self, "x_auto_checkbox")
+                    and self.x_auto_checkbox
+                    and self.x_auto_checkbox.isChecked()
+                ):
                     time_range = self.controller.get_time_range()
                     if time_range:
                         self.axis_ui_service.update_axis_values(self, time_range)
-                elif (hasattr(self, 'x_auto_checkbox') and self.x_auto_checkbox and
-                      not self.x_auto_checkbox.isChecked()):
+                elif (
+                    hasattr(self, "x_auto_checkbox")
+                    and self.x_auto_checkbox
+                    and not self.x_auto_checkbox.isChecked()
+                ):
                     # In manual mode, update the displayed values from current plot limits
                     self.axis_ui_service._update_manual_values_from_plot(self)
 
@@ -737,8 +772,6 @@ class MainWindow(QMainWindow):
 
         self.logger.debug("Data metrics updated")
 
-
-
     def _on_x_axis_limits_changed(self):
         """
         Handle manual changes to X-axis min/max limits.
@@ -749,7 +782,9 @@ class MainWindow(QMainWindow):
             max_text = self.x_max_value.text() if self.x_max_value else ""
 
             # Use axis UI service to handle the limits change
-            self.axis_ui_service.handle_axis_limits_changed(self, 'x', min_text, max_text)
+            self.axis_ui_service.handle_axis_limits_changed(
+                self, "x", min_text, max_text
+            )
 
         except Exception as e:
             self.logger.error("Failed to handle X-axis limits change: %s", e)
@@ -764,7 +799,9 @@ class MainWindow(QMainWindow):
             max_text = self.y1_max_value.text() if self.y1_max_value else ""
 
             # Use axis UI service to handle the limits change
-            self.axis_ui_service.handle_axis_limits_changed(self, 'y1', min_text, max_text)
+            self.axis_ui_service.handle_axis_limits_changed(
+                self, "y1", min_text, max_text
+            )
 
         except Exception as e:
             self.logger.error("Failed to handle Y1-axis limits change: %s", e)
@@ -779,7 +816,9 @@ class MainWindow(QMainWindow):
             max_text = self.y2_max_value.text() if self.y2_max_value else ""
 
             # Use axis UI service to handle the limits change
-            self.axis_ui_service.handle_axis_limits_changed(self, 'y2', min_text, max_text)
+            self.axis_ui_service.handle_axis_limits_changed(
+                self, "y2", min_text, max_text
+            )
 
         except Exception as e:
             self.logger.error("Failed to handle Y2-axis limits change: %s", e)
@@ -815,7 +854,7 @@ class MainWindow(QMainWindow):
     def update_plot_data(self, tob_data_model):
         """
         Update the plot widget with new TOB data.
-        
+
         Args:
             tob_data_model: TOB data model containing sensor data
         """
@@ -833,7 +872,7 @@ class MainWindow(QMainWindow):
     def update_plot_sensors(self, selected_sensors: List[str]):
         """
         Update the selected sensors for plotting.
-        
+
         Args:
             selected_sensors: List of selected sensor names
         """
@@ -851,7 +890,7 @@ class MainWindow(QMainWindow):
     def update_plot_axis_settings(self, axis_settings: Dict[str, Any]):
         """
         Update axis settings for plotting.
-        
+
         Args:
             axis_settings: Dictionary containing axis configuration
         """
@@ -876,9 +915,15 @@ class MainWindow(QMainWindow):
         try:
             if self.plot_widget:
                 self.plot_widget.update_x_limits(min_value, max_value)
-                self.logger.debug("Plot X-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+                self.logger.debug(
+                    "Plot X-axis limits updated: min=%.2f, max=%.2f",
+                    min_value,
+                    max_value,
+                )
             else:
-                self.logger.warning("Plot widget not available for X-axis limits update")
+                self.logger.warning(
+                    "Plot widget not available for X-axis limits update"
+                )
         except Exception as e:
             self.logger.error("Failed to update plot X-axis limits: %s", e)
             self.error_handler.handle_error(e, self, "Plot X-Axis Limits Update Error")
@@ -894,9 +939,15 @@ class MainWindow(QMainWindow):
         try:
             if self.plot_widget:
                 self.plot_widget.update_y1_limits(min_value, max_value)
-                self.logger.debug("Plot Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+                self.logger.debug(
+                    "Plot Y1-axis limits updated: min=%.2f, max=%.2f",
+                    min_value,
+                    max_value,
+                )
             else:
-                self.logger.warning("Plot widget not available for Y1-axis limits update")
+                self.logger.warning(
+                    "Plot widget not available for Y1-axis limits update"
+                )
         except Exception as e:
             self.logger.error("Failed to update plot Y1-axis limits: %s", e)
             self.error_handler.handle_error(e, self, "Plot Y1-Axis Limits Update Error")
@@ -912,9 +963,15 @@ class MainWindow(QMainWindow):
         try:
             if self.plot_widget:
                 self.plot_widget.update_y2_limits(min_value, max_value)
-                self.logger.debug("Plot Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+                self.logger.debug(
+                    "Plot Y2-axis limits updated: min=%.2f, max=%.2f",
+                    min_value,
+                    max_value,
+                )
             else:
-                self.logger.warning("Plot widget not available for Y2-axis limits update")
+                self.logger.warning(
+                    "Plot widget not available for Y2-axis limits update"
+                )
         except Exception as e:
             self.logger.error("Failed to update plot Y2-axis limits: %s", e)
             self.error_handler.handle_error(e, self, "Plot Y2-Axis Limits Update Error")
@@ -922,7 +979,7 @@ class MainWindow(QMainWindow):
     def get_plot_info(self) -> Dict[str, Any]:
         """
         Get information about the current plot.
-        
+
         Returns:
             Dictionary containing plot information
         """
@@ -930,18 +987,18 @@ class MainWindow(QMainWindow):
             if self.plot_widget:
                 return self.plot_widget.get_plot_info()
             else:
-                return {'has_plot_widget': False}
+                return {"has_plot_widget": False}
         except Exception as e:
             self.logger.error("Failed to get plot info: %s", e)
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def _setup_style_indicators(self):
         """
         Replace UI placeholder labels with visual style indicators for legend functionality.
         """
-        from PyQt6.QtWidgets import QLabel
-        from PyQt6.QtGui import QPainter, QPen, QColor
         from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QColor, QPainter, QPen
+        from PyQt6.QtWidgets import QLabel
 
         self.style_indicators = {}
 
@@ -954,18 +1011,28 @@ class MainWindow(QMainWindow):
                 label_name = self._get_style_label_name(sensor_name)
                 placeholder_label = self.findChild(QLabel, label_name)
 
-                self.logger.debug(f"Setting up indicator for {sensor_name}: looking for label '{label_name}'")
+                self.logger.debug(
+                    f"Setting up indicator for {sensor_name}: looking for label '{label_name}'"
+                )
 
                 if placeholder_label:
-                    self.logger.debug(f"Found placeholder label {label_name} with text '{placeholder_label.text()}' at {placeholder_label.geometry()}")
+                    self.logger.debug(
+                        f"Found placeholder label {label_name} with text '{placeholder_label.text()}' at {placeholder_label.geometry()}"
+                    )
 
                     # Set up the label as a style indicator using UI service
-                    indicator = self.ui_service.setup_label_indicator(placeholder_label, style_info)
+                    indicator = self.ui_service.setup_label_indicator(
+                        placeholder_label, style_info
+                    )
 
-                    self.logger.debug(f"Successfully set up {label_name} as style indicator")
+                    self.logger.debug(
+                        f"Successfully set up {label_name} as style indicator"
+                    )
 
                 else:
-                    self.logger.warning(f"UI placeholder label {label_name} not found for sensor {sensor_name}")
+                    self.logger.warning(
+                        f"UI placeholder label {label_name} not found for sensor {sensor_name}"
+                    )
                     # Create hidden fallback
                     indicator = QLabel()
                     indicator.setParent(self)
@@ -973,14 +1040,16 @@ class MainWindow(QMainWindow):
 
                 self.style_indicators[sensor_name] = indicator
 
-            self.logger.debug(f"Set up style indicators for {len(self.style_indicators)} sensors")
+            self.logger.debug(
+                f"Set up style indicators for {len(self.style_indicators)} sensors"
+            )
 
         except Exception as e:
             self.logger.error(f"Error setting up style indicators: {e}")
             import traceback
+
             self.logger.error(f"Traceback: {traceback.format_exc()}")
             ErrorHandler.handle_error(e, "Style Indicator Setup")
-
 
     def _get_style_label_name(self, sensor_name: str) -> str:
         """
@@ -1006,7 +1075,7 @@ class MainWindow(QMainWindow):
         """
         Update all style indicators when plot styles change.
         """
-        if not hasattr(self, 'style_indicators'):
+        if not hasattr(self, "style_indicators"):
             return
 
         try:
@@ -1014,7 +1083,7 @@ class MainWindow(QMainWindow):
                 style_info = self.plot_style_service.get_sensor_style(sensor_name)
 
                 # Update style info and pixmap using UI service
-                if hasattr(indicator, '_style_info'):
+                if hasattr(indicator, "_style_info"):
                     indicator._style_info = style_info
                     self.ui_service.update_label_pixmap(indicator, style_info)
 

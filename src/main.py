@@ -41,6 +41,7 @@ def setup_application() -> QApplication:
 
     # Set cross-platform style for consistent appearance and better styling support
     from PyQt6.QtWidgets import QStyleFactory
+
     available_styles = QStyleFactory.keys()
     if "Fusion" in available_styles:
         app.setStyle("Fusion")

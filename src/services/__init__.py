@@ -12,6 +12,7 @@ from .tob_service import TOBService
 # Optional Qt-dependent services
 try:
     from .axis_ui_service import AxisUIService
+
     PYQT6_SERVICES_AVAILABLE = True
 except ImportError:
     AxisUIService = None
@@ -19,6 +20,7 @@ except ImportError:
 
 try:
     from .data_service import DataService
+
     DATA_SERVICE_AVAILABLE = True
 except ImportError:
     DataService = None
@@ -26,6 +28,7 @@ except ImportError:
 
 try:
     from .error_service import ErrorService
+
     ERROR_SERVICE_AVAILABLE = True
 except ImportError:
     ErrorService = None
@@ -33,6 +36,7 @@ except ImportError:
 
 try:
     from .plot_service import PlotService
+
     PLOT_SERVICE_AVAILABLE = True
 except ImportError:
     PlotService = None
@@ -40,6 +44,7 @@ except ImportError:
 
 try:
     from .plot_style_service import PlotStyleService
+
     PLOT_STYLE_SERVICE_AVAILABLE = True
 except ImportError:
     PlotStyleService = None
@@ -47,6 +52,7 @@ except ImportError:
 
 try:
     from .ui_service import UIService
+
     UI_SERVICE_AVAILABLE = True
 except ImportError:
     UIService = None
@@ -54,6 +60,7 @@ except ImportError:
 
 try:
     from .ui_state_manager import UIStateManager
+
     UI_STATE_MANAGER_AVAILABLE = True
 except ImportError:
     UIStateManager = None

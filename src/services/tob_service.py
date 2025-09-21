@@ -9,13 +9,14 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # Use the existing tob_dataloader package
 try:
     from tob_dataloader import DataLoader as TOBDataLoader
     from tob_dataloader.exceptions import TOBFileNotFoundError, TOBParseError
+
     TOB_DATALOADER_AVAILABLE = True
 except ImportError:
     # Fallback if package not available
@@ -24,9 +25,16 @@ except ImportError:
     TOBParseError = Exception
     TOB_DATALOADER_AVAILABLE = False
 
-from ..exceptions.tob_exceptions import (TOBError, TOBFileNotFoundError as WizTOBFileNotFoundError,
-                                         TOBParsingError, TOBValidationError,
-                                         TOBDataError, TOBHeaderError)
+from ..exceptions.tob_exceptions import (
+    TOBDataError,
+    TOBError,
+)
+from ..exceptions.tob_exceptions import TOBFileNotFoundError as WizTOBFileNotFoundError
+from ..exceptions.tob_exceptions import (
+    TOBHeaderError,
+    TOBParsingError,
+    TOBValidationError,
+)
 from ..models.tob_data_model import TOBDataModel
 
 
@@ -61,24 +69,40 @@ class TOBService:
             self.logger.info("Loading TOB file: %s", file_path)
 
             if not TOB_DATALOADER_AVAILABLE:
-                raise TOBParsingError("TOB DataLoader package not available - please install tob_dataloader")
+                raise TOBParsingError(
+                    "TOB DataLoader package not available - please install tob_dataloader"
+                )
 
             # Use the existing tob_dataloader package
             loader = TOBDataLoader()
             headers, data = loader.load_data(str(file_path))
 
             self.logger.debug("Parsed headers with %d keys", len(headers))
-            self.logger.debug("Parsed data shape: %s", data.shape if data is not None else "None")
+            self.logger.debug(
+                "Parsed data shape: %s", data.shape if data is not None else "None"
+            )
 
             # Extract sensors from DataFrame columns
             sensors = []
             if data is not None and not data.empty:
                 # Filter out non-sensor columns
                 non_sensor_columns = [
-                    'time', 'timestamp', 'datasets', 'date', 'datetime',
-                    'vbatt', 'vaccu', 'press', 'vheat', 'iheat',
-                    'tiltx', 'tilty', 'accz', 'stat',
-                    'intt_time', 'intt_date'
+                    "time",
+                    "timestamp",
+                    "datasets",
+                    "date",
+                    "datetime",
+                    "vbatt",
+                    "vaccu",
+                    "press",
+                    "vheat",
+                    "iheat",
+                    "tiltx",
+                    "tilty",
+                    "accz",
+                    "stat",
+                    "intt_time",
+                    "intt_date",
                 ]
 
                 for column in data.columns:
@@ -87,7 +111,9 @@ class TOBService:
                         sensors.append(str(column).strip())
 
             sensors = sorted(list(set(sensors)))  # Remove duplicates and sort
-            self.logger.debug("Detected %d sensors: %s", len(sensors), sensors[:5] if sensors else [])
+            self.logger.debug(
+                "Detected %d sensors: %s", len(sensors), sensors[:5] if sensors else []
+            )
 
             # Create data model
             data_model = TOBDataModel(
@@ -102,10 +128,16 @@ class TOBService:
             # Validate data integrity
             validation_results = data_model.validate_data_integrity()
             if not validation_results["is_valid"]:
-                self.logger.warning("Data integrity issues found: %s", validation_results["errors"])
+                self.logger.warning(
+                    "Data integrity issues found: %s", validation_results["errors"]
+                )
 
-            self.logger.info("Successfully loaded TOB file: %s (%d data points, %d sensors)",
-                           file_path.name, len(data) if data is not None else 0, len(sensors))
+            self.logger.info(
+                "Successfully loaded TOB file: %s (%d data points, %d sensors)",
+                file_path.name,
+                len(data) if data is not None else 0,
+                len(sensors),
+            )
             return data_model
 
         except (TOBFileNotFoundError, TOBParseError) as e:
@@ -119,20 +151,28 @@ class TOBService:
             raise TOBParsingError(f"Unexpected error loading TOB file: {str(e)}")
         except (FileNotFoundError, PermissionError) as e:
             self.logger.error("File access error loading TOB file %s: %s", file_path, e)
-            raise TOBFileNotFoundError(f"TOB file not found or inaccessible: {file_path}") from e
+            raise TOBFileNotFoundError(
+                f"TOB file not found or inaccessible: {file_path}"
+            ) from e
         except (ValueError, IOError) as e:
-            self.logger.error("Data format or IO error loading TOB file %s: %s", file_path, e)
+            self.logger.error(
+                "Data format or IO error loading TOB file %s: %s", file_path, e
+            )
             raise TOBParsingError(f"Failed to parse TOB file: {e}") from e
         except Exception as e:
             self.logger.error("Unexpected error loading TOB file %s: %s", file_path, e)
-            raise TOBError(f"An unexpected error occurred while loading TOB file: {e}") from e
+            raise TOBError(
+                f"An unexpected error occurred while loading TOB file: {e}"
+            ) from e
 
     def parse_headers(self, file_path: str) -> Dict[str, Any]:
         """
         DEPRECATED: This method is no longer used.
         Headers are now parsed by the tob_dataloader package in load_tob_file().
         """
-        self.logger.warning("parse_headers() is deprecated - headers are parsed by tob_dataloader")
+        self.logger.warning(
+            "parse_headers() is deprecated - headers are parsed by tob_dataloader"
+        )
         return {}
 
     def parse_data(self, file_path: str) -> pd.DataFrame:
@@ -140,7 +180,9 @@ class TOBService:
         DEPRECATED: This method is no longer used.
         Data is now parsed by the tob_dataloader package in load_tob_file().
         """
-        self.logger.warning("parse_data() is deprecated - data is parsed by tob_dataloader")
+        self.logger.warning(
+            "parse_data() is deprecated - data is parsed by tob_dataloader"
+        )
         return pd.DataFrame()
 
     def validate_tob_file(self, file_path: str) -> bool:
@@ -174,7 +216,9 @@ class TOBService:
             self.logger.error("Error validating TOB file %s: %s", file_path, e)
             return False
         except Exception as e:
-            self.logger.error("Unexpected error validating TOB file %s: %s", file_path, e)
+            self.logger.error(
+                "Unexpected error validating TOB file %s: %s", file_path, e
+            )
             return False
 
     def get_file_info(self, file_path: str) -> Dict[str, Any]:

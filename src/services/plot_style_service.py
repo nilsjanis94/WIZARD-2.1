@@ -6,7 +6,7 @@ Provides consistent styling across plots and UI indicators.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class PlotStyleService:
@@ -23,28 +23,28 @@ class PlotStyleService:
 
         # Define fixed color palette for NTC sensors
         self.ntc_colors = [
-            '#1f77b4',  # blue
-            '#ff7f0e',  # orange
-            '#2ca02c',  # green
-            '#d62728',  # red
-            '#9467bd',  # purple
-            '#8c564b',  # brown
-            '#e377c2',  # pink
-            '#7f7f7f',  # gray
-            '#bcbd22',  # olive
-            '#17becf',  # cyan
-            '#aec7e8',  # light blue
-            '#ffbb78',  # light orange
-            '#98df8a',  # light green
-            '#ff9896',  # light red
-            '#c5b0d5',  # light purple
-            '#c49c94',  # light brown
-            '#f7b6d3',  # light pink
-            '#c7c7c7',  # light gray
-            '#dbdb8d',  # light olive
-            '#9edae5',  # light cyan
-            '#ad494a',  # dark red
-            '#8c6d31'   # dark brown
+            "#1f77b4",  # blue
+            "#ff7f0e",  # orange
+            "#2ca02c",  # green
+            "#d62728",  # red
+            "#9467bd",  # purple
+            "#8c564b",  # brown
+            "#e377c2",  # pink
+            "#7f7f7f",  # gray
+            "#bcbd22",  # olive
+            "#17becf",  # cyan
+            "#aec7e8",  # light blue
+            "#ffbb78",  # light orange
+            "#98df8a",  # light green
+            "#ff9896",  # light red
+            "#c5b0d5",  # light purple
+            "#c49c94",  # light brown
+            "#f7b6d3",  # light pink
+            "#c7c7c7",  # light gray
+            "#dbdb8d",  # light olive
+            "#9edae5",  # light cyan
+            "#ad494a",  # dark red
+            "#8c6d31",  # dark brown
         ]
 
         # Fixed styles for all sensors
@@ -97,7 +97,7 @@ class PlotStyleService:
             Dictionary mapping sensor names to style configurations
         """
         # Line style pattern that repeats every 5 NTCs
-        line_patterns = ['-', '--', ':', '-.', '-']
+        line_patterns = ["-", "--", ":", "-.", "-"]
 
         styles = {}
 
@@ -107,42 +107,44 @@ class PlotStyleService:
 
             # Determine color based on NTC number groups
             if 1 <= i <= 5:
-                color = '#000000'  # Black
+                color = "#000000"  # Black
             elif 6 <= i <= 8:
-                color = '#808080'  # Gray
+                color = "#808080"  # Gray
             elif 9 <= i <= 12:
-                color = '#000080'  # Dark Blue
+                color = "#000080"  # Dark Blue
             elif 13 <= i <= 16:
-                color = '#4169E1'  # Light Blue
+                color = "#4169E1"  # Light Blue
             elif 17 <= i <= 18:
-                color = '#FF0000'  # Red
+                color = "#FF0000"  # Red
             elif 19 <= i <= 22:
-                color = '#8B0000'  # Dark Red
+                color = "#8B0000"  # Dark Red
             else:
-                color = '#000000'  # Default black
+                color = "#000000"  # Default black
 
             # Determine line style based on position in repeating pattern
-            line_style_index = i % len(line_patterns)  # 1-based index for correct offset
+            line_style_index = i % len(
+                line_patterns
+            )  # 1-based index for correct offset
             line_style = line_patterns[line_style_index]
 
             styles[sensor_name] = {
-                'color': color,
-                'line_style': line_style,
-                'line_width': 1.5
+                "color": color,
+                "line_style": line_style,
+                "line_width": 1.5,
             }
 
         # PT100/Temp sensor - user specified yellow and solid line
-        styles['Temp'] = {
-            'color': '#FFFF00',  # Yellow
-            'line_style': '-',   # Solid line as requested
-            'line_width': 2.0
+        styles["Temp"] = {
+            "color": "#FFFF00",  # Yellow
+            "line_style": "-",  # Solid line as requested
+            "line_width": 2.0,
         }
 
         # Time axis (if needed)
-        styles['Time'] = {
-            'color': '#2c3e50',  # dark blue-gray
-            'line_style': '-',
-            'line_width': 1.0
+        styles["Time"] = {
+            "color": "#2c3e50",  # dark blue-gray
+            "line_style": "-",
+            "line_width": 1.0,
         }
 
         return styles
@@ -155,7 +157,7 @@ class PlotStyleService:
             Default style for unknown sensors
         """
         return {
-            'color': '#1f77b4',  # default blue
-            'line_style': '-',
-            'line_width': 1.5
+            "color": "#1f77b4",  # default blue
+            "line_style": "-",
+            "line_width": 1.5,
         }

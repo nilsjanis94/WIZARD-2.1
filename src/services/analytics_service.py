@@ -6,7 +6,7 @@ Handles all analytical and computational operations separate from data managemen
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -84,18 +84,20 @@ class AnalyticsService:
             current_col = None
 
             # Look for heating voltage (Vheat) and current (Iheat)
-            for col in ['Vheat', 'Heating_Voltage', 'Heat_Voltage']:
+            for col in ["Vheat", "Heating_Voltage", "Heat_Voltage"]:
                 if col in data_model.data.columns:
                     voltage_col = col
                     break
 
-            for col in ['Iheat', 'Heating_Current', 'Heat_Current']:
+            for col in ["Iheat", "Heating_Current", "Heat_Current"]:
                 if col in data_model.data.columns:
                     current_col = col
                     break
 
             if voltage_col is None or current_col is None:
-                self.logger.warning("No heating voltage/current data found for HP-Power calculation")
+                self.logger.warning(
+                    "No heating voltage/current data found for HP-Power calculation"
+                )
                 return 0.0
 
             # Get voltage and current data
@@ -132,8 +134,12 @@ class AnalyticsService:
                 mean_hp_power = heat_pulse_power.mean()
                 # Round to 2 decimal places for meaningful precision
                 rounded_hp_power = round(mean_hp_power, 2)
-                self.logger.info("Calculated mean HP-Power: %.2f W (from %d heat pulses, filtered from %d valid measurements)",
-                               rounded_hp_power, len(heat_pulse_power), len(valid_power_data))
+                self.logger.info(
+                    "Calculated mean HP-Power: %.2f W (from %d heat pulses, filtered from %d valid measurements)",
+                    rounded_hp_power,
+                    len(heat_pulse_power),
+                    len(valid_power_data),
+                )
                 return rounded_hp_power
             else:
                 self.logger.warning("No significant heat pulse power data found")
@@ -162,17 +168,17 @@ class AnalyticsService:
                 return
 
             # Calculate HP-Power column if voltage and current data available
-            if 'HP-Power' not in data_model.data.columns:
+            if "HP-Power" not in data_model.data.columns:
                 voltage_col = None
                 current_col = None
 
                 # Look for heating voltage (Vheat) and current (Iheat)
-                for col in ['Vheat', 'Heating_Voltage', 'Heat_Voltage']:
+                for col in ["Vheat", "Heating_Voltage", "Heat_Voltage"]:
                     if col in data_model.data.columns:
                         voltage_col = col
                         break
 
-                for col in ['Iheat', 'Heating_Current', 'Heat_Current']:
+                for col in ["Iheat", "Heating_Current", "Heat_Current"]:
                     if col in data_model.data.columns:
                         current_col = col
                         break
@@ -184,11 +190,15 @@ class AnalyticsService:
                     hp_power_data = voltage_data * current_data
 
                     # Add the calculated column to the data
-                    data_model.data['HP-Power'] = hp_power_data
+                    data_model.data["HP-Power"] = hp_power_data
 
-                    self.logger.info(f"Added HP-Power column calculated from {voltage_col} × {current_col}")
+                    self.logger.info(
+                        f"Added HP-Power column calculated from {voltage_col} × {current_col}"
+                    )
                 else:
-                    self.logger.warning("Cannot add HP-Power column: voltage/current data not found")
+                    self.logger.warning(
+                        "Cannot add HP-Power column: voltage/current data not found"
+                    )
 
             # Future: Add other calculated columns here
             # - Efficiency metrics
@@ -217,7 +227,14 @@ class AnalyticsService:
                 return 0.0
 
             # Look for battery voltage column
-            voltage_columns = ["Vaccu", "Vbatt", "battery_voltage", "voltage", "battery", "V_batt"]
+            voltage_columns = [
+                "Vaccu",
+                "Vbatt",
+                "battery_voltage",
+                "voltage",
+                "battery",
+                "V_batt",
+            ]
             voltage_data = None
 
             for col in voltage_columns:
@@ -238,7 +255,9 @@ class AnalyticsService:
             return rounded_voltage
 
         except (ValueError, KeyError) as e:
-            self.logger.error("Data validation error calculating battery voltage: %s", e)
+            self.logger.error(
+                "Data validation error calculating battery voltage: %s", e
+            )
             return 0.0
         except Exception as e:
             self.logger.error("Unexpected error calculating battery voltage: %s", e)
@@ -261,7 +280,7 @@ class AnalyticsService:
         try:
             if data_model.data is None:
                 self.logger.warning("No data available for tilt calculation")
-                return float('nan')
+                return float("nan")
 
             # Look for dedicated tilt sensors
             tilt_columns = ["TiltX", "TiltY", "ACCz"]
@@ -272,7 +291,9 @@ class AnalyticsService:
                     available_tilt_sensors.append(col)
 
             if not available_tilt_sensors:
-                self.logger.warning("No dedicated tilt sensors found, falling back to NTC analysis")
+                self.logger.warning(
+                    "No dedicated tilt sensors found, falling back to NTC analysis"
+                )
                 # Fallback to NTC analysis if no tilt sensors available
                 return self._calculate_tilt_from_ntc(data_model)
 
@@ -290,7 +311,7 @@ class AnalyticsService:
 
             if not sensor_stabilities:
                 self.logger.warning("No valid tilt sensor data found")
-                return float('nan')
+                return float("nan")
 
             # Calculate overall stability (mean of all sensor stabilities)
             overall_stability = np.mean(sensor_stabilities)
@@ -298,16 +319,19 @@ class AnalyticsService:
             # Round to 4 decimal places for meaningful precision
             rounded_stability = round(overall_stability, 4)
 
-            self.logger.info("Calculated tilt stability: %.4f (from %d sensors)",
-                           rounded_stability, len(sensor_stabilities))
+            self.logger.info(
+                "Calculated tilt stability: %.4f (from %d sensors)",
+                rounded_stability,
+                len(sensor_stabilities),
+            )
             return rounded_stability
 
         except (ValueError, KeyError) as e:
             self.logger.error("Data validation error calculating tilt: %s", e)
-            return float('nan')
+            return float("nan")
         except Exception as e:
             self.logger.error("Unexpected error calculating tilt: %s", e)
-            return float('nan')
+            return float("nan")
 
     def _calculate_tilt_from_ntc(self, data_model: TOBDataModel) -> float:
         """
@@ -326,7 +350,7 @@ class AnalyticsService:
             # Get NTC sensors for tilt analysis
             ntc_sensors = data_model.get_ntc_sensors()
             if not ntc_sensors:
-                return float('nan')
+                return float("nan")
 
             # Calculate standard deviation for each sensor
             sensor_stds = []
@@ -339,19 +363,21 @@ class AnalyticsService:
                         sensor_stds.append(std_dev)
 
             if not sensor_stds:
-                return float('nan')
+                return float("nan")
 
             # Return mean temperature standard deviation as stability metric
             mean_temp_stability = np.mean(sensor_stds)
             rounded_stability = round(mean_temp_stability, 4)
 
-            self.logger.info("Calculated tilt stability from NTC: %.4f (temperature variability)",
-                           rounded_stability)
+            self.logger.info(
+                "Calculated tilt stability from NTC: %.4f (temperature variability)",
+                rounded_stability,
+            )
             return rounded_stability
 
         except Exception as e:
             self.logger.error("Error in NTC tilt fallback: %s", e)
-            return float('nan')
+            return float("nan")
 
     def _calculate_mean_press(self, data_model: TOBDataModel) -> float:
         """
@@ -369,7 +395,14 @@ class AnalyticsService:
                 return 0.0
 
             # Look for pressure column
-            pressure_columns = ["Press", "pressure", "press", "P", "atm_pressure", "barometric"]
+            pressure_columns = [
+                "Press",
+                "pressure",
+                "press",
+                "P",
+                "atm_pressure",
+                "barometric",
+            ]
             pressure_data = None
 
             for col in pressure_columns:

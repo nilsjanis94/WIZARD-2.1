@@ -7,8 +7,14 @@ Dialog classes for showing progress and status.
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QProgressBar,
-                             QPushButton, QVBoxLayout)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+)
 
 
 class ProgressDialog(QDialog):

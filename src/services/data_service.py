@@ -134,10 +134,6 @@ class DataService:
             self.logger.error("Error calculating metrics: %s", e)
             return {}
 
-
-
-
-
     def filter_sensor_data(
         self, data: pd.DataFrame, sensor_name: str, time_range: Optional[tuple] = None
     ) -> pd.DataFrame:

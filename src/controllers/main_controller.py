@@ -66,6 +66,7 @@ class MainController(QObject):
         else:
             # Fallback: create window (backward compatibility)
             from ..views.main_window import MainWindow
+
             self.main_window = MainWindow(controller=self)
 
         # Connect signals
@@ -152,7 +153,7 @@ class MainController(QObject):
             self.main_window.update_project_info(
                 project_name=Path(metadata.get("file_path", "")).stem,
                 location="TOB Data",
-                comment=f"Data points: {metadata.get('data_points', 0)}"
+                comment=f"Data points: {metadata.get('data_points', 0)}",
             )
 
             # Update data metrics
@@ -167,7 +168,11 @@ class MainController(QObject):
             self.main_window.update_plot_data(self.tob_data_model)
 
             # Update sensor selection for plotting (automatically select all NTC sensors and PT100)
-            selected_sensors = [sensor for sensor in self.tob_data_model.sensors if sensor.startswith('NTC')]
+            selected_sensors = [
+                sensor
+                for sensor in self.tob_data_model.sensors
+                if sensor.startswith("NTC")
+            ]
 
             # Add PT100 sensor if available
             pt100_sensor = self.tob_data_model.get_pt100_sensor()
@@ -177,7 +182,11 @@ class MainController(QObject):
 
             if selected_sensors:
                 self.main_window.update_plot_sensors(selected_sensors)
-                self.logger.debug("Auto-selected %d sensors for plotting: %s", len(selected_sensors), selected_sensors)
+                self.logger.debug(
+                    "Auto-selected %d sensors for plotting: %s",
+                    len(selected_sensors),
+                    selected_sensors,
+                )
 
             # Switch to plot mode and show data loaded
             self.main_window.ui_state_manager.show_plot_mode()
@@ -200,7 +209,7 @@ class MainController(QObject):
 
             # Get available sensors
             available_sensors = self.tob_data_model.sensors
-            
+
             # Update NTC checkboxes
             for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
                 if sensor_name in available_sensors:
@@ -213,7 +222,10 @@ class MainController(QObject):
                     checkbox.setChecked(False)
 
             # Update PT100 checkbox
-            if hasattr(self.main_window, 'ntc_pt100_checkbox') and self.main_window.ntc_pt100_checkbox:
+            if (
+                hasattr(self.main_window, "ntc_pt100_checkbox")
+                and self.main_window.ntc_pt100_checkbox
+            ):
                 pt100_sensor = self.tob_data_model.get_pt100_sensor()
                 if pt100_sensor:
                     self.main_window.ntc_pt100_checkbox.setVisible(True)
@@ -272,7 +284,11 @@ class MainController(QObject):
             is_selected: Whether the sensor is now selected
         """
         try:
-            self.logger.debug("Controller: handling sensor selection change: %s = %s", sensor_name, is_selected)
+            self.logger.debug(
+                "Controller: handling sensor selection change: %s = %s",
+                sensor_name,
+                is_selected,
+            )
 
             # Get current selected sensors from the view
             current_selected = self._get_selected_sensors()
@@ -308,21 +324,21 @@ class MainController(QObject):
     def _get_selected_sensors(self) -> List[str]:
         """
         Get list of currently selected sensors.
-        
+
         Returns:
             List of selected sensor names
         """
         try:
             selected_sensors = []
-            
+
             # Check all NTC checkboxes (including PT100 which is registered as "Temp")
             for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
                 if checkbox and checkbox.isChecked():
                     selected_sensors.append(sensor_name)
-            
+
             self.logger.debug("Selected sensors: %s", selected_sensors)
             return selected_sensors
-            
+
         except Exception as e:
             self.logger.error("Error getting selected sensors: %s", e)
             return []
@@ -337,15 +353,13 @@ class MainController(QObject):
         """
         try:
             self.logger.debug("Updating axis auto mode: %s = %s", axis_name, is_auto)
-            
+
             # Update axis settings
-            axis_settings = {
-                f'{axis_name}_auto': is_auto
-            }
-            
+            axis_settings = {f"{axis_name}_auto": is_auto}
+
             # Update plot with new axis settings
             self.main_window.update_plot_axis_settings(axis_settings)
-            
+
             self.logger.info("Axis %s auto mode: %s", axis_name, is_auto)
 
         except Exception as e:
@@ -369,7 +383,9 @@ class MainController(QObject):
 
         except Exception as e:
             self.logger.error("Error updating axis settings: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "Axis Settings Update Error")
+            self.error_handler.handle_error(
+                e, self.main_window, "Axis Settings Update Error"
+            )
 
     def update_x_axis_limits(self, min_value: float, max_value: float):
         """
@@ -380,16 +396,22 @@ class MainController(QObject):
             max_value: Maximum X-axis value in seconds
         """
         try:
-            self.logger.debug("Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Update plot with new X-axis limits
             self.main_window.update_plot_x_limits(min_value, max_value)
 
-            self.logger.info("X-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.info(
+                "X-axis limits updated: min=%.2f, max=%.2f", min_value, max_value
+            )
 
         except Exception as e:
             self.logger.error("Error updating X-axis limits: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "X-Axis Limits Update Error")
+            self.error_handler.handle_error(
+                e, self.main_window, "X-Axis Limits Update Error"
+            )
 
     def update_y1_axis_limits(self, min_value: float, max_value: float):
         """
@@ -400,16 +422,22 @@ class MainController(QObject):
             max_value: Maximum Y1-axis value
         """
         try:
-            self.logger.debug("Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Update plot with new Y1-axis limits
             self.main_window.update_plot_y1_limits(min_value, max_value)
 
-            self.logger.info("Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.info(
+                "Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value
+            )
 
         except Exception as e:
             self.logger.error("Error updating Y1-axis limits: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "Y1-Axis Limits Update Error")
+            self.error_handler.handle_error(
+                e, self.main_window, "Y1-Axis Limits Update Error"
+            )
 
     def update_y2_axis_limits(self, min_value: float, max_value: float):
         """
@@ -420,16 +448,22 @@ class MainController(QObject):
             max_value: Maximum Y2-axis value
         """
         try:
-            self.logger.debug("Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Update plot with new Y2-axis limits
             self.main_window.update_plot_y2_limits(min_value, max_value)
 
-            self.logger.info("Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.info(
+                "Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value
+            )
 
         except Exception as e:
             self.logger.error("Error updating Y2-axis limits: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "Y2-Axis Limits Update Error")
+            self.error_handler.handle_error(
+                e, self.main_window, "Y2-Axis Limits Update Error"
+            )
 
     def _on_project_created(self, project_path: str, password: str):
         """

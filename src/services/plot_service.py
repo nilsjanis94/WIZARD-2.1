@@ -21,12 +21,12 @@ from ..models.tob_data_model import TOBDataModel
 class PlotService:
     """
     Service for handling data visualization and plotting operations.
-    
+
     This service provides comprehensive plotting functionality for temperature
     sensor data with professional styling, interactive controls, and support
     for both NTC and PT100 sensors.
     """
-    
+
     def __init__(self, plot_style_service=None):
         """Initialize the plot service."""
         self.logger = logging.getLogger(__name__)
@@ -35,6 +35,7 @@ class PlotService:
         self.plot_style_service = plot_style_service
         if not self.plot_style_service:
             from .plot_style_service import PlotStyleService
+
             self.plot_style_service = PlotStyleService()
 
         self.logger.info("PlotService initialized")
@@ -51,13 +52,13 @@ class PlotService:
         """
         return self.plot_style_service.get_sensor_style(sensor_name)
 
-    def create_plot_widget(self, parent: QWidget) -> 'PlotWidget':
+    def create_plot_widget(self, parent: QWidget) -> "PlotWidget":
         """
         Create a new plot widget for data visualization.
-        
+
         Args:
             parent: Parent widget for the plot widget
-            
+
         Returns:
             PlotWidget: Configured plot widget instance
         """
@@ -81,7 +82,7 @@ class PlotService:
             str: Color code for the sensor
         """
         style = self.plot_style_service.get_sensor_style(sensor_name)
-        return style['color']
+        return style["color"]
 
     def get_line_style(self, sensor_name: str) -> str:
         """
@@ -94,7 +95,7 @@ class PlotService:
             str: Line style for the sensor
         """
         style = self.plot_style_service.get_sensor_style(sensor_name)
-        return style['line_style']
+        return style["line_style"]
 
     def get_line_width(self, sensor_name: str) -> float:
         """
@@ -107,9 +108,11 @@ class PlotService:
             float: Line width for the sensor
         """
         style = self.plot_style_service.get_sensor_style(sensor_name)
-        return style['line_width']
+        return style["line_width"]
 
-    def format_time_axis(self, time_data: pd.Series, time_unit: str = "Seconds") -> Tuple[np.ndarray, List[str]]:
+    def format_time_axis(
+        self, time_data: pd.Series, time_unit: str = "Seconds"
+    ) -> Tuple[np.ndarray, List[str]]:
         """
         Format time data for plotting with different time units.
 
@@ -137,35 +140,40 @@ class PlotService:
 
             # Create time labels (every 10th point for readability)
             step = max(1, len(time_values) // 10)
-            time_labels = [f"{time_values[i]:.1f}{unit_label}" for i in range(0, len(time_values), step)]
+            time_labels = [
+                f"{time_values[i]:.1f}{unit_label}"
+                for i in range(0, len(time_values), step)
+            ]
 
             return time_values, time_labels
         except Exception as e:
             self.logger.error("Failed to format time axis: %s", e)
             return np.array([]), []
 
-    def calculate_plot_limits(self, data: pd.Series, margin: float = 0.1) -> Tuple[float, float]:
+    def calculate_plot_limits(
+        self, data: pd.Series, margin: float = 0.1
+    ) -> Tuple[float, float]:
         """
         Calculate appropriate plot limits for data.
-        
+
         Args:
             data: Data series to calculate limits for
             margin: Margin as fraction of data range
-            
+
         Returns:
             Tuple of (min_limit, max_limit)
         """
         try:
             if data.empty or data.isna().all():
                 return 0.0, 1.0
-            
+
             data_min = data.min()
             data_max = data.max()
             data_range = data_max - data_min
-            
+
             if data_range == 0:
                 return data_min - 1, data_max + 1
-            
+
             margin_value = data_range * margin
             return data_min - margin_value, data_max + margin_value
         except Exception as e:
@@ -185,48 +193,42 @@ class PlotService:
         # Define labels for different sensor types
         sensor_labels = {
             # NTC sensors
-            'NTCs': 'Temperature (°C)',
+            "NTCs": "Temperature (°C)",
             # Individual NTC sensors also use temperature
-            **{f'NTC{i:02d}': 'Temperature (°C)' for i in range(1, 23)},
-
+            **{f"NTC{i:02d}": "Temperature (°C)" for i in range(1, 23)},
             # PT100
-            'Temp': 'Temperature (°C)',
-
+            "Temp": "Temperature (°C)",
             # Voltage sensors
-            'Vheat': 'Heating Voltage (V)',
-            'Vbatt': 'Battery Voltage (V)',
-            'Vaccu': 'Accumulator Voltage (V)',
-
+            "Vheat": "Heating Voltage (V)",
+            "Vbatt": "Battery Voltage (V)",
+            "Vaccu": "Accumulator Voltage (V)",
             # Current sensors
-            'Iheat': 'Heating Current (A)',
-
+            "Iheat": "Heating Current (A)",
             # Pressure sensors
-            'Press': 'Pressure (hPa)',
-
+            "Press": "Pressure (hPa)",
             # Tilt sensors
-            'TiltX': 'Tilt X-Axis (°)',
-            'TiltY': 'Tilt Y-Axis (°)',
-            'ACCz': 'Acceleration Z-Axis (m/s²)',
-
+            "TiltX": "Tilt X-Axis (°)",
+            "TiltY": "Tilt Y-Axis (°)",
+            "ACCz": "Acceleration Z-Axis (m/s²)",
             # Calculated values
-            'HP-Power': 'Heating Power (W)',
+            "HP-Power": "Heating Power (W)",
         }
 
-        return sensor_labels.get(sensor_name, 'Value')
+        return sensor_labels.get(sensor_name, "Value")
 
 
 class PlotWidget(QWidget):
     """
     Custom plot widget for displaying temperature sensor data.
-    
+
     This widget integrates matplotlib with PyQt6 to provide interactive
     plotting capabilities for the WIZARD-2.1 application.
     """
-    
+
     def __init__(self, parent: QWidget, plot_service: PlotService):
         """
         Initialize the plot widget.
-        
+
         Args:
             parent: Parent widget
             plot_service: Plot service instance for styling and configuration
@@ -234,21 +236,21 @@ class PlotWidget(QWidget):
         super().__init__(parent)
         self.plot_service = plot_service
         self.logger = logging.getLogger(__name__)
-        
+
         self.logger.info("Initializing PlotWidget...")
-        
+
         # Data storage
         self.tob_data_model: Optional[TOBDataModel] = None
         self.selected_sensors: List[str] = []
         self.axis_settings: Dict[str, Any] = {
-            'x_axis': 'Time',
-            'y1_axis': 'NTC01',
-            'y2_axis': 'Temp',  # PT100 data is in 'Temp' column
-            'x_auto': True,
-            'y1_auto': True,
-            'y2_auto': True
+            "x_axis": "Time",
+            "y1_axis": "NTC01",
+            "y2_axis": "Temp",  # PT100 data is in 'Temp' column
+            "x_auto": True,
+            "y1_auto": True,
+            "y2_auto": True,
         }
-        
+
         # Matplotlib setup
         self.logger.info("Setting up matplotlib...")
         self._setup_matplotlib()
@@ -256,35 +258,37 @@ class PlotWidget(QWidget):
         self._create_plot_canvas()
         self.logger.info("Setting up plot layout...")
         self._setup_plot_layout()
-        
+
         self.logger.info("PlotWidget initialized successfully")
 
     def _setup_matplotlib(self):
         """Configure matplotlib for professional plotting."""
         try:
             # Set matplotlib style
-            plt.style.use('default')
-            
+            plt.style.use("default")
+
             # Configure matplotlib parameters for better appearance
-            plt.rcParams.update({
-                'font.size': 10,
-                'font.family': 'sans-serif',
-                'axes.linewidth': 1.2,
-                'axes.grid': True,
-                'grid.alpha': 0.3,
-                'figure.facecolor': 'white',
-                'axes.facecolor': 'white',
-                'axes.edgecolor': '#333333',
-                'xtick.color': '#333333',
-                'ytick.color': '#333333',
-                'text.color': '#333333',
-                'axes.labelcolor': '#333333',
-                'axes.titlesize': 12,
-                'axes.labelsize': 10,
-                'xtick.labelsize': 9,
-                'ytick.labelsize': 9
-            })
-            
+            plt.rcParams.update(
+                {
+                    "font.size": 10,
+                    "font.family": "sans-serif",
+                    "axes.linewidth": 1.2,
+                    "axes.grid": True,
+                    "grid.alpha": 0.3,
+                    "figure.facecolor": "white",
+                    "axes.facecolor": "white",
+                    "axes.edgecolor": "#333333",
+                    "xtick.color": "#333333",
+                    "ytick.color": "#333333",
+                    "text.color": "#333333",
+                    "axes.labelcolor": "#333333",
+                    "axes.titlesize": 12,
+                    "axes.labelsize": 10,
+                    "xtick.labelsize": 9,
+                    "ytick.labelsize": 9,
+                }
+            )
+
             self.logger.debug("Matplotlib configured successfully")
         except Exception as e:
             self.logger.error("Failed to configure matplotlib: %s", e)
@@ -295,7 +299,7 @@ class PlotWidget(QWidget):
         try:
             # Create figure with subplots
             self.figure = Figure(figsize=(12, 8), dpi=100)
-            self.figure.patch.set_facecolor('white')
+            self.figure.patch.set_facecolor("white")
 
             # Set tight layout and minimal margins by default
             self.figure.tight_layout(pad=0.5)
@@ -319,22 +323,22 @@ class PlotWidget(QWidget):
         """Setup the plot layout and styling."""
         try:
             # Configure axes
-            self.ax1.set_xlabel('Time', fontweight='bold')
+            self.ax1.set_xlabel("Time", fontweight="bold")
 
             # Set initial Y-axis label (will be updated dynamically when sensors are selected)
             if self.selected_sensors:
                 primary_sensor = self.selected_sensors[0]
                 y_label = self.plot_service._get_y_axis_label(primary_sensor)
             else:
-                y_label = 'Value'
+                y_label = "Value"
 
-            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
+            self.ax1.set_ylabel(y_label, fontweight="bold", color="black")
 
             # Set axis colors
-            self.ax1.tick_params(axis='y', labelcolor='black')
-            
+            self.ax1.tick_params(axis="y", labelcolor="black")
+
             # Configure grid
-            self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+            self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
             # Add canvas to existing layout (from UI file)
             if self.layout() is not None:
@@ -344,11 +348,12 @@ class PlotWidget(QWidget):
             else:
                 # Fallback: create new layout if none exists
                 from PyQt6.QtWidgets import QVBoxLayout
+
                 layout = QVBoxLayout()
                 layout.addWidget(self.canvas)
                 self.setLayout(layout)
                 self.logger.debug("Canvas added to new layout (fallback)")
-            
+
             self.logger.debug("Plot layout configured successfully")
         except Exception as e:
             self.logger.error("Failed to setup plot layout: %s", e)
@@ -357,7 +362,7 @@ class PlotWidget(QWidget):
     def update_data(self, tob_data_model: TOBDataModel):
         """
         Update the plot with new TOB data.
-        
+
         Args:
             tob_data_model: TOB data model containing sensor data
         """
@@ -377,7 +382,11 @@ class PlotWidget(QWidget):
             selected_sensors: List of selected sensor names
         """
         try:
-            self.logger.debug("PlotWidget: updating sensor selection from %s to %s", self.selected_sensors, selected_sensors)
+            self.logger.debug(
+                "PlotWidget: updating sensor selection from %s to %s",
+                self.selected_sensors,
+                selected_sensors,
+            )
             self.selected_sensors = selected_sensors.copy()
             self.logger.debug("Sensor selection updated: %s", selected_sensors)
             self._refresh_plot()
@@ -385,19 +394,22 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to update sensor selection: %s", e)
             raise
 
-
     def _refresh_plot(self):
         """Refresh the plot with current data and settings."""
         try:
             if not self.tob_data_model or self.tob_data_model.data is None:
                 self._clear_plot()
                 return
-            
+
             # Clear previous plots
             lines_before = len(self.ax1.get_lines())
             self.ax1.clear()
             lines_after_clear = len(self.ax1.get_lines())
-            self.logger.debug("Cleared plot: %d lines before, %d lines after", lines_before, lines_after_clear)
+            self.logger.debug(
+                "Cleared plot: %d lines before, %d lines after",
+                lines_before,
+                lines_after_clear,
+            )
 
             # Get time data
             time_data = self.tob_data_model.get_time_column()
@@ -406,14 +418,16 @@ class PlotWidget(QWidget):
                 return
 
             # Get time unit from settings
-            time_unit = self.axis_settings.get('x_axis_type', 'Seconds')
+            time_unit = self.axis_settings.get("x_axis_type", "Seconds")
 
             # Format time axis
-            time_values, time_labels = self.plot_service.format_time_axis(time_data, time_unit)
-            
+            time_values, time_labels = self.plot_service.format_time_axis(
+                time_data, time_unit
+            )
+
             # Plot selected sensors
             self._plot_sensors(time_values)
-            
+
             # Configure axes
             self._configure_axes(time_values, time_unit)
 
@@ -426,6 +440,7 @@ class PlotWidget(QWidget):
 
             # Force Qt event processing to ensure GUI updates
             from PyQt6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app:
                 app.processEvents()
@@ -448,13 +463,17 @@ class PlotWidget(QWidget):
         try:
             if not self.tob_data_model or self.tob_data_model.data is None:
                 return
-            
+
             data = self.tob_data_model.data
-            
+
             for sensor in self.selected_sensors:
                 # Special handling for NTCs group - plot all NTC sensors
                 if sensor == "NTCs":
-                    ntc_sensors = [col for col in data.columns if col.startswith('NTC') and col[3:].isdigit()]
+                    ntc_sensors = [
+                        col
+                        for col in data.columns
+                        if col.startswith("NTC") and col[3:].isdigit()
+                    ]
                     for ntc_sensor in ntc_sensors:
                         if ntc_sensor not in data.columns:
                             continue
@@ -472,9 +491,15 @@ class PlotWidget(QWidget):
                         ax = self.ax1
 
                         # Plot the data
-                        ax.plot(time_values[:len(sensor_data)], sensor_data.values,
-                               color=color, linestyle=line_style, linewidth=line_width,
-                               label=ntc_sensor, alpha=0.8)
+                        ax.plot(
+                            time_values[: len(sensor_data)],
+                            sensor_data.values,
+                            color=color,
+                            linestyle=line_style,
+                            linewidth=line_width,
+                            label=ntc_sensor,
+                            alpha=0.8,
+                        )
 
                     continue  # Skip to next sensor in selected_sensors
 
@@ -493,12 +518,18 @@ class PlotWidget(QWidget):
 
                 # All sensors plot on main axis (ax1)
                 ax = self.ax1
-                
+
                 # Plot the data
-                ax.plot(time_values[:len(sensor_data)], sensor_data.values,
-                       color=color, linestyle=line_style, linewidth=line_width,
-                       label=sensor, alpha=0.8)
-            
+                ax.plot(
+                    time_values[: len(sensor_data)],
+                    sensor_data.values,
+                    color=color,
+                    linestyle=line_style,
+                    linewidth=line_width,
+                    label=sensor,
+                    alpha=0.8,
+                )
+
             self.logger.debug("Sensors plotted successfully")
         except Exception as e:
             self.logger.error("Failed to plot sensors: %s", e)
@@ -508,7 +539,7 @@ class PlotWidget(QWidget):
         """Configure the plot axes."""
         try:
             # X-axis configuration
-            if self.axis_settings.get('x_auto', True):
+            if self.axis_settings.get("x_auto", True):
                 # Always start from 0, not from data minimum
                 if len(time_values) > 0:
                     x_max = time_values.max()
@@ -520,7 +551,7 @@ class PlotWidget(QWidget):
                 pass
 
             # Y-axis configuration
-            if self.axis_settings.get('y1_auto', True):
+            if self.axis_settings.get("y1_auto", True):
                 self.ax1.set_ylim(auto=True)
             else:
                 # Manual y1-axis limits would be set here
@@ -528,7 +559,7 @@ class PlotWidget(QWidget):
 
             # Set labels
             x_label = f"Time ({time_unit})"
-            self.ax1.set_xlabel(x_label, fontweight='bold')
+            self.ax1.set_xlabel(x_label, fontweight="bold")
 
             # Determine Y-axis label based on selected sensors
             if self.selected_sensors:
@@ -536,12 +567,12 @@ class PlotWidget(QWidget):
                 primary_sensor = self.selected_sensors[0]
                 y_label = self.plot_service._get_y_axis_label(primary_sensor)
             else:
-                y_label = 'Value'
+                y_label = "Value"
 
-            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
+            self.ax1.set_ylabel(y_label, fontweight="bold", color="black")
 
             # Configure grid
-            self.ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+            self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
             # Remove margins and use tight layout for no wasted space
             self.ax1.margins(x=0, y=0.05)  # Small y-margin for labels, no x-margin
@@ -559,10 +590,16 @@ class PlotWidget(QWidget):
             lines1, labels1 = self.ax1.get_legend_handles_labels()
 
             if lines1:
-                self.ax1.legend(lines1, labels1,
-                              loc='upper right', frameon=True, fancybox=True,
-                              shadow=True, framealpha=0.9)
-            
+                self.ax1.legend(
+                    lines1,
+                    labels1,
+                    loc="upper right",
+                    frameon=True,
+                    fancybox=True,
+                    shadow=True,
+                    framealpha=0.9,
+                )
+
             self.logger.debug("Legend added successfully")
         except Exception as e:
             self.logger.error("Failed to add legend: %s", e)
@@ -573,36 +610,44 @@ class PlotWidget(QWidget):
         try:
             self.ax1.clear()
             self.ax2.clear()
-            
+
             # Show placeholder message
-            self.ax1.text(0.5, 0.5, 'No data available for plotting',
-                         transform=self.ax1.transAxes, ha='center', va='center',
-                         fontsize=14, color='#666666')
-            
+            self.ax1.text(
+                0.5,
+                0.5,
+                "No data available for plotting",
+                transform=self.ax1.transAxes,
+                ha="center",
+                va="center",
+                fontsize=14,
+                color="#666666",
+            )
+
             # Configure empty plot
-            self.ax1.set_xlabel('Time', fontweight='bold')
+            self.ax1.set_xlabel("Time", fontweight="bold")
             # Use default label for empty plot
-            self.ax1.set_ylabel('Value', fontweight='bold', color='black')
-            
+            self.ax1.set_ylabel("Value", fontweight="bold", color="black")
+
             self.canvas.draw()
-            
+
             self.logger.debug("Plot cleared successfully")
         except Exception as e:
             self.logger.error("Failed to clear plot: %s", e)
             raise
 
-    def export_plot(self, filename: str, format: str = 'png', dpi: int = 300):
+    def export_plot(self, filename: str, format: str = "png", dpi: int = 300):
         """
         Export the current plot to a file.
-        
+
         Args:
             filename: Output filename
             format: Export format (png, pdf, svg, etc.)
             dpi: Resolution for raster formats
         """
         try:
-            self.figure.savefig(filename, format=format, dpi=dpi, 
-                              bbox_inches='tight', facecolor='white')
+            self.figure.savefig(
+                filename, format=format, dpi=dpi, bbox_inches="tight", facecolor="white"
+            )
             self.logger.info("Plot exported to %s", filename)
         except Exception as e:
             self.logger.error("Failed to export plot: %s", e)
@@ -611,16 +656,21 @@ class PlotWidget(QWidget):
     def get_plot_info(self) -> Dict[str, Any]:
         """
         Get information about the current plot.
-        
+
         Returns:
             Dictionary containing plot information
         """
         try:
             return {
-                'sensors_plotted': len(self.selected_sensors),
-                'data_points': len(self.tob_data_model.data) if self.tob_data_model and self.tob_data_model.data is not None else 0,
-                'axis_settings': self.axis_settings.copy(),
-                'has_data': self.tob_data_model is not None and self.tob_data_model.data is not None
+                "sensors_plotted": len(self.selected_sensors),
+                "data_points": (
+                    len(self.tob_data_model.data)
+                    if self.tob_data_model and self.tob_data_model.data is not None
+                    else 0
+                ),
+                "axis_settings": self.axis_settings.copy(),
+                "has_data": self.tob_data_model is not None
+                and self.tob_data_model.data is not None,
             }
         except Exception as e:
             self.logger.error("Failed to get plot info: %s", e)
@@ -636,15 +686,17 @@ class PlotWidget(QWidget):
         try:
             # Extract sensor selections from axis settings
             sensor_updates = []
-            if 'y1_sensor' in axis_settings:
-                sensor_updates.append(axis_settings['y1_sensor'])
-            if 'y2_sensor' in axis_settings and axis_settings['y2_sensor'] != 'None':
-                sensor_updates.append(axis_settings['y2_sensor'])
+            if "y1_sensor" in axis_settings:
+                sensor_updates.append(axis_settings["y1_sensor"])
+            if "y2_sensor" in axis_settings and axis_settings["y2_sensor"] != "None":
+                sensor_updates.append(axis_settings["y2_sensor"])
 
             # Update sensor selection if sensors changed
             if sensor_updates:
                 self.update_sensor_selection(sensor_updates)
-                self.logger.debug("Sensor selection updated from axis settings: %s", sensor_updates)
+                self.logger.debug(
+                    "Sensor selection updated from axis settings: %s", sensor_updates
+                )
 
             # Update axis settings
             self.axis_settings.update(axis_settings)
@@ -673,7 +725,9 @@ class PlotWidget(QWidget):
                 self.logger.warning("No axes available for X-limits update")
                 return
 
-            self.logger.debug("Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Set X-axis limits
             self.ax1.set_xlim(min_value, max_value)
@@ -698,18 +752,18 @@ class PlotWidget(QWidget):
                 return
 
             # Update X-axis label based on time unit
-            time_unit = self.axis_settings.get('x_axis_type', 'Seconds')
+            time_unit = self.axis_settings.get("x_axis_type", "Seconds")
             x_label = f"Time ({time_unit})"
-            self.ax1.set_xlabel(x_label, fontweight='bold')
+            self.ax1.set_xlabel(x_label, fontweight="bold")
 
             # Update Y-axis labels based on selected sensors
             if self.selected_sensors:
                 primary_sensor = self.selected_sensors[0]
                 y_label = self.plot_service._get_y_axis_label(primary_sensor)
             else:
-                y_label = 'Value'
+                y_label = "Value"
 
-            self.ax1.set_ylabel(y_label, fontweight='bold', color='black')
+            self.ax1.set_ylabel(y_label, fontweight="bold", color="black")
 
             # Force redraw of labels
             self.canvas.draw_idle()
@@ -731,7 +785,9 @@ class PlotWidget(QWidget):
                 self.logger.warning("No axes available for Y1-limits update")
                 return
 
-            self.logger.debug("Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Set Y1-axis limits
             self.ax1.set_ylim(min_value, max_value)
@@ -762,7 +818,9 @@ class PlotWidget(QWidget):
                 self.logger.warning("No axes available for Y2-limits update")
                 return
 
-            self.logger.debug("Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value)
+            self.logger.debug(
+                "Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value
+            )
 
             # Set Y2-axis limits
             self.ax2.set_ylim(min_value, max_value)

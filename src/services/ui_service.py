@@ -9,9 +9,15 @@ import platform
 from typing import Any, Dict, Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QPainter, QPen, QColor, QPixmap, QPalette
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QLabel, QLineEdit,
-                             QPushButton, QWidget)
+from PyQt6.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+)
 
 
 class UIService:
@@ -34,26 +40,28 @@ class UIService:
             Dictionary of platform quirks and their status
         """
         quirks = {
-            'palette_override_needed': False,
-            'stylesheet_priority': False,
-            'combobox_view_palette_bug': False,
-            'itemdata_foreground_bug': False,
+            "palette_override_needed": False,
+            "stylesheet_priority": False,
+            "combobox_view_palette_bug": False,
+            "itemdata_foreground_bug": False,
         }
 
         # Windows sometimes needs stronger palette overrides
         if self.current_platform == "Windows":
-            quirks['palette_override_needed'] = True
-            quirks['stylesheet_priority'] = True
+            quirks["palette_override_needed"] = True
+            quirks["stylesheet_priority"] = True
 
         # Some Linux distributions have issues with combobox view palettes
         elif self.current_platform == "Linux":
-            quirks['combobox_view_palette_bug'] = True
+            quirks["combobox_view_palette_bug"] = True
 
         # macOS generally works well with standard Qt approaches
         elif self.current_platform == "Darwin":
             pass  # No known quirks
 
-        self.logger.debug(f"Detected platform quirks for {self.current_platform}: {quirks}")
+        self.logger.debug(
+            f"Detected platform quirks for {self.current_platform}: {quirks}"
+        )
         return quirks
 
     def setup_fonts(self, widget: QWidget) -> bool:
@@ -151,8 +159,9 @@ class UIService:
             widget: The widget to set text colors for
         """
         import os
+
         # Skip GUI operations in headless CI environment
-        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+        if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
             self.logger.debug("Skipping text color fixes in headless environment")
             return
 
@@ -203,11 +212,13 @@ class UIService:
                 if combo_box.view():
                     view_palette = combo_box.view().palette()
                     view_palette.setColor(QPalette.ColorRole.Text, text_color)
-                    view_palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+                    view_palette.setColor(
+                        QPalette.ColorRole.HighlightedText, text_color
+                    )
                     combo_box.view().setPalette(view_palette)
 
                 # Apply platform-specific fixes
-                if self._platform_quirks['stylesheet_priority']:
+                if self._platform_quirks["stylesheet_priority"]:
                     # On Windows, apply stylesheet first for higher priority
                     current_style = combo_box.styleSheet()
                     text_color_css = "color: black;"
@@ -218,13 +229,15 @@ class UIService:
                             combo_box.setStyleSheet(text_color_css)
 
                 # Force color for all items in the combobox (unless known bug)
-                if not self._platform_quirks['itemdata_foreground_bug']:
+                if not self._platform_quirks["itemdata_foreground_bug"]:
                     for i in range(combo_box.count()):
                         # This helps ensure item text is visible
-                        combo_box.setItemData(i, text_color, Qt.ItemDataRole.ForegroundRole)
+                        combo_box.setItemData(
+                            i, text_color, Qt.ItemDataRole.ForegroundRole
+                        )
 
                 # Apply stylesheet as fallback (unless already applied for Windows)
-                if not self._platform_quirks['stylesheet_priority']:
+                if not self._platform_quirks["stylesheet_priority"]:
                     current_style = combo_box.styleSheet()
                     text_color_css = "color: black;"
                     if text_color_css not in current_style:
@@ -246,8 +259,9 @@ class UIService:
             combo_box: The QComboBox to fix colors for
         """
         import os
+
         # Skip GUI operations in headless CI environment
-        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+        if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
             self.logger.debug("Skipping combobox color fixes in headless environment")
             return
 
@@ -270,7 +284,7 @@ class UIService:
                 combo_box.view().setPalette(view_palette)
 
             # Force color for all items (unless known platform bug)
-            if not self._platform_quirks['itemdata_foreground_bug']:
+            if not self._platform_quirks["itemdata_foreground_bug"]:
                 for i in range(combo_box.count()):
                     combo_box.setItemData(i, text_color, Qt.ItemDataRole.ForegroundRole)
 
@@ -337,41 +351,50 @@ class UIService:
             # Y1 and Y2 axis options (all available sensors and calculated values)
             sensor_options = [
                 # Temperature sensors
-                "NTCs",    # All NTC temperature sensors (NTC01-NTC22)
-                "Temp",    # PT100 data is in 'Temp' column
-
+                "NTCs",  # All NTC temperature sensors (NTC01-NTC22)
+                "Temp",  # PT100 data is in 'Temp' column
                 # Other sensors
-                "Press",   # Pressure sensor
-                "Vheat",   # Heating voltage
-                "Iheat",   # Heating current
-                "TiltX",   # Tilt sensor X-axis
-                "TiltY",   # Tilt sensor Y-axis
-                "ACCz",    # Acceleration Z-axis
-                "Vbatt",   # Battery voltage
-                "Vaccu",   # Accumulator voltage
-
+                "Press",  # Pressure sensor
+                "Vheat",  # Heating voltage
+                "Iheat",  # Heating current
+                "TiltX",  # Tilt sensor X-axis
+                "TiltY",  # Tilt sensor Y-axis
+                "ACCz",  # Acceleration Z-axis
+                "Vbatt",  # Battery voltage
+                "Vaccu",  # Accumulator voltage
                 # Calculated values
-                "HP-Power", # Calculated heating power (Vheat * Iheat)
+                "HP-Power",  # Calculated heating power (Vheat * Iheat)
             ]
 
             # Setup Y1 axis combo
-            if "y1_axis_combo" in axis_combos and axis_combos["y1_axis_combo"] is not None:
+            if (
+                "y1_axis_combo" in axis_combos
+                and axis_combos["y1_axis_combo"] is not None
+            ):
                 axis_combos["y1_axis_combo"].addItems(sensor_options)
                 axis_combos["y1_axis_combo"].setCurrentText("NTC01")
                 # Ensure text colors are set for this combobox
                 self._fix_combobox_colors(axis_combos["y1_axis_combo"])
 
             # Setup Y2 axis combo (same options as Y1 plus "None")
-            if "y2_axis_combo" in axis_combos and axis_combos["y2_axis_combo"] is not None:
+            if (
+                "y2_axis_combo" in axis_combos
+                and axis_combos["y2_axis_combo"] is not None
+            ):
                 y2_options = ["None"] + sensor_options
                 axis_combos["y2_axis_combo"].addItems(y2_options)
-                axis_combos["y2_axis_combo"].setCurrentText("None")  # Default to no Y2 axis
+                axis_combos["y2_axis_combo"].setCurrentText(
+                    "None"
+                )  # Default to no Y2 axis
                 # Ensure text colors are set for this combobox
                 self._fix_combobox_colors(axis_combos["y2_axis_combo"])
 
             # X axis options (time-based)
             time_options = ["Seconds", "Minutes", "Hours"]
-            if "x_axis_combo" in axis_combos and axis_combos["x_axis_combo"] is not None:
+            if (
+                "x_axis_combo" in axis_combos
+                and axis_combos["x_axis_combo"] is not None
+            ):
                 axis_combos["x_axis_combo"].addItems(time_options)
                 axis_combos["x_axis_combo"].setCurrentText("Seconds")
                 # Ensure text colors are set for this combobox
@@ -468,8 +491,9 @@ class UIService:
             style_info: Style information (color, line_style, line_width)
         """
         import os
+
         # Skip GUI operations in headless CI environment
-        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+        if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
             self.logger.debug("Skipping pixmap update in headless environment")
             return
 
@@ -490,16 +514,16 @@ class UIService:
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        color = QColor(style_info.get('color', '#000000'))
-        line_style_str = style_info.get('line_style', '-')
-        line_width = style_info.get('line_width', 1.5)
+        color = QColor(style_info.get("color", "#000000"))
+        line_style_str = style_info.get("line_style", "-")
+        line_width = style_info.get("line_width", 1.5)
 
         qt_line_style = Qt.PenStyle.SolidLine
-        if line_style_str == '--':
+        if line_style_str == "--":
             qt_line_style = Qt.PenStyle.DashLine
-        elif line_style_str == ':':
+        elif line_style_str == ":":
             qt_line_style = Qt.PenStyle.DotLine
-        elif line_style_str == '-.':
+        elif line_style_str == "-.":
             qt_line_style = Qt.PenStyle.DashDotLine
 
         pen = QPen(color, line_width)
@@ -518,7 +542,9 @@ class UIService:
 
         self.logger.debug(f"Updated pixmap for label with style: {style_info}")
 
-    def setup_label_indicator(self, label: QLabel, style_info: Dict[str, Any]) -> QLabel:
+    def setup_label_indicator(
+        self, label: QLabel, style_info: Dict[str, Any]
+    ) -> QLabel:
         """
         Set up a QLabel as a style indicator with automatic resize handling.
 
@@ -542,7 +568,7 @@ class UIService:
             if original_resize_event:
                 original_resize_event(event)
             # Update pixmap when label is resized
-            if hasattr(label, '_style_info'):
+            if hasattr(label, "_style_info"):
                 self.update_label_pixmap(label, label._style_info)
 
         label.resizeEvent = styled_resize_event

@@ -75,9 +75,9 @@ class UIStateManager:
             self.plot_container.setMinimumHeight(0)
             # Reset size policy
             from PyQt6.QtWidgets import QSizePolicy
+
             self.plot_container.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Preferred
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
             self.logger.info("Plot container hidden and resized")
 
@@ -98,16 +98,18 @@ class UIStateManager:
         if self.welcome_container and self.plot_container:
             # Copy size policy from welcome container to plot container
             self.plot_container.setSizePolicy(self.welcome_container.sizePolicy())
-            
+
             # Hide welcome container
             self.welcome_container.setVisible(False)
             self.logger.info("Welcome container hidden")
-            
+
             # Show plot container
             self.plot_container.setVisible(True)
             # Remove height restrictions to make container visible
             self.plot_container.setMaximumHeight(16777215)  # Qt's maximum value
-            self.plot_container.setMinimumHeight(200)  # Set minimum height for visibility
+            self.plot_container.setMinimumHeight(
+                200
+            )  # Set minimum height for visibility
             self.logger.info("Plot container shown and resized")
 
         self.current_state = UIState.PLOT
@@ -147,9 +149,12 @@ class UIStateManager:
         Returns:
             True if containers are valid, False otherwise
         """
-        self.logger.info("Validating containers - welcome: %s, plot: %s", 
-                         self.welcome_container is not None, self.plot_container is not None)
-        
+        self.logger.info(
+            "Validating containers - welcome: %s, plot: %s",
+            self.welcome_container is not None,
+            self.plot_container is not None,
+        )
+
         if not self.welcome_container:
             self.logger.error("Welcome container not set")
             return False

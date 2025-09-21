@@ -7,11 +7,11 @@ Also provides utility methods for updating QLabel pixmaps.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
-from PyQt6.QtWidgets import QWidget, QLabel
+from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap
+from PyQt6.QtWidgets import QLabel, QWidget
 
 
 class StyleIndicatorWidget(QWidget):
@@ -22,7 +22,9 @@ class StyleIndicatorWidget(QWidget):
     the exact same line style and color that appears in the plot.
     """
 
-    def __init__(self, sensor_name: str, style_info: Dict[str, Any], parent: QWidget = None):
+    def __init__(
+        self, sensor_name: str, style_info: Dict[str, Any], parent: QWidget = None
+    ):
         """
         Initialize the style indicator widget.
 
@@ -39,7 +41,9 @@ class StyleIndicatorWidget(QWidget):
         # Fixed size for consistency
         self.setFixedSize(32, 16)
 
-        self.logger.debug(f"StyleIndicatorWidget for {sensor_name} initialized with style: {style_info}")
+        self.logger.debug(
+            f"StyleIndicatorWidget for {sensor_name} initialized with style: {style_info}"
+        )
 
     def update_style(self, style_info: Dict[str, Any]):
         """
@@ -63,17 +67,17 @@ class StyleIndicatorWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Get style properties
-        color = QColor(self._style_info.get('color', '#000000'))
-        line_style_str = self._style_info.get('line_style', '-')
-        line_width = self._style_info.get('line_width', 1.5)
+        color = QColor(self._style_info.get("color", "#000000"))
+        line_style_str = self._style_info.get("line_style", "-")
+        line_width = self._style_info.get("line_width", 1.5)
 
         # Convert matplotlib line styles to Qt pen styles
         qt_line_style = Qt.PenStyle.SolidLine
-        if line_style_str == '--':
+        if line_style_str == "--":
             qt_line_style = Qt.PenStyle.DashLine
-        elif line_style_str == ':':
+        elif line_style_str == ":":
             qt_line_style = Qt.PenStyle.DotLine
-        elif line_style_str == '-.':
+        elif line_style_str == "-.":
             qt_line_style = Qt.PenStyle.DashDotLine
 
         # Create and configure the pen
