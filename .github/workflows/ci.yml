@@ -59,6 +59,7 @@ jobs:
         # Install essential packages for comprehensive testing
         pip install --quiet pandas>=2.2.0
         pip install --quiet numpy>=1.26.0
+        pip install --quiet matplotlib>=3.8.0
         pip install --quiet pydantic>=2.5.0
         pip install --quiet cryptography>=42.0.0
         # Add PyQt6 for full testing (Phase 3A)
@@ -73,6 +74,8 @@ jobs:
 
     - name: Run all unit tests (Phase 3A)
       run: |
+        # Set matplotlib backend for headless testing
+        export MPLBACKEND=Agg
         # Run all unit tests now that PyQt6 is available (Phase 3A)
         pytest tests/unit/ -v --tb=short --durations=5 --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=70
 
