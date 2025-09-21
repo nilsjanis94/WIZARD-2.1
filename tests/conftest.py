@@ -45,7 +45,11 @@ def qt_app() -> Generator[QApplication, None, None]:
     # In headless CI environment (Linux), skip Qt application creation to prevent crashes
     # On Windows, Qt works natively so we allow it
     import platform
-    if os.environ.get("QT_QPA_PLATFORM") == "offscreen" and platform.system() == "Linux":
+
+    if (
+        os.environ.get("QT_QPA_PLATFORM") == "offscreen"
+        and platform.system() == "Linux"
+    ):
         pytest.skip("Skipping Qt application in headless Linux environment")
 
     # Check if QApplication already exists

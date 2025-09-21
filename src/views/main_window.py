@@ -25,12 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ..services.axis_ui_service import AxisUIService
-from ..services.data_service import DataService
-from ..services.plot_service import PlotService
-from ..services.plot_style_service import PlotStyleService
-from ..services.ui_service import UIService
-from ..services.ui_state_manager import UIStateManager
+# Services are injected by controller - no direct imports needed
 from ..utils.error_handler import ErrorHandler
 
 
@@ -65,25 +60,63 @@ class MainWindow(QMainWindow):
         self.controller = controller
         self.error_handler = ErrorHandler()
 
-        # Initialize services
-        self.ui_state_manager = UIStateManager()
-        self.ui_service = UIService()
-        self.axis_ui_service = AxisUIService()
-        self.data_service = DataService()
-        self.plot_service = PlotService()
+        # Services are injected by controller
+        self.ui_state_manager = None
+        self.ui_service = None
+        self.axis_ui_service = None
+        self.data_service = None
+        self.plot_service = None
 
         # UI state
         self.current_file_path: Optional[str] = None
         self.current_project_path: Optional[str] = None
         self.is_data_loaded = False
 
-        # Initialize UI components
-        self._setup_ui()
-        self._connect_signals()
-        self._setup_menu_bar()
+    def set_services(self, services: Dict[str, Any]) -> None:
+        """
+        Inject services from the controller.
+
+        Args:
+            services: Dictionary containing service instances
+        """
+        self.ui_state_manager = services.get("ui_state_manager")
+        self.ui_service = services.get("ui_service")
+        self.axis_ui_service = services.get("axis_ui_service")
+        self.data_service = services.get("data_service")
+        self.plot_service = services.get("plot_service")
+        self.plot_style_service = services.get("plot_style_service")
+
+        self.logger.info("Services injected successfully")
+
+        # Initialize UI components only if all required services are available
+        if self._are_services_available():
+            self._setup_ui()
+            self._connect_signals()
+            self._setup_menu_bar()
+        else:
+            self.logger.warning(
+                "Not all services available - UI initialization deferred"
+            )
         self._setup_status_bar()
 
         self.logger.info("Main window initialized successfully")
+
+    def _are_services_available(self) -> bool:
+        """
+        Check if all required services are available.
+
+        Returns:
+            True if all services are injected, False otherwise
+        """
+        required_services = [
+            self.ui_state_manager,
+            self.ui_service,
+            self.axis_ui_service,
+            self.data_service,
+            self.plot_service,
+            self.plot_style_service,
+        ]
+        return all(service is not None for service in required_services)
 
     def _setup_ui(self):
         """
@@ -171,8 +204,7 @@ class MainWindow(QMainWindow):
         if self.ntc_pt100_checkbox:
             self.ntc_checkboxes["Temp"] = self.ntc_pt100_checkbox
 
-        # Initialize plot style service (central style definitions)
-        self.plot_style_service = PlotStyleService()
+        # plot_style_service is now injected by controller
 
         # Create style indicators for NTC checkboxes (delayed setup)
         from PyQt6.QtCore import QTimer
@@ -466,17 +498,26 @@ class MainWindow(QMainWindow):
         self.ui_state_manager.show_plot_mode()
         self.logger.debug("Plot area displayed")
 
-    def _reset_data_metrics(self):
+    def get_metrics_widgets(self) -> Dict[str, 'QLineEdit']:
         """
-        Reset data metrics to default values.
+        Get dictionary of metrics widget references.
+
+        Returns:
+            Dictionary mapping metric names to widget references
         """
-        # Use data service for metrics reset
-        metrics_widgets = {
+        return {
             "mean_hp_power_value": self.mean_hp_power_value,
             "max_v_accu_value": self.max_v_accu_value,
             "tilt_status_value": self.tilt_status_value,
             "mean_press_value": self.mean_press_value,
         }
+
+    def _reset_data_metrics(self):
+        """
+        Reset data metrics to default values.
+        """
+        # Use data service for metrics reset
+        metrics_widgets = self.get_metrics_widgets()
         self.data_service.reset_data_metrics(metrics_widgets)
 
     def _reset_project_info(self):
@@ -974,6 +1015,29 @@ class MainWindow(QMainWindow):
                 )
         except Exception as e:
             self.logger.error("Failed to update plot Y2-axis limits: %s", e)
+
+    def _handle_plot_axis_limits_update(
+        self, axis: str, min_value: float, max_value: float
+    ):
+        """
+        Handle plot axis limits update signal from controller.
+
+        Args:
+            axis: Axis identifier ('x', 'y1', 'y2')
+            min_value: Minimum value for axis
+            max_value: Maximum value for axis
+        """
+        try:
+            if axis == "x":
+                self.update_plot_x_limits(min_value, max_value)
+            elif axis == "y1":
+                self.update_plot_y1_limits(min_value, max_value)
+            elif axis == "y2":
+                self.update_plot_y2_limits(min_value, max_value)
+            else:
+                self.logger.warning("Unknown axis for limits update: %s", axis)
+        except Exception as e:
+            self.logger.error("Failed to handle plot axis limits update: %s", e)
             self.error_handler.handle_error(e, self, "Plot Y2-Axis Limits Update Error")
 
     def get_plot_info(self) -> Dict[str, Any]:

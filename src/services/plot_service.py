@@ -458,6 +458,23 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to refresh plot: %s", e)
             raise
 
+    # Delegate axis limit updates to the plot service
+    def update_x_limits(self, min_value: float, max_value: float):
+        """Delegate X-axis limit updates to plot service."""
+        self.plot_service.update_x_limits(min_value, max_value)
+
+    def update_y1_limits(self, min_value: float, max_value: float):
+        """Delegate Y1-axis limit updates to plot service."""
+        self.plot_service.update_y1_limits(min_value, max_value)
+
+    def update_y2_limits(self, min_value: float, max_value: float):
+        """Delegate Y2-axis limit updates to plot service."""
+        self.plot_service.update_y2_limits(min_value, max_value)
+
+    def update_axis_settings(self, axis_settings: Dict[str, Any]):
+        """Delegate axis settings updates to plot service."""
+        self.plot_service.update_axis_settings(axis_settings)
+
     def _plot_sensors(self, time_values: np.ndarray):
         """Plot the selected sensors."""
         try:

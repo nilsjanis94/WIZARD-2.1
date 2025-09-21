@@ -13,12 +13,15 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from ..models.project_model import ProjectModel
 from ..models.tob_data_model import TOBDataModel
+from ..services.analytics_service import AnalyticsService
 from ..services.data_service import DataService
 from ..services.encryption_service import EncryptionService
 from ..services.error_service import ErrorService
 from ..services.plot_service import PlotService
 from ..services.tob_service import TOBService
 from ..utils.error_handler import ErrorHandler
+from .plot_controller import PlotController
+from .tob_controller import TOBController
 
 
 class MainController(QObject):
@@ -36,6 +39,12 @@ class MainController(QObject):
     data_processed = pyqtSignal(object)  # processed_data
     sensors_updated = pyqtSignal(list)  # available_sensors
 
+    # UI update signals
+    plot_data_update = pyqtSignal(object)  # tob_data_model
+    plot_sensors_update = pyqtSignal(list)  # selected_sensors
+    plot_axis_limits_update = pyqtSignal(str, float, float)  # axis, min, max
+    show_plot_mode = pyqtSignal()  # signal to show plot mode
+
     def __init__(self, main_window=None):
         """
         Initialize the main controller.
@@ -46,13 +55,33 @@ class MainController(QObject):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
-        # Initialize services
+        # Initialize services (centralized service creation)
+        self.analytics_service = AnalyticsService()
+
+        # Additional services needed by view and sub-controllers
+        from ..services.axis_ui_service import AxisUIService
+        from ..services.plot_style_service import PlotStyleService
+        from ..services.ui_service import UIService
+        from ..services.ui_state_manager import UIStateManager
+
+        self.ui_service = UIService()
+        self.ui_state_manager = UIStateManager()
+        self.axis_ui_service = AxisUIService()
+        self.plot_style_service = PlotStyleService()
+
+        # Services that depend on other services
         self.tob_service = TOBService()
-        self.data_service = DataService()
-        self.plot_service = PlotService()
+        self.data_service = DataService(self.analytics_service)
+        self.plot_service = PlotService(self.plot_style_service)
         self.encryption_service = EncryptionService()
         self.error_service = ErrorService()
         self.error_handler = ErrorHandler()
+
+        # Initialize sub-controllers with injected services
+        self.plot_controller = PlotController(
+            self.plot_service, self.plot_style_service
+        )
+        self.tob_controller = TOBController(self.tob_service, self.data_service)
 
         # Initialize models
         self.tob_data_model: Optional[TOBDataModel] = None
@@ -63,16 +92,190 @@ class MainController(QObject):
             self.main_window = main_window
             # Connect controller to window
             self.main_window.set_controller(self)
+            # Inject services into view
+            self._inject_services_into_view()
         else:
             # Fallback: create window (backward compatibility)
             from ..views.main_window import MainWindow
 
             self.main_window = MainWindow(controller=self)
+            # Inject services into view
+            self._inject_services_into_view()
 
         # Connect signals
         self._connect_signals()
+        self._connect_plot_signals()
+        self._connect_tob_signals()
 
         self.logger.info("Main controller initialized successfully")
+
+    def _connect_plot_signals(self) -> None:
+        """
+        Connect plot controller signals to main window slots.
+        """
+        # Connect plot controller signals to main controller signals
+        self.plot_controller.plot_updated.connect(self._on_plot_updated)
+        self.plot_controller.sensors_updated.connect(self._on_sensors_updated)
+        self.plot_controller.axis_limits_changed.connect(self._on_axis_limits_changed)
+
+        if hasattr(self.main_window, "update_plot_axis_limits"):
+            self.plot_controller.axis_limits_changed.connect(
+                lambda axis, min_val, max_val: self._handle_axis_limits_changed(
+                    axis, min_val, max_val
+                )
+            )
+
+        self.logger.debug("Plot controller signals connected to main window")
+
+    def _on_plot_updated(self) -> None:
+        """Handle plot updated signal from plot controller."""
+        if self.plot_controller.current_tob_data:
+            self.plot_data_update.emit(self.plot_controller.current_tob_data)
+
+    def _on_sensors_updated(self, selected_sensors: list) -> None:
+        """Handle sensors updated signal from plot controller."""
+        self.plot_sensors_update.emit(selected_sensors)
+
+    def _on_axis_limits_changed(
+        self, axis: str, min_value: float, max_value: float
+    ) -> None:
+        """Handle axis limits changed signal from plot controller."""
+        self.plot_axis_limits_update.emit(axis, min_value, max_value)
+
+    def _handle_axis_limits_changed(
+        self, axis: str, min_value: float, max_value: float
+    ) -> None:
+        """
+        Handle axis limits changed signal from plot controller.
+
+        Args:
+            axis: Axis that changed ('x', 'y1', 'y2')
+            min_value: New minimum value
+            max_value: New maximum value
+        """
+        try:
+            # Emit signal to view instead of calling methods directly
+            self.plot_axis_limits_update.emit(axis, min_value, max_value)
+            self.logger.debug("Axis limits signal emitted: %s = %.2f - %.2f", axis, min_value, max_value)
+        except Exception as e:
+            self.logger.error("Error handling axis limits change: %s", e)
+
+    def _connect_tob_signals(self) -> None:
+        """
+        Connect TOB controller signals to main controller slots.
+        """
+        # Connect TOB controller signals to main controller methods
+        self.tob_controller.file_loaded.connect(self._on_tob_file_loaded)
+        self.tob_controller.data_processed.connect(self._on_tob_data_processed)
+        self.tob_controller.metrics_calculated.connect(self._on_tob_metrics_calculated)
+        self.tob_controller.error_occurred.connect(self._on_tob_error_occurred)
+
+        self.logger.debug("TOB controller signals connected")
+
+    def _on_tob_file_loaded(self, tob_data_model: TOBDataModel) -> None:
+        """
+        Handle TOB file loaded signal from TOB controller.
+
+        Args:
+            tob_data_model: Loaded TOBDataModel instance
+        """
+        try:
+            self.logger.info("TOB file loaded by controller")
+            self.tob_data_model = tob_data_model
+            self.file_load_progress.emit(30)
+
+            # Process the data
+            self.tob_controller.process_tob_data(tob_data_model)
+
+        except Exception as e:
+            self.logger.error("Error handling TOB file loaded: %s", e)
+
+    def _on_tob_data_processed(self, processed_data: dict) -> None:
+        """
+        Handle TOB data processed signal from TOB controller.
+
+        Args:
+            processed_data: Processed TOB data
+        """
+        try:
+            self.logger.info("TOB data processed by controller")
+            self.file_load_progress.emit(60)
+            self.data_processed.emit(processed_data)
+
+            # Update view with loaded data
+            self._update_view_with_tob_data()
+            self.file_load_progress.emit(80)
+
+            # Calculate metrics
+            self.tob_controller.calculate_metrics(self.tob_data_model)
+
+        except Exception as e:
+            self.logger.error("Error handling TOB data processed: %s", e)
+
+    def _on_tob_metrics_calculated(self, metrics: dict) -> None:
+        """
+        Handle metrics calculated signal from TOB controller.
+
+        Args:
+            metrics: Calculated metrics
+        """
+        try:
+            self.logger.info("TOB metrics calculated by controller")
+
+            # Update data metrics in view
+            self.data_service.update_data_metrics(
+                self.main_window.get_metrics_widgets(), metrics
+            )
+
+            # Emit sensors updated signal
+            if self.tob_data_model:
+                self.sensors_updated.emit(self.tob_data_model.sensors)
+
+            self.file_load_progress.emit(100)
+
+        except Exception as e:
+            self.logger.error("Error handling TOB metrics calculated: %s", e)
+
+    def _on_tob_error_occurred(self, error_type: str, error_message: str) -> None:
+        """
+        Handle error signal from TOB controller.
+
+        Args:
+            error_type: Type of error
+            error_message: Error message
+        """
+        try:
+            self.logger.error(
+                "TOB controller error: %s - %s", error_type, error_message
+            )
+
+            # Show error to user
+            if hasattr(self.main_window, "show_error_dialog"):
+                self.main_window.show_error_dialog(error_type, error_message)
+
+        except Exception as e:
+            self.logger.error("Error handling TOB controller error: %s", e)
+
+    def _inject_services_into_view(self) -> None:
+        """
+        Inject services into the main window view.
+        """
+        if self.main_window is None:
+            self.logger.warning("Cannot inject services: main_window is None")
+            return
+
+        # Inject services into view (using centralized service instances)
+        services = {
+            "ui_state_manager": self.ui_state_manager,
+            "ui_service": self.ui_service,
+            "axis_ui_service": self.axis_ui_service,
+            "data_service": self.data_service,
+            "plot_service": self.plot_service,
+            "plot_style_service": self.plot_style_service,
+        }
+
+        self.main_window.set_services(services)
+        self.logger.info("Services injected into view successfully")
 
     def _connect_signals(self):
         """
@@ -82,6 +285,14 @@ class MainController(QObject):
         self.main_window.file_opened.connect(self._on_file_opened)
         self.main_window.project_created.connect(self._on_project_created)
         self.main_window.project_opened.connect(self._on_project_opened)
+
+        # Connect controller signals to view slots
+        self.plot_data_update.connect(self.main_window.update_plot_data)
+        self.plot_sensors_update.connect(self.main_window.update_plot_sensors)
+        self.plot_axis_limits_update.connect(
+            self.main_window._handle_plot_axis_limits_update
+        )
+        self.show_plot_mode.connect(self.main_window._show_plot_area)
 
         self.logger.debug("Signals connected successfully")
 
@@ -97,31 +308,13 @@ class MainController(QObject):
             self.main_window.display_status_message("Loading file...", 0)
             self.file_load_progress.emit(10)
 
-            # Validate file before loading
-            if not self.tob_service.validate_tob_file(file_path):
-                raise ValueError(f"Invalid TOB file format: {file_path}")
+            # Delegate to TOB controller - it will handle validation, loading, processing
+            self.tob_controller.load_tob_file(file_path)
 
-            self.file_load_progress.emit(30)
-
-            # Load TOB data using service
-            self.tob_data_model = self.tob_service.load_tob_file(file_path)
-            self.file_load_progress.emit(60)
-
-            # Process the loaded data
-            processed_data = self.data_service.process_tob_data(self.tob_data_model)
-            self.file_load_progress.emit(80)
-
-            # Update view with loaded data
-            self._update_view_with_tob_data()
-
-            # Emit signals for UI updates
+            # Emit signal for UI updates
             self.file_loaded.emit(file_path, self.tob_data_model)
-            self.data_processed.emit(processed_data)
-            self.sensors_updated.emit(self.tob_data_model.sensors)
-
-            self.file_load_progress.emit(100)
             self.main_window.display_status_message("File loaded successfully", 2000)
-            self.logger.info("TOB file loaded successfully: %s", file_path)
+            self.logger.info("TOB file loading initiated: %s", file_path)
 
         except (FileNotFoundError, PermissionError) as e:
             error_msg = f"File access error: {e}"
@@ -161,11 +354,11 @@ class MainController(QObject):
                 metrics = self.data_service._calculate_metrics(self.tob_data_model)
                 self.main_window.update_data_metrics(metrics)
 
-            # Update sensor checkboxes
-            self._update_sensor_checkboxes()
+            # Update sensor checkboxes (delegated to plot controller)
+            self.plot_controller.update_sensor_checkboxes(self.main_window)
 
-            # Update plot with data
-            self.main_window.update_plot_data(self.tob_data_model)
+            # Update plot with data (will emit signals)
+            self.plot_controller.update_plot_data(self.tob_data_model)
 
             # Update sensor selection for plotting (automatically select all NTC sensors and PT100)
             selected_sensors = [
@@ -181,7 +374,9 @@ class MainController(QObject):
                 self.logger.debug("PT100 sensor added to selection: %s", pt100_sensor)
 
             if selected_sensors:
-                self.main_window.update_plot_sensors(selected_sensors)
+                self.plot_controller.update_selected_sensors(
+                    selected_sensors
+                )  # Will emit signal
                 self.logger.debug(
                     "Auto-selected %d sensors for plotting: %s",
                     len(selected_sensors),
@@ -189,7 +384,7 @@ class MainController(QObject):
                 )
 
             # Switch to plot mode and show data loaded
-            self.main_window.ui_state_manager.show_plot_mode()
+            self.show_plot_mode.emit()  # Signal to show plot mode
             self.main_window.show_data_loaded()
 
             self.logger.debug("View updated with TOB data successfully")
@@ -197,50 +392,6 @@ class MainController(QObject):
         except Exception as e:
             self.logger.error("Error updating view with TOB data: %s", e)
             self.error_handler.handle_error(e, self.main_window, "View Update Error")
-
-    def _update_sensor_checkboxes(self):
-        """
-        Update sensor checkboxes based on available sensors.
-        """
-        try:
-            if not self.tob_data_model or not self.tob_data_model.sensors:
-                self.logger.warning("No sensors available for checkbox update")
-                return
-
-            # Get available sensors
-            available_sensors = self.tob_data_model.sensors
-
-            # Update NTC checkboxes
-            for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
-                if sensor_name in available_sensors:
-                    checkbox.setVisible(True)
-                    checkbox.setEnabled(True)
-                    checkbox.setChecked(True)  # Default to selected
-                else:
-                    checkbox.setVisible(False)
-                    checkbox.setEnabled(False)
-                    checkbox.setChecked(False)
-
-            # Update PT100 checkbox
-            if (
-                hasattr(self.main_window, "ntc_pt100_checkbox")
-                and self.main_window.ntc_pt100_checkbox
-            ):
-                pt100_sensor = self.tob_data_model.get_pt100_sensor()
-                if pt100_sensor:
-                    self.main_window.ntc_pt100_checkbox.setVisible(True)
-                    self.main_window.ntc_pt100_checkbox.setEnabled(True)
-                    self.main_window.ntc_pt100_checkbox.setChecked(True)
-                else:
-                    self.main_window.ntc_pt100_checkbox.setVisible(False)
-                    self.main_window.ntc_pt100_checkbox.setEnabled(False)
-                    self.main_window.ntc_pt100_checkbox.setChecked(False)
-
-            self.logger.debug("Sensor checkboxes updated successfully")
-
-        except Exception as e:
-            self.logger.error("Error updating sensor checkboxes: %s", e)
-            self.error_handler.handle_error(e, self.main_window, "Sensor Update Error")
 
     def open_tob_file(self, file_path: str):
         """
@@ -283,65 +434,10 @@ class MainController(QObject):
             sensor_name: Name of the sensor that changed
             is_selected: Whether the sensor is now selected
         """
-        try:
-            self.logger.debug(
-                "Controller: handling sensor selection change: %s = %s",
-                sensor_name,
-                is_selected,
-            )
-
-            # Get current selected sensors from the view
-            current_selected = self._get_selected_sensors()
-            self.logger.debug("Current selected sensors: %s", current_selected)
-
-            # Calculate the new sensor selection based on the event
-            # (Checkbox state might not be updated yet, so we calculate based on the event)
-            if is_selected and sensor_name not in current_selected:
-                # Add sensor to selection
-                new_selected = current_selected + [sensor_name]
-            elif not is_selected and sensor_name in current_selected:
-                # Remove sensor from selection
-                new_selected = [s for s in current_selected if s != sensor_name]
-            else:
-                # No change needed (sensor already in correct state)
-                new_selected = current_selected
-
-            self.logger.debug("New selected sensors: %s", new_selected)
-
-            # Update the plot view with new sensor selection
-            if self.main_window:
-                self.main_window.update_plot_sensors(new_selected)
-
-            if is_selected:
-                self.logger.info("Sensor %s selected for visualization", sensor_name)
-            else:
-                self.logger.info("Sensor %s deselected from visualization", sensor_name)
-
-        except Exception as e:
-            self.logger.error("Failed to handle sensor selection change: %s", e)
-            raise
-
-    def _get_selected_sensors(self) -> List[str]:
-        """
-        Get list of currently selected sensors.
-
-        Returns:
-            List of selected sensor names
-        """
-        try:
-            selected_sensors = []
-
-            # Check all NTC checkboxes (including PT100 which is registered as "Temp")
-            for sensor_name, checkbox in self.main_window.ntc_checkboxes.items():
-                if checkbox and checkbox.isChecked():
-                    selected_sensors.append(sensor_name)
-
-            self.logger.debug("Selected sensors: %s", selected_sensors)
-            return selected_sensors
-
-        except Exception as e:
-            self.logger.error("Error getting selected sensors: %s", e)
-            return []
+        # Delegate to plot controller
+        self.plot_controller.handle_sensor_selection_changed(
+            sensor_name, is_selected, self.main_window
+        )
 
     def update_axis_auto_mode(self, axis_name: str, is_auto: bool):
         """
@@ -358,7 +454,7 @@ class MainController(QObject):
             axis_settings = {f"{axis_name}_auto": is_auto}
 
             # Update plot with new axis settings
-            self.main_window.update_plot_axis_settings(axis_settings)
+            # Axis settings are handled by plot controller signals
 
             self.logger.info("Axis %s auto mode: %s", axis_name, is_auto)
 
@@ -376,8 +472,12 @@ class MainController(QObject):
         try:
             self.logger.debug("Updating axis settings: %s", axis_settings)
 
-            # Update plot with new axis settings
-            self.main_window.update_plot_axis_settings(axis_settings)
+            # Update plot widget with new axis settings
+            if self.main_window and hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                self.main_window.plot_widget.update_axis_settings(axis_settings)
+                self.logger.debug("Plot widget axis settings updated")
+            else:
+                self.logger.warning("No plot widget available for axis settings update")
 
             self.logger.info("Axis settings updated: %s", axis_settings)
 
@@ -400,8 +500,8 @@ class MainController(QObject):
                 "Updating X-axis limits: min=%.2f, max=%.2f", min_value, max_value
             )
 
-            # Update plot with new X-axis limits
-            self.main_window.update_plot_x_limits(min_value, max_value)
+            # Update plot with new X-axis limits (will emit signal)
+            self.plot_controller.update_axis_limits("x", min_value, max_value)
 
             self.logger.info(
                 "X-axis limits updated: min=%.2f, max=%.2f", min_value, max_value
@@ -426,8 +526,8 @@ class MainController(QObject):
                 "Updating Y1-axis limits: min=%.2f, max=%.2f", min_value, max_value
             )
 
-            # Update plot with new Y1-axis limits
-            self.main_window.update_plot_y1_limits(min_value, max_value)
+            # Update plot with new Y1-axis limits (will emit signal)
+            self.plot_controller.update_axis_limits("y1", min_value, max_value)
 
             self.logger.info(
                 "Y1-axis limits updated: min=%.2f, max=%.2f", min_value, max_value
@@ -452,8 +552,8 @@ class MainController(QObject):
                 "Updating Y2-axis limits: min=%.2f, max=%.2f", min_value, max_value
             )
 
-            # Update plot with new Y2-axis limits
-            self.main_window.update_plot_y2_limits(min_value, max_value)
+            # Update plot with new Y2-axis limits (will emit signal)
+            self.plot_controller.update_axis_limits("y2", min_value, max_value)
 
             self.logger.info(
                 "Y2-axis limits updated: min=%.2f, max=%.2f", min_value, max_value

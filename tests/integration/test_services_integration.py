@@ -245,11 +245,18 @@ class TestServicesIntegration:
         """Test that services can handle concurrent operations."""
         import os
         import platform
+
         # Skip this test in headless Linux CI environment as Qt operations may cause instability
         # On Windows, Qt works natively so allow the test
-        if os.environ.get('QT_QPA_PLATFORM') == 'offscreen' and platform.system() == 'Linux':
+        if (
+            os.environ.get("QT_QPA_PLATFORM") == "offscreen"
+            and platform.system() == "Linux"
+        ):
             import pytest
-            pytest.skip("Skipping Qt-dependent integration test in headless Linux environment")
+
+            pytest.skip(
+                "Skipping Qt-dependent integration test in headless Linux environment"
+            )
 
         ui_service = UIService()
         data_service = DataService()
