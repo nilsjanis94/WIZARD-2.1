@@ -9,7 +9,7 @@ import platform
 from typing import Any, Dict, Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QPainter, QPen, QColor, QPixmap
+from PyQt6.QtGui import QFont, QPainter, QPen, QColor, QPixmap, QPalette
 from PyQt6.QtWidgets import (QCheckBox, QComboBox, QLabel, QLineEdit,
                              QPushButton, QWidget)
 
@@ -22,10 +22,44 @@ class UIService:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.current_platform = platform.system()
+        # Cache for cross-platform compatibility checks
+        self._compatibility_checked = False
+        self._platform_quirks = self._detect_platform_quirks()
+
+    def _detect_platform_quirks(self) -> Dict[str, bool]:
+        """
+        Detect known platform-specific quirks that affect UI styling.
+
+        Returns:
+            Dictionary of platform quirks and their status
+        """
+        quirks = {
+            'palette_override_needed': False,
+            'stylesheet_priority': False,
+            'combobox_view_palette_bug': False,
+            'itemdata_foreground_bug': False,
+        }
+
+        # Windows sometimes needs stronger palette overrides
+        if self.current_platform == "Windows":
+            quirks['palette_override_needed'] = True
+            quirks['stylesheet_priority'] = True
+
+        # Some Linux distributions have issues with combobox view palettes
+        elif self.current_platform == "Linux":
+            quirks['combobox_view_palette_bug'] = True
+
+        # macOS generally works well with standard Qt approaches
+        elif self.current_platform == "Darwin":
+            pass  # No known quirks
+
+        self.logger.debug(f"Detected platform quirks for {self.current_platform}: {quirks}")
+        return quirks
 
     def setup_fonts(self, widget: QWidget) -> bool:
         """
         Set up cross-platform fonts for a widget and all its children.
+        Also sets explicit text colors to ensure visibility on colored backgrounds.
 
         Args:
             widget: The widget to apply fonts to
@@ -40,8 +74,11 @@ class UIService:
             # Apply font to widget and all children
             self._apply_font_recursively(widget, font)
 
+            # Set explicit text colors for visibility
+            self._set_text_colors_recursively(widget)
+
             self.logger.info(
-                "Fonts applied successfully: %s on %s",
+                "Fonts and text colors applied successfully: %s on %s",
                 font.family(),
                 self.current_platform,
             )
@@ -103,6 +140,139 @@ class UIService:
 
         except Exception as e:
             self.logger.debug("Could not apply font to widget: %s", e)
+
+    def _set_text_colors_recursively(self, widget: QWidget) -> None:
+        """
+        Set explicit text colors for all text-based widgets to ensure visibility.
+        This fixes the issue where Qt automatically chooses white text on colored backgrounds.
+        Uses multiple fallback mechanisms for cross-platform compatibility.
+
+        Args:
+            widget: The widget to set text colors for
+        """
+        try:
+            # Use explicit RGB black for maximum compatibility across platforms
+            text_color = QColor(0, 0, 0)  # RGB black instead of Qt.GlobalColor.black
+            gray_color = QColor(128, 128, 128)  # Explicit gray for placeholders
+
+            # Handle QLabel widgets
+            for label in widget.findChildren(QLabel):
+                palette = label.palette()
+                palette.setColor(QPalette.ColorRole.WindowText, text_color)
+                palette.setColor(QPalette.ColorRole.Text, text_color)
+                label.setPalette(palette)
+
+            # Handle QCheckBox widgets
+            for checkbox in widget.findChildren(QCheckBox):
+                palette = checkbox.palette()
+                palette.setColor(QPalette.ColorRole.WindowText, text_color)
+                palette.setColor(QPalette.ColorRole.Text, text_color)
+                checkbox.setPalette(palette)
+
+            # Handle QPushButton widgets
+            for button in widget.findChildren(QPushButton):
+                palette = button.palette()
+                palette.setColor(QPalette.ColorRole.ButtonText, text_color)
+                palette.setColor(QPalette.ColorRole.WindowText, text_color)
+                button.setPalette(palette)
+
+            # Handle QLineEdit widgets
+            for line_edit in widget.findChildren(QLineEdit):
+                palette = line_edit.palette()
+                palette.setColor(QPalette.ColorRole.Text, text_color)
+                palette.setColor(QPalette.ColorRole.PlaceholderText, gray_color)
+                line_edit.setPalette(palette)
+
+            # Handle QComboBox widgets - more specific color roles and stylesheet fallback
+            for combo_box in widget.findChildren(QComboBox):
+                palette = combo_box.palette()
+                # Set text color for the selected item in the combo box field
+                palette.setColor(QPalette.ColorRole.Text, text_color)
+                palette.setColor(QPalette.ColorRole.WindowText, text_color)
+                # Set text color for items in the dropdown list
+                palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+                combo_box.setPalette(palette)
+
+                # Also set the view (dropdown list) text color
+                if combo_box.view():
+                    view_palette = combo_box.view().palette()
+                    view_palette.setColor(QPalette.ColorRole.Text, text_color)
+                    view_palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+                    combo_box.view().setPalette(view_palette)
+
+                # Apply platform-specific fixes
+                if self._platform_quirks['stylesheet_priority']:
+                    # On Windows, apply stylesheet first for higher priority
+                    current_style = combo_box.styleSheet()
+                    text_color_css = "color: black;"
+                    if text_color_css not in current_style:
+                        if current_style:
+                            combo_box.setStyleSheet(current_style + text_color_css)
+                        else:
+                            combo_box.setStyleSheet(text_color_css)
+
+                # Force color for all items in the combobox (unless known bug)
+                if not self._platform_quirks['itemdata_foreground_bug']:
+                    for i in range(combo_box.count()):
+                        # This helps ensure item text is visible
+                        combo_box.setItemData(i, text_color, Qt.ItemDataRole.ForegroundRole)
+
+                # Apply stylesheet as fallback (unless already applied for Windows)
+                if not self._platform_quirks['stylesheet_priority']:
+                    current_style = combo_box.styleSheet()
+                    text_color_css = "color: black;"
+                    if text_color_css not in current_style:
+                        if current_style:
+                            combo_box.setStyleSheet(current_style + text_color_css)
+                        else:
+                            combo_box.setStyleSheet(text_color_css)
+
+            self.logger.debug("Text colors set to black for all text widgets")
+
+        except Exception as e:
+            self.logger.error("Could not set text colors: %s", e)
+
+    def _fix_combobox_colors(self, combo_box: QComboBox) -> None:
+        """
+        Fix text colors for a specific combobox after items have been added.
+
+        Args:
+            combo_box: The QComboBox to fix colors for
+        """
+        try:
+            # Use explicit RGB black for maximum cross-platform compatibility
+            text_color = QColor(0, 0, 0)
+
+            # Update palette
+            palette = combo_box.palette()
+            palette.setColor(QPalette.ColorRole.Text, text_color)
+            palette.setColor(QPalette.ColorRole.WindowText, text_color)
+            palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+            combo_box.setPalette(palette)
+
+            # Update view palette if available
+            if combo_box.view():
+                view_palette = combo_box.view().palette()
+                view_palette.setColor(QPalette.ColorRole.Text, text_color)
+                view_palette.setColor(QPalette.ColorRole.HighlightedText, text_color)
+                combo_box.view().setPalette(view_palette)
+
+            # Force color for all items (unless known platform bug)
+            if not self._platform_quirks['itemdata_foreground_bug']:
+                for i in range(combo_box.count()):
+                    combo_box.setItemData(i, text_color, Qt.ItemDataRole.ForegroundRole)
+
+            # Stylesheet fallback with platform-specific priority
+            current_style = combo_box.styleSheet()
+            text_color_css = "color: black;"
+            if text_color_css not in current_style:
+                if current_style:
+                    combo_box.setStyleSheet(current_style + text_color_css)
+                else:
+                    combo_box.setStyleSheet(text_color_css)
+
+        except Exception as e:
+            self.logger.debug("Could not fix combobox colors: %s", e)
 
     def fix_ui_visibility(self, widget: QWidget) -> None:
         """
@@ -176,18 +346,24 @@ class UIService:
             if "y1_axis_combo" in axis_combos and axis_combos["y1_axis_combo"] is not None:
                 axis_combos["y1_axis_combo"].addItems(sensor_options)
                 axis_combos["y1_axis_combo"].setCurrentText("NTC01")
+                # Ensure text colors are set for this combobox
+                self._fix_combobox_colors(axis_combos["y1_axis_combo"])
 
             # Setup Y2 axis combo (same options as Y1 plus "None")
             if "y2_axis_combo" in axis_combos and axis_combos["y2_axis_combo"] is not None:
                 y2_options = ["None"] + sensor_options
                 axis_combos["y2_axis_combo"].addItems(y2_options)
                 axis_combos["y2_axis_combo"].setCurrentText("None")  # Default to no Y2 axis
+                # Ensure text colors are set for this combobox
+                self._fix_combobox_colors(axis_combos["y2_axis_combo"])
 
             # X axis options (time-based)
             time_options = ["Seconds", "Minutes", "Hours"]
             if "x_axis_combo" in axis_combos and axis_combos["x_axis_combo"] is not None:
                 axis_combos["x_axis_combo"].addItems(time_options)
                 axis_combos["x_axis_combo"].setCurrentText("Seconds")
+                # Ensure text colors are set for this combobox
+                self._fix_combobox_colors(axis_combos["x_axis_combo"])
 
             self.logger.debug("Axis controls setup completed")
 

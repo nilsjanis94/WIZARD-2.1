@@ -1,0 +1,85 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.13]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Install project
+      run: |
+        pip install -e .
+
+    - name: Set up headless display (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+        export DISPLAY=:99
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        sleep 3
+
+    - name: Set up Qt for headless testing
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+          echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
+        else
+          echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+          echo "QT_LOGGING_RULES=qt.qpa.plugin=false" >> $GITHUB_ENV
+        fi
+
+    - name: Run tests
+      run: |
+        # Skip UI tests in CI (they need display), run unit and integration tests
+        pytest tests/unit/ tests/integration/ -v --cov=src --cov-report=xml -m "not ui"
+
+    - name: Run basic UI smoke test (headless)
+      if: runner.os != 'macOS'  # macOS has issues with offscreen Qt
+      run: |
+        python -c "
+        import sys, os
+        sys.path.insert(0, 'src')
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from services.ui_service import UIService
+            app = QApplication([])
+            ui_service = UIService()
+            print(f'✓ UI service initialized on {ui_service.current_platform}')
+            app.quit()
+            print('✓ Basic UI test passed')
+        except Exception as e:
+            print(f'✗ UI test failed: {e}')
+            sys.exit(1)
+        "
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella

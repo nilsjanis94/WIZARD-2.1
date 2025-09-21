@@ -611,12 +611,8 @@ class MainWindow(QMainWindow):
 
     def _on_y2_axis_changed(self, sensor_name: str):
         """Handle Y2 axis sensor selection change."""
-        if sensor_name:
-            self.logger.debug("Y2 axis changed to: %s", sensor_name)
-            # Update axis settings through controller
-            axis_settings = {'y2_sensor': sensor_name}
-            if self.controller:
-                self.controller.update_axis_settings(axis_settings)
+        # Y2 axis signals are disconnected - do nothing
+        self.logger.debug("Y2 axis changed to: %s (signal disconnected)", sensor_name)
 
     def _on_x_axis_changed(self, axis_type: str):
         """Handle X axis type selection change."""
