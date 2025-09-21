@@ -136,21 +136,21 @@ jobs:
             # Test that our core data models can be instantiated
             from models.tob_data_model import TOBDataModel
             model = TOBDataModel()
-            print('✓ TOBDataModel can be instantiated')
+            print('[OK] TOBDataModel can be instantiated')
 
             from models.project_model import ProjectModel
             project = ProjectModel(name='Test Project', description='CI Test Project')
-            print('✓ ProjectModel can be instantiated')
+            print('[OK] ProjectModel can be instantiated')
 
             # Verify the project has the expected attributes
             assert project.name == 'Test Project'
             assert project.description == 'CI Test Project'
-            print('✓ ProjectModel attributes work correctly')
+            print('[OK] ProjectModel attributes work correctly')
 
-            print('✓ All core components functional')
+            print('[OK] All core components functional')
 
         except Exception as e:
-            print(f'✗ Model functionality test failed: {e}')
+            print(f'[FAIL] Model functionality test failed: {e}')
             import traceback
             traceback.print_exc()
             exit(1)
