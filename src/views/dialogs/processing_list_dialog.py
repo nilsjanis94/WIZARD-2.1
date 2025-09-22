@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -72,6 +72,72 @@ class ProcessingListDialog(QDialog):
         self.project_model = project_model
         self._populate_table()
 
+    def update_tob_file_status(self, file_name: str, new_status: str) -> None:
+        """
+        Update the status of a TOB file and refresh the display.
+
+        Args:
+            file_name: Name of the TOB file
+            new_status: New status ('loaded', 'uploading', 'uploaded', 'processing', 'processed', 'error')
+        """
+        if not self.project_model:
+            return
+
+        # Update status in project model
+        self.project_model.update_tob_file_status(file_name, new_status)
+
+        # Find and update the row in the table
+        for row in range(self.table_widget.rowCount()):
+            item = self.table_widget.item(row, 0)  # File name column
+            if item and item.data(Qt.ItemDataRole.UserRole) == file_name:
+                # Update status text
+                status_item = QTableWidgetItem(self._get_status_text(new_status))
+                status_item.setIcon(self._get_status_icon(new_status))
+                self.table_widget.setItem(row, 4, status_item)  # Status column
+                break
+
+        # Trigger auto-save if connected to controller
+        if hasattr(self.parent(), 'controller') and self.parent().controller:
+            self.parent().controller._mark_project_modified()
+
+    def get_tob_file_status(self, file_name: str) -> Optional[str]:
+        """
+        Get the current status of a TOB file.
+
+        Args:
+            file_name: Name of the TOB file
+
+        Returns:
+            Current status string or None if file not found
+        """
+        if not self.project_model:
+            return None
+
+        tob_file = self.project_model.get_tob_file(file_name)
+        return tob_file.status if tob_file else None
+
+    def simulate_status_progression(self, file_name: str) -> None:
+        """
+        Simulate status progression for testing purposes.
+        Cycles through: loaded -> uploading -> uploaded -> processing -> processed
+
+        Args:
+            file_name: Name of the TOB file to update
+        """
+        current_status = self.get_tob_file_status(file_name)
+        if not current_status:
+            return
+
+        status_cycle = ["loaded", "uploading", "uploaded", "processing", "processed"]
+        try:
+            current_index = status_cycle.index(current_status)
+            next_index = (current_index + 1) % len(status_cycle)
+            next_status = status_cycle[next_index]
+            self.update_tob_file_status(file_name, next_status)
+        except ValueError:
+            # Status not in cycle, reset to loaded
+            self.update_tob_file_status(file_name, "loaded")
+
     def _populate_table(self) -> None:
         """
         Populate the table with TOB files from the project model.
@@ -130,6 +196,26 @@ class ProcessingListDialog(QDialog):
         }
         return status_texts.get(status, status)
 
+    def _get_status_description(self, status: str) -> str:
+        """
+        Get detailed description for status tooltip.
+
+        Args:
+            status: Status string
+
+        Returns:
+            Detailed description of the status
+        """
+        descriptions = {
+            "loaded": "TOB file has been loaded into the project",
+            "uploading": "File is currently being uploaded to the server",
+            "uploaded": "File has been successfully uploaded to the server",
+            "processing": "Server is processing the uploaded file",
+            "processed": "File processing has been completed successfully",
+            "error": "An error occurred during upload or processing"
+        }
+        return descriptions.get(status, "Unknown status")
+
     def _get_status_icon(self, status: str):
         """
         Get appropriate icon for status.
@@ -138,11 +224,43 @@ class ProcessingListDialog(QDialog):
             status: Status string
 
         Returns:
-            QIcon for the status
+            QIcon for the status (colored circle indicators)
         """
-        # For now, return None - icons can be added later
-        # This would typically load icons from resources
-        return None
+        # Create colored circle icons for different statuses
+        icon_size = 16
+        pixmap = QPixmap(icon_size, icon_size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        from PyQt6.QtGui import QPainter, QBrush
+        painter = QPainter(pixmap)
+
+        # Define colors for different statuses
+        colors = {
+            "loaded": QColor("#4CAF50"),      # Green - file loaded successfully
+            "uploading": QColor("#FF9800"),   # Orange - currently uploading
+            "uploaded": QColor("#2196F3"),    # Blue - uploaded to server
+            "processing": QColor("#FF5722"),  # Deep orange - being processed
+            "processed": QColor("#9C27B0"),   # Purple - processing complete
+            "error": QColor("#F44336"),       # Red - error occurred
+        }
+
+        # Get color for status, default to gray if unknown
+        color = colors.get(status, QColor("#9E9E9E"))  # Gray for unknown status
+
+        # Draw colored circle
+        painter.setBrush(QBrush(color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(2, 2, icon_size-4, icon_size-4)
+
+        # Add white border for better visibility
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        from PyQt6.QtGui import QPen
+        painter.setPen(QPen(QColor("#FFFFFF"), 1))
+        painter.drawEllipse(1, 1, icon_size-2, icon_size-2)
+
+        painter.end()
+
+        return QIcon(pixmap)
 
     def _setup_ui(self) -> None:
         """Setup the dialog UI."""
@@ -177,6 +295,40 @@ class ProcessingListDialog(QDialog):
         self.table_widget.customContextMenuRequested.connect(self._show_context_menu)
 
         layout.addWidget(self.table_widget)
+
+        # Status legend
+        legend_layout = QHBoxLayout()
+        legend_layout.addWidget(QLabel("Status:"))
+
+        # Create small colored squares with text labels
+        status_items = [
+            ("loaded", "Loaded", "#4CAF50"),
+            ("uploading", "Uploading", "#FF9800"),
+            ("uploaded", "Uploaded", "#2196F3"),
+            ("processing", "Processing", "#FF5722"),
+            ("processed", "Processed", "#9C27B0"),
+            ("error", "Error", "#F44336")
+        ]
+
+        for status_key, display_text, color in status_items:
+            # Create a small colored label
+            color_label = QLabel("●")
+            color_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
+            color_label.setToolTip(f"{display_text}: {self._get_status_description(status_key)}")
+
+            text_label = QLabel(display_text)
+            text_label.setStyleSheet("font-size: 11px; margin-left: 2px;")
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(color_label)
+            item_layout.addWidget(text_label)
+            item_layout.setSpacing(0)
+            item_layout.setContentsMargins(0, 0, 10, 0)
+
+            legend_layout.addLayout(item_layout)
+
+        legend_layout.addStretch()
+        layout.addLayout(legend_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -238,6 +390,40 @@ class ProcessingListDialog(QDialog):
         self.table_widget.customContextMenuRequested.connect(self._show_context_menu)
 
         layout.addWidget(self.table_widget)
+
+        # Status legend
+        legend_layout = QHBoxLayout()
+        legend_layout.addWidget(QLabel("Status:"))
+
+        # Create small colored squares with text labels
+        status_items = [
+            ("loaded", "Loaded", "#4CAF50"),
+            ("uploading", "Uploading", "#FF9800"),
+            ("uploaded", "Uploaded", "#2196F3"),
+            ("processing", "Processing", "#FF5722"),
+            ("processed", "Processed", "#9C27B0"),
+            ("error", "Error", "#F44336")
+        ]
+
+        for status_key, display_text, color in status_items:
+            # Create a small colored label
+            color_label = QLabel("●")
+            color_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
+            color_label.setToolTip(f"{display_text}: {self._get_status_description(status_key)}")
+
+            text_label = QLabel(display_text)
+            text_label.setStyleSheet("font-size: 11px; margin-left: 2px;")
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(color_label)
+            item_layout.addWidget(text_label)
+            item_layout.setSpacing(0)
+            item_layout.setContentsMargins(0, 0, 10, 0)
+
+            legend_layout.addLayout(item_layout)
+
+        legend_layout.addStretch()
+        layout.addLayout(legend_layout)
 
         # Buttons
         button_layout = QHBoxLayout()

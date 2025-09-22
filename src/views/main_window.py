@@ -46,6 +46,9 @@ class MainWindow(QMainWindow):
     project_opened = pyqtSignal(
         str
     )  # Emitted when project is opened (file_path only - app-internal encryption)
+    tob_file_status_updated = pyqtSignal(
+        str, str
+    )  # Emitted when TOB file status changes (file_name, status)
 
     def __init__(self, controller=None):
         """
@@ -770,6 +773,40 @@ class MainWindow(QMainWindow):
             status: New status
         """
         self.logger.info(f"TOB file status updated: {file_name} -> {status}")
+
+        # Update status bar message
+        status_messages = {
+            "loaded": f"'{file_name}' loaded successfully",
+            "uploading": f"Uploading '{file_name}'...",
+            "uploaded": f"'{file_name}' uploaded to server",
+            "processing": f"Processing '{file_name}' on server...",
+            "processed": f"'{file_name}' processing completed",
+            "error": f"Error with '{file_name}'"
+        }
+
+        message = status_messages.get(status, f"Status of '{file_name}' changed to {status}")
+        self.show_status_message(message)
+
+    def update_tob_file_status(self, file_name: str, status: str) -> None:
+        """
+        Update the status of a TOB file across all open dialogs.
+
+        Args:
+            file_name: Name of the TOB file
+            status: New status
+        """
+        # This method can be called by external components (like server communication)
+        # to update TOB file status throughout the application
+
+        if self.controller and self.controller.project_model:
+            self.controller.project_model.update_tob_file_status(file_name, status)
+            self.logger.info(f"TOB file status updated externally: {file_name} -> {status}")
+
+            # Trigger auto-save
+            self.controller._mark_project_modified()
+
+            # Emit signal for any open dialogs
+            self.tob_file_status_updated.emit(file_name, status)
 
     def _on_sensor_selection_changed(self, sensor_name: str, state: int):
         """
