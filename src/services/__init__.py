@@ -7,6 +7,7 @@ Contains all service classes for business logic and external integrations.
 # Import Qt-free services first (always available)
 from .analytics_service import AnalyticsService
 from .encryption_service import EncryptionService
+from .memory_monitor_service import MemoryMonitorService
 from .project_service import ProjectService
 from .tob_service import TOBService
 
@@ -70,6 +71,7 @@ except ImportError:
 __all__ = [
     "AnalyticsService",
     "EncryptionService",
+    "MemoryMonitorService",
     "ProjectService",
     "TOBService",
     # Optional services (may be None if PyQt6 not available)

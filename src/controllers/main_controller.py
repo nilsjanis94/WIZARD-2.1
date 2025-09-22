@@ -6,6 +6,7 @@ the models, views, and services.
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -17,6 +18,7 @@ from ..services.analytics_service import AnalyticsService
 from ..services.data_service import DataService
 from ..services.encryption_service import EncryptionService
 from ..services.error_service import ErrorService
+from ..services.memory_monitor_service import MemoryMonitorService
 from ..services.plot_service import PlotService
 from ..services.project_service import ProjectService
 from ..services.tob_service import TOBService
@@ -78,6 +80,7 @@ class MainController(QObject):
         self.project_service = ProjectService()
         self.error_service = ErrorService()
         self.error_handler = ErrorHandler()
+        self.memory_monitor = MemoryMonitorService(error_handler=self.error_handler)
 
         # Initialize sub-controllers with injected services
         self.plot_controller = PlotController(
@@ -91,6 +94,9 @@ class MainController(QObject):
 
         # Initialize auto-save
         self._setup_auto_save()
+
+        # Initialize memory monitoring
+        self._setup_memory_monitoring()
 
         # Initialize view
         if main_window is not None:
@@ -734,6 +740,9 @@ class MainController(QObject):
             self.main_window.show_status_message("Project created successfully")
             self.logger.info("Project '%s' created and saved successfully", name)
 
+            # Update memory usage for new project
+            self.update_tob_memory_usage()
+
             # Note: Auto-save not needed for creation since we just saved manually
 
         except ValueError as e:
@@ -917,6 +926,138 @@ class MainController(QObject):
         self.auto_save_enabled = True
         self.logger.info("Auto-save enabled")
 
+    def _setup_memory_monitoring(self) -> None:
+        """
+        Setup memory monitoring for TOB file operations.
+        """
+        try:
+            # Add cleanup callbacks for memory management
+            self.memory_monitor.add_cleanup_callback(self._cleanup_tob_memory)
+            self.memory_monitor.add_cleanup_callback(self._cleanup_plot_memory)
+
+            # Start monitoring
+            self.memory_monitor.start_monitoring()
+
+            self.logger.info("Memory monitoring initialized")
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup memory monitoring: {e}")
+
+    def _cleanup_tob_memory(self) -> float:
+        """
+        Cleanup TOB-related memory when memory is critical.
+
+        Returns:
+            Amount of memory freed in MB
+        """
+        freed_mb = 0.0
+
+        try:
+            if self.project_model and self.project_model.tob_files:
+                # Remove least recently used TOB files (keep only most recent 3)
+                tob_files = sorted(
+                    self.project_model.tob_files,
+                    key=lambda f: f.added_date or datetime.min,
+                    reverse=True
+                )
+
+                # Remove files beyond the first 3
+                for tob_file in tob_files[3:]:
+                    # Calculate memory usage of this file
+                    file_memory = 0.0
+                    if tob_file.tob_data and tob_file.tob_data.dataframe is not None:
+                        file_memory = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+
+                    # Remove the file
+                    if self.project_model.remove_tob_file(tob_file.file_name):
+                        freed_mb += file_memory
+                        self.logger.info(f"Cleaned up TOB file '{tob_file.file_name}' ({file_memory:.1f}MB)")
+
+                        # Notify UI about removed file
+                        if hasattr(self.main_window, 'show_status_message'):
+                            self.main_window.show_status_message(
+                                f"Removed '{tob_file.file_name}' to free memory"
+                            )
+
+                        # Trigger auto-save
+                        self._mark_project_modified()
+
+        except Exception as e:
+            self.logger.error(f"Error during TOB memory cleanup: {e}")
+
+        return freed_mb
+
+    def _cleanup_plot_memory(self) -> float:
+        """
+        Cleanup plot-related memory when memory is critical.
+
+        Returns:
+            Amount of memory freed in MB
+        """
+        freed_mb = 0.0
+
+        try:
+            # Clear plot data if possible
+            if hasattr(self.main_window, 'clear_plot_data'):
+                self.main_window.clear_plot_data()
+                self.logger.info("Cleared plot data for memory cleanup")
+
+                # Estimate freed memory (rough estimate)
+                freed_mb = 100.0  # Assume 100MB freed by clearing plot
+
+        except Exception as e:
+            self.logger.error(f"Error during plot memory cleanup: {e}")
+
+        return freed_mb
+
+    def check_memory_for_tob_operation(self, estimated_mb: float) -> bool:
+        """
+        Check if a TOB operation can proceed based on memory requirements.
+
+        Args:
+            estimated_mb: Estimated memory required in MB
+
+        Returns:
+            True if operation can proceed, False otherwise
+        """
+        can_proceed, reason = self.memory_monitor.check_memory_before_operation(estimated_mb)
+
+        if not can_proceed:
+            if self.main_window:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self.main_window,
+                    "Memory Limit",
+                    f"Cannot perform operation: {reason}\n\n"
+                    "Try closing other applications or freeing up memory."
+                )
+
+        return can_proceed
+
+    def update_tob_memory_usage(self) -> None:
+        """
+        Update the memory monitor with current TOB data memory usage.
+        """
+        try:
+            if not self.project_model:
+                return
+
+            total_tob_memory = 0.0
+
+            for tob_file in self.project_model.tob_files:
+                if tob_file.tob_data and tob_file.tob_data.dataframe is not None:
+                    # Calculate memory usage of this TOB file
+                    file_memory = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+                    total_tob_memory += file_memory
+
+            # Update memory monitor
+            self.memory_monitor.update_tob_memory_usage(total_tob_memory)
+
+            self.logger.debug(f"Updated TOB memory usage: {total_tob_memory:.1f}MB")
+
+        except Exception as e:
+            self.logger.error(f"Error updating TOB memory usage: {e}")
+
     def _mark_project_modified(self) -> None:
         """
         Mark project as modified and trigger auto-save.
@@ -955,6 +1096,9 @@ class MainController(QObject):
             if project.tob_files:
                 self.logger.info("Project has %d TOB files", len(project.tob_files))
                 # TODO: Load first TOB file or show processing list
+
+            # Update memory usage for loaded project
+            self.update_tob_memory_usage()
 
             self.main_window.show_status_message("Project opened successfully")
             self.logger.info("Project '%s' opened successfully", project.name)
