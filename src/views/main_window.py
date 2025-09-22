@@ -486,6 +486,15 @@ class MainWindow(QMainWindow):
         self._connect_axis_signals()
         self.logger.debug("Controller set and axis signals connected")
 
+        # Connect GUI operation signals (thread-safe)
+        self.controller.show_upload_success.connect(self._on_show_upload_success)
+        self.controller.show_server_status.connect(self._on_show_server_status)
+
+        # Connect error handler signals (thread-safe)
+        self.error_handler.error_occurred.connect(self._on_error_occurred)
+        self.error_handler.warning_occurred.connect(self._on_warning_occurred)
+        self.error_handler.info_message.connect(self._on_info_message)
+
         # Action buttons
         if self.quality_control_button:
             self.quality_control_button.clicked.connect(self._on_quality_control)
@@ -1488,6 +1497,77 @@ class MainWindow(QMainWindow):
             timeout: Timeout in milliseconds (0 = permanent)
         """
         self.show_status_message(message, timeout)
+
+    def _on_show_upload_success(self, title: str, message: str):
+        """
+        Handle upload success signal - show QMessageBox on main thread.
+
+        Args:
+            title: Dialog title
+            message: Dialog message
+        """
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, title, message)
+
+    def _on_show_server_status(self, title: str, message: str):
+        """
+        Handle server status signal - show QMessageBox on main thread.
+
+        Args:
+            title: Dialog title
+            message: Dialog message
+        """
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, title, message)
+
+    def _on_error_occurred(self, error_type: str, error_message: str, parent):
+        """
+        Handle error signal - show error dialog on main thread.
+
+        Args:
+            error_type: Type of error
+            error_message: Error message
+            parent: Parent widget
+        """
+        from PyQt6.QtWidgets import QMessageBox
+        msg_box = QMessageBox(parent or self)
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle(f"Error - {error_type}")
+        msg_box.setText(f"An error occurred:\n\n{error_message}")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
+
+    def _on_warning_occurred(self, message: str, parent):
+        """
+        Handle warning signal - show warning dialog on main thread.
+
+        Args:
+            message: Warning message
+            parent: Parent widget
+        """
+        from PyQt6.QtWidgets import QMessageBox
+        msg_box = QMessageBox(parent or self)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setWindowTitle("Warning")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
+
+    def _on_info_message(self, message: str, parent):
+        """
+        Handle info signal - show info dialog on main thread.
+
+        Args:
+            message: Info message
+            parent: Parent widget
+        """
+        from PyQt6.QtWidgets import QMessageBox
+        msg_box = QMessageBox(parent or self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Information")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
 
     def closeEvent(self, event):
         """

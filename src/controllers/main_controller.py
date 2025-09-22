@@ -49,6 +49,10 @@ class MainController(QObject):
     plot_axis_limits_update = pyqtSignal(str, float, float)  # axis, min, max
     show_plot_mode = pyqtSignal()  # signal to show plot mode
 
+    # GUI operation signals (thread-safe)
+    show_upload_success = pyqtSignal(str, str)  # title, message
+    show_server_status = pyqtSignal(str, str)  # title, message
+
     def __init__(self, main_window=None):
         """
         Initialize the main controller.
@@ -1149,14 +1153,13 @@ class MainController(QObject):
 
                 self.logger.info(f"Successfully initiated upload for '{file_name}' (job: {upload_result.job_id})")
 
-                if self.main_window:
-                    from PyQt6.QtWidgets import QMessageBox
-                    QMessageBox.information(
-                        self.main_window, "Upload Started",
-                        f"Upload of '{file_name}' to server has been initiated.\n\n"
-                        f"Job ID: {upload_result.job_id or 'N/A'}\n"
-                        f"Message: {upload_result.message or 'Upload in progress'}"
-                    )
+                # Emit signal for thread-safe GUI update
+                self.show_upload_success.emit(
+                    "Upload Started",
+                    f"Upload of '{file_name}' to server has been initiated.\n\n"
+                    f"Job ID: {upload_result.job_id or 'N/A'}\n"
+                    f"Message: {upload_result.message or 'Upload in progress'}"
+                )
 
                 return True
             else:
@@ -1226,25 +1229,23 @@ class MainController(QObject):
             # Keep current status for other states
 
             # Show status to user
-            if self.main_window:
-                from PyQt6.QtWidgets import QMessageBox
+            message = f"Server Status for '{file_name}':\n\n"
+            message += f"Status: {status_result.status.title()}\n"
 
-                message = f"Server Status for '{file_name}':\n\n"
-                message += f"Status: {status_result.status.title()}\n"
+            if status_result.progress is not None:
+                message += f"Progress: {status_result.progress:.1f}%\n"
 
-                if status_result.progress is not None:
-                    message += f"Progress: {status_result.progress:.1f}%\n"
+            if status_result.message:
+                message += f"Message: {status_result.message}\n"
 
-                if status_result.message:
-                    message += f"Message: {status_result.message}\n"
+            if status_result.error_message:
+                message += f"Error: {status_result.error_message}\n"
 
-                if status_result.error_message:
-                    message += f"Error: {status_result.error_message}\n"
+            if status_result.result_url:
+                message += f"Result URL: {status_result.result_url}\n"
 
-                if status_result.result_url:
-                    message += f"Result URL: {status_result.result_url}\n"
-
-                QMessageBox.information(self.main_window, "Server Status", message)
+            # Emit signal for thread-safe GUI update
+            self.show_server_status.emit("Server Status", message)
 
         except Exception as e:
             self.logger.error(f"Error checking server status: {e}")

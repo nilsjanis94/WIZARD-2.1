@@ -9,7 +9,7 @@ import traceback
 from typing import Any, Dict, Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtWidgets import QMessageBox, QWidget
+from PyQt6.QtWidgets import QWidget
 
 
 class ErrorHandler(QObject):
@@ -22,10 +22,10 @@ class ErrorHandler(QObject):
         info_message: Emitted when an info message is shown
     """
 
-    # Signals
-    error_occurred = pyqtSignal(str, str)  # error_type, error_message
-    warning_occurred = pyqtSignal(str)  # warning_message
-    info_message = pyqtSignal(str)  # info_message
+    # Signals for thread-safe GUI operations
+    error_occurred = pyqtSignal(str, str, object)  # error_type, error_message, parent_widget
+    warning_occurred = pyqtSignal(str, object)  # warning_message, parent_widget
+    info_message = pyqtSignal(str, object)  # info_message, parent_widget
 
     def __init__(self):
         """Initialize the error handler."""
@@ -57,11 +57,8 @@ class ErrorHandler(QObject):
 
             self.logger.error(log_message, exc_info=True)
 
-            # Emit signal
-            self.error_occurred.emit(error_type, error_message)
-
-            # Show user-friendly error dialog
-            self._show_error_dialog(error_type, error_message, parent)
+            # Emit signal for thread-safe GUI update
+            self.error_occurred.emit(error_type, error_message, parent)
 
         except Exception as e:
             self.logger.error("Error in error handling: %s", e)
@@ -88,11 +85,8 @@ class ErrorHandler(QObject):
 
             self.logger.warning(log_message)
 
-            # Emit signal
-            self.warning_occurred.emit(message)
-
-            # Show warning dialog
-            self._show_warning_dialog(message, parent)
+            # Emit signal for thread-safe GUI update
+            self.warning_occurred.emit(message, parent)
 
         except Exception as e:
             self.logger.error("Error in warning handling: %s", e)
@@ -119,80 +113,12 @@ class ErrorHandler(QObject):
 
             self.logger.info(log_message)
 
-            # Emit signal
-            self.info_message.emit(message)
-
-            # Show info dialog
-            self._show_info_dialog(message, parent)
+            # Emit signal for thread-safe GUI update
+            self.info_message.emit(message, parent)
 
         except Exception as e:
             self.logger.error("Error in info handling: %s", e)
 
-    def _show_error_dialog(
-        self, error_type: str, error_message: str, parent: Optional[QWidget] = None
-    ) -> None:
-        """
-        Show error dialog to user.
-
-        Args:
-            error_type: Type of error
-            error_message: Error message
-            parent: Parent widget
-        """
-        try:
-            # Create user-friendly error message
-            user_message = self._create_user_message(error_type, error_message)
-
-            # Show message box
-            msg_box = QMessageBox(parent)
-            msg_box.setIcon(QMessageBox.Icon.Critical)
-            msg_box.setWindowTitle("Error")
-            msg_box.setText(user_message)
-            msg_box.setDetailedText(
-                f"Error Type: {error_type}\nDetails: {error_message}"
-            )
-            msg_box.exec()
-
-        except Exception as e:
-            self.logger.error("Error showing error dialog: %s", e)
-
-    def _show_warning_dialog(
-        self, message: str, parent: Optional[QWidget] = None
-    ) -> None:
-        """
-        Show warning dialog to user.
-
-        Args:
-            message: Warning message
-            parent: Parent widget
-        """
-        try:
-            msg_box = QMessageBox(parent)
-            msg_box.setIcon(QMessageBox.Icon.Warning)
-            msg_box.setWindowTitle("Warning")
-            msg_box.setText(message)
-            msg_box.exec()
-
-        except Exception as e:
-            self.logger.error("Error showing warning dialog: %s", e)
-
-    def _show_info_dialog(self, message: str, parent: Optional[QWidget] = None) -> None:
-        """
-        Show info dialog to user.
-
-        Args:
-            message: Info message
-            parent: Parent widget
-        """
-        try:
-            msg_box = QMessageBox(parent)
-            msg_box.setIcon(QMessageBox.Icon.Information)
-            msg_box.setWindowTitle("Information")
-            msg_box.setText(message)
-            msg_box.exec()
-
-        except Exception as e:
-            self.logger.error("Error showing info dialog: %s", e)
 
     def _create_user_message(self, error_type: str, error_message: str) -> str:
         """
