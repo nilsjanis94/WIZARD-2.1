@@ -1049,6 +1049,55 @@ class MainWindow(QMainWindow):
         # Use axis UI service to handle the mode change
         self.axis_ui_service.handle_axis_auto_mode_changed(self, "x", is_auto)
 
+    def _update_axis_limits_for_sensor(self, sensor_name: str, axis: str):
+        """
+        Update min/max values for the specified axis based on the selected sensor.
+
+        Args:
+            sensor_name: Name of the selected sensor
+            axis: "y1" or "y2"
+        """
+        try:
+            # Get TOB data from current project
+            if (self.controller and self.controller.project_model and
+                self.controller.project_model.active_tob_file):
+
+                active_tob = self.controller.project_model.get_active_tob_file()
+                if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
+                    data = active_tob.tob_data.data
+
+                    # Check if sensor exists in data
+                    if sensor_name in data.columns:
+                        sensor_data = data[sensor_name].dropna()
+                        if not sensor_data.empty:
+                            min_val = float(sensor_data.min())
+                            max_val = float(sensor_data.max())
+
+                            # Set values in UI fields
+                            if axis == "y1":
+                                if self.y1_min_value:
+                                    self.y1_min_value.blockSignals(True)
+                                    self.y1_min_value.setText(f"{min_val:.2f}")
+                                    self.y1_min_value.blockSignals(False)
+                                if self.y1_max_value:
+                                    self.y1_max_value.blockSignals(True)
+                                    self.y1_max_value.setText(f"{max_val:.2f}")
+                                    self.y1_max_value.blockSignals(False)
+                            elif axis == "y2":
+                                if self.y2_min_value:
+                                    self.y2_min_value.blockSignals(True)
+                                    self.y2_min_value.setText(f"{min_val:.2f}")
+                                    self.y2_min_value.blockSignals(False)
+                                if self.y2_max_value:
+                                    self.y2_max_value.blockSignals(True)
+                                    self.y2_max_value.setText(f"{max_val:.2f}")
+                                    self.y2_max_value.blockSignals(False)
+
+                            self.logger.debug(f"Updated {axis} limits for {sensor_name}: {min_val:.2f} - {max_val:.2f}")
+
+        except Exception as e:
+            self.logger.error(f"Error updating {axis} limits for sensor {sensor_name}: {e}")
+
     def _on_y1_axis_changed(self, sensor_name: str):
         """Handle Y1 axis sensor selection - sets primary sensor for main plot."""
         if sensor_name:
@@ -1056,6 +1105,9 @@ class MainWindow(QMainWindow):
             # Update primary sensor through controller
             if self.controller:
                 self.controller.set_primary_sensor(sensor_name)
+
+            # Update Y1 min/max values based on selected sensor
+            self._update_axis_limits_for_sensor(sensor_name, "y1")
 
     def _on_y2_axis_changed(self, sensor_name: str):
         """Handle Y2 axis selection - controls plot layout mode."""
@@ -1069,6 +1121,9 @@ class MainWindow(QMainWindow):
             self.logger.debug("Switching to dual plot mode with sensor: %s", sensor_name)
             if self.controller:
                 self.controller.set_secondary_sensor(sensor_name)
+
+            # Update Y2 min/max values based on selected sensor
+            self._update_axis_limits_for_sensor(sensor_name, "y2")
 
     def _on_x_axis_changed(self, axis_type: str):
         """Handle X axis type selection change."""
