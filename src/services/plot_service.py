@@ -583,7 +583,8 @@ class PlotWidget(QWidget):
         """Clear the plot and show placeholder."""
         try:
             self.ax1.clear()
-            self.ax2.clear()
+            if self.ax2 is not None:
+                self.ax2.clear()
 
             # Show placeholder message
             self.ax1.text(

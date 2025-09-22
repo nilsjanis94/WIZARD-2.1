@@ -76,6 +76,16 @@ class MainWindow(QMainWindow):
         self.current_project_path: Optional[str] = None
         self.is_data_loaded = False
 
+        # Setup UI components (services will be injected later if controller is provided)
+        if controller:
+            self.set_controller(controller)
+        else:
+            # Load UI without services
+            self._setup_ui()
+            self._connect_signals()
+            self._setup_menu_bar()
+            self._setup_status_bar()
+
     def set_services(self, services: Dict[str, Any]) -> None:
         """
         Inject services from the controller.
@@ -92,16 +102,18 @@ class MainWindow(QMainWindow):
 
         self.logger.info("Services injected successfully")
 
-        # Initialize UI components only if all required services are available
-        if self._are_services_available():
+        # Setup UI components if not already done
+        if not hasattr(self, 'welcome_container') or self.welcome_container is None:
             self._setup_ui()
             self._connect_signals()
             self._setup_menu_bar()
+            self._setup_status_bar()
+
+        # Initialize service-dependent UI components now that services are available
+        if self._are_services_available():
+            self._initialize_ui_state()
         else:
-            self.logger.warning(
-                "Not all services available - UI initialization deferred"
-            )
-        self._setup_status_bar()
+            self.logger.info("Services not available - UI state initialization deferred")
 
         self.logger.info("Main window initialized successfully")
 
@@ -134,20 +146,7 @@ class MainWindow(QMainWindow):
             # Store references to important widgets
             self._store_widget_references()
 
-            # Set up UI state manager with container references
-            self.ui_state_manager.set_containers(
-                self.welcome_container, self.plot_container
-            )
-
-            # Debug logging for UI state manager setup
-            self.logger.info(
-                "UI state manager containers set - welcome: %s, plot: %s",
-                self.welcome_container is not None,
-                self.plot_container is not None,
-            )
-
-            # Initialize UI state
-            self._initialize_ui_state()
+            # UI state and service setup will be done when services are available
 
             self.logger.info("UI loaded successfully from .ui file")
 
@@ -187,9 +186,8 @@ class MainWindow(QMainWindow):
             "Plot info container found: %s", self.plot_info_container is not None
         )
 
-        # Initialize plot widget
+        # Initialize plot widget (lazy initialization)
         self.plot_widget = None
-        self._initialize_plot_widget()
 
         # Project info labels
         self.cruise_info_label = self.findChild(QLabel, "cruise_info_label")
@@ -281,11 +279,28 @@ class MainWindow(QMainWindow):
         # Initialize axis controls
         self._initialize_axis_controls()
 
+        # Initialize plot widget (now that services are available)
+        # Note: Plot widget is now initialized lazily when first needed
+        # self._initialize_plot_widget()
+
         # Set default values
         self._reset_data_metrics()
         self._reset_project_info()
 
         self.logger.debug("UI state initialized")
+
+    def _ensure_plot_widget(self):
+        """
+        Ensure plot widget is initialized and available.
+        """
+        if not hasattr(self, 'plot_widget') or self.plot_widget is None:
+            if hasattr(self, 'plot_service') and self.plot_service and self.plot_canvas_container:
+                self.logger.info("Creating plot widget on demand...")
+                self._initialize_plot_widget()
+            else:
+                self.logger.warning("Cannot create plot widget: services or container not available")
+                return False
+        return self.plot_widget is not None
 
     def _initialize_plot_widget(self):
         """
@@ -309,12 +324,15 @@ class MainWindow(QMainWindow):
                 # Check if container already has a layout
                 existing_layout = self.plot_canvas_container.layout()
                 if existing_layout:
-                    # Clear existing layout
+                    # Clear existing layout properly
                     while existing_layout.count():
                         child = existing_layout.takeAt(0)
                         if child.widget():
-                            child.widget().deleteLater()
-                    existing_layout.deleteLater()
+                            child.widget().setParent(None)
+                    # Remove the layout from the widget
+                    self.plot_canvas_container.setLayout(None)
+                    # Don't delete the layout immediately to avoid issues
+                    existing_layout.setParent(None)
 
                 # Create new layout
                 layout = QVBoxLayout()
@@ -447,29 +465,29 @@ class MainWindow(QMainWindow):
         """
         Connect axis control signals that require controller.
         """
-        if self.y1_axis_combo:
+        if hasattr(self, 'y1_axis_combo') and self.y1_axis_combo:
             self.y1_axis_combo.currentTextChanged.connect(self._on_y1_axis_changed)
 
-        if self.y2_axis_combo:
+        if hasattr(self, 'y2_axis_combo') and self.y2_axis_combo:
             self.y2_axis_combo.currentTextChanged.connect(self._on_y2_axis_changed)
 
-        if self.x_axis_combo:
+        if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
             self.x_axis_combo.currentTextChanged.connect(self._on_x_axis_changed)
 
         # Connect manual axis value changes
-        if self.x_min_value:
+        if hasattr(self, 'x_min_value') and self.x_min_value:
             self.x_min_value.textChanged.connect(self._on_x_axis_limits_changed)
-        if self.x_max_value:
+        if hasattr(self, 'x_max_value') and self.x_max_value:
             self.x_max_value.textChanged.connect(self._on_x_axis_limits_changed)
 
-        if self.y1_min_value:
+        if hasattr(self, 'y1_min_value') and self.y1_min_value:
             self.y1_min_value.textChanged.connect(self._on_y1_axis_limits_changed)
-        if self.y1_max_value:
+        if hasattr(self, 'y1_max_value') and self.y1_max_value:
             self.y1_max_value.textChanged.connect(self._on_y1_axis_limits_changed)
 
-        if self.y2_min_value:
+        if hasattr(self, 'y2_min_value') and self.y2_min_value:
             self.y2_min_value.textChanged.connect(self._on_y2_axis_limits_changed)
-        if self.y2_max_value:
+        if hasattr(self, 'y2_max_value') and self.y2_max_value:
             self.y2_max_value.textChanged.connect(self._on_y2_axis_limits_changed)
 
         self.logger.debug("Axis control signals connected")
@@ -494,6 +512,20 @@ class MainWindow(QMainWindow):
         self.error_handler.error_occurred.connect(self._on_error_occurred)
         self.error_handler.warning_occurred.connect(self._on_warning_occurred)
         self.error_handler.info_message.connect(self._on_info_message)
+
+        # Setup UI state manager with container references (now that services are available)
+        if self.ui_state_manager and self.welcome_container and self.plot_container:
+            self.ui_state_manager.set_containers(
+                self.welcome_container, self.plot_container
+            )
+            self.logger.info(
+                "UI state manager containers set - welcome: %s, plot: %s",
+                self.welcome_container is not None,
+                self.plot_container is not None,
+            )
+
+        # Initialize UI state now that services are available
+        self._initialize_ui_state()
 
         # Action buttons
         if self.quality_control_button:
@@ -736,7 +768,10 @@ class MainWindow(QMainWindow):
             file_name: Name of the selected TOB file
         """
         try:
+            self.logger.info(f"Attempting to plot TOB file: {file_name}")
+
             if not self.controller or not self.controller.project_model:
+                self.logger.error("No project controller available")
                 self.error_handler.handle_error(
                     ValueError("No project controller available"),
                     "Project Error", self
@@ -746,21 +781,32 @@ class MainWindow(QMainWindow):
             # Get TOB file data
             tob_file = self.controller.project_model.get_tob_file(file_name)
             if not tob_file:
+                self.logger.error(f"TOB file '{file_name}' not found in project")
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' not found in project"),
                     "File Not Found", self
                 )
                 return
 
+            self.logger.info(f"Found TOB file: {tob_file.file_name}")
+            self.logger.info(f"TOB data exists: {tob_file.tob_data is not None}")
+
+            if tob_file.tob_data:
+                self.logger.info(f"DataFrame exists: {tob_file.tob_data.dataframe is not None}")
+                if tob_file.tob_data.dataframe is not None:
+                    self.logger.info(f"DataFrame shape: {tob_file.tob_data.dataframe.shape}")
+                    self.logger.info(f"DataFrame empty: {tob_file.tob_data.dataframe.empty}")
+
             if not tob_file.tob_data or tob_file.tob_data.dataframe is None or tob_file.tob_data.dataframe.empty:
+                self.logger.error(f"TOB file '{file_name}' has no data to plot")
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' has no data to plot"),
                     "No Plot Data", self
                 )
                 return
 
-            # Check if plot widget is available
-            if not self.plot_widget:
+            # Ensure plot widget is available
+            if not self._ensure_plot_widget():
                 self.error_handler.handle_error(
                     ValueError("Plot widget is not available"),
                     "Plot System Error", self
@@ -780,15 +826,10 @@ class MainWindow(QMainWindow):
             # Check memory usage before loading
             memory_mb = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
             if memory_mb > 500:  # Warn if over 500MB
-                reply = QMessageBox.question(
-                    self, "Large Dataset Warning",
-                    f"This dataset uses approximately {memory_mb:.1f}MB of memory.\n\n"
-                    "Loading may take some time and use significant system resources.\n\n"
-                    "Continue with loading?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
-                if reply != QMessageBox.StandardButton.Yes:
-                    return
+                # For now, just show a warning but continue loading
+                # TODO: Implement proper user confirmation dialog via signals
+                self.logger.warning(f"Loading large dataset: {memory_mb:.1f}MB")
+                # Continue with loading for now
 
             # Update plot widget with TOB data
             self.plot_widget.update_data(tob_data_model)
@@ -850,7 +891,7 @@ class MainWindow(QMainWindow):
         Clear all data from the plot widget.
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 # Clear sensor selections
                 for checkbox in self.ntc_checkboxes.values():
                     checkbox.setChecked(False)
@@ -1230,7 +1271,7 @@ class MainWindow(QMainWindow):
             tob_data_model: TOB data model containing sensor data
         """
         try:
-            if self.plot_widget:
+            if self._ensure_plot_widget():
                 self.plot_widget.update_data(tob_data_model)
                 self.update_style_indicators()  # Update visual indicators
                 self.logger.debug("Plot data updated successfully")
@@ -1248,7 +1289,7 @@ class MainWindow(QMainWindow):
             selected_sensors: List of selected sensor names
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 self.plot_widget.update_sensor_selection(selected_sensors)
                 self.update_style_indicators()  # Update visual indicators
                 self.logger.debug("Plot sensors updated: %s", selected_sensors)
@@ -1266,7 +1307,7 @@ class MainWindow(QMainWindow):
             axis_settings: Dictionary containing axis configuration
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 self.plot_widget.update_axis_settings(axis_settings)
                 self.logger.debug("Plot axis settings updated: %s", axis_settings)
             else:
@@ -1284,7 +1325,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum X-axis value in seconds
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 self.plot_widget.update_x_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot X-axis limits updated: min=%.2f, max=%.2f",
@@ -1308,7 +1349,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum Y1-axis value
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 self.plot_widget.update_y1_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot Y1-axis limits updated: min=%.2f, max=%.2f",
@@ -1332,7 +1373,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum Y2-axis value
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 self.plot_widget.update_y2_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot Y2-axis limits updated: min=%.2f, max=%.2f",
@@ -1378,7 +1419,7 @@ class MainWindow(QMainWindow):
             Dictionary containing plot information
         """
         try:
-            if self.plot_widget:
+            if hasattr(self, 'plot_widget') and self.plot_widget:
                 return self.plot_widget.get_plot_info()
             else:
                 return {"has_plot_widget": False}

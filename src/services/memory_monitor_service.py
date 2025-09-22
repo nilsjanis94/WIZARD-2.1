@@ -44,14 +44,14 @@ class MemoryMonitorService:
     to prevent memory exhaustion during TOB file operations.
     """
 
-    # Memory limits in MB
-    WARNING_THRESHOLD_MB = 1536  # 1.5GB - start warning user
-    CRITICAL_THRESHOLD_MB = 1843  # 1.8GB - force cleanup
-    MAX_MEMORY_MB = 2048  # 2GB - absolute maximum
+    # Memory limits in MB for TOB data
+    WARNING_THRESHOLD_MB = 2048   # 2.0GB - start warning user
+    CRITICAL_THRESHOLD_MB = 3072  # 3.0GB - force cleanup
+    MAX_MEMORY_MB = 4096           # 4.0GB - absolute maximum for TOB data
 
     # Monitoring intervals in seconds
-    MONITORING_INTERVAL = 5.0  # Check every 5 seconds
-    FAST_MONITORING_INTERVAL = 1.0  # Check every 1 second when critical
+    MONITORING_INTERVAL = 30.0  # Check every 30 seconds (TOB data changes infrequently)
+    FAST_MONITORING_INTERVAL = 10.0  # Check every 10 seconds when critical
 
     def __init__(self, error_handler: Optional[ErrorHandler] = None):
         """
@@ -212,14 +212,15 @@ class MemoryMonitorService:
         """
         stats = self.get_memory_stats()
 
-        # Check if operation would exceed limits
-        projected_usage = stats.used_mb + estimated_mb
+        # Check if operation would exceed TOB data limits
+        projected_tob_usage = self.tob_memory_usage + estimated_mb
 
-        if projected_usage >= self.MAX_MEMORY_MB:
-            return False, f"Operation would exceed memory limit ({projected_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"
+        if projected_tob_usage >= self.MAX_MEMORY_MB:
+            return False, f"Operation would exceed TOB data memory limit ({projected_tob_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"
 
-        if stats.level in [MemoryLevel.CRITICAL, MemoryLevel.EXCEEDED]:
-            return False, f"Memory usage is critical ({stats.used_mb:.1f}MB). Please free up memory first."
+        tob_memory_level = self._calculate_memory_level(self.tob_memory_usage)
+        if tob_memory_level in [MemoryLevel.CRITICAL, MemoryLevel.EXCEEDED]:
+            return False, f"TOB data memory usage is critical ({self.tob_memory_usage:.1f}MB). Please remove some TOB files first."
 
         return True, ""
 
@@ -262,39 +263,42 @@ class MemoryMonitorService:
         """
         current_time = time.time()
 
-        if stats.level == MemoryLevel.EXCEEDED:
-            self.logger.critical(f"Memory limit exceeded: {stats.used_mb:.1f}MB")
+        # Check TOB data memory instead of system memory
+        tob_memory_level = self._calculate_memory_level(self.tob_memory_usage)
+
+        if tob_memory_level == MemoryLevel.EXCEEDED:
+            self.logger.critical(f"TOB data memory limit exceeded: {self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB")
             self._perform_emergency_cleanup()
 
             if self.error_handler:
                 self.error_handler.handle_error(
-                    MemoryError(f"Memory limit exceeded ({stats.used_mb:.1f}MB > {self.MAX_MEMORY_MB}MB)"),
-                    "Memory Limit Exceeded",
+                    MemoryError(f"TOB data memory limit exceeded ({self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"),
+                    "TOB Memory Limit Exceeded",
                     None
                 )
 
-        elif stats.level == MemoryLevel.CRITICAL:
-            self.logger.warning(f"Critical memory usage: {stats.used_mb:.1f}MB")
+        elif tob_memory_level == MemoryLevel.CRITICAL:
+            self.logger.warning(f"TOB data memory usage critical: {self.tob_memory_usage:.1f}MB")
             freed_mb = self._perform_cleanup()
 
             if current_time - self.last_warning_time > self.warning_cooldown:
                 self.last_warning_time = current_time
                 if self.error_handler:
-                    self.error_handler.handle_error(
-                        ResourceWarning(f"Critical memory usage ({stats.used_mb:.1f}MB). Freed {freed_mb:.1f}MB."),
-                        "Memory Warning",
+                    self.error_handler.handle_warning(
+                        f"TOB data memory usage is critical ({self.tob_memory_usage:.1f}MB). "
+                        "Consider removing some TOB files to free up memory.",
                         None
                     )
 
-        elif stats.level == MemoryLevel.HIGH:
-            self.logger.info(f"High memory usage: {stats.used_mb:.1f}MB")
+        elif tob_memory_level == MemoryLevel.HIGH:
+            self.logger.info(f"TOB data memory usage high: {self.tob_memory_usage:.1f}MB")
 
             if current_time - self.last_warning_time > self.warning_cooldown:
                 self.last_warning_time = current_time
                 if self.error_handler:
-                    self.error_handler.handle_error(
-                        ResourceWarning(f"High memory usage ({stats.used_mb:.1f}MB). Consider freeing up memory."),
-                        "Memory Warning",
+                    self.error_handler.handle_warning(
+                        f"TOB data memory usage is high ({self.tob_memory_usage:.1f}MB). "
+                        "Consider removing unused TOB files.",
                         None
                     )
 

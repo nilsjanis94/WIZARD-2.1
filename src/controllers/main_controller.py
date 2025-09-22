@@ -115,9 +115,11 @@ class MainController(QObject):
             # Fallback: create window (backward compatibility)
             from ..views.main_window import MainWindow
 
-            self.main_window = MainWindow(controller=self)
-            # Inject services into view
+            self.main_window = MainWindow()  # Create without controller
+            # Inject services into view first
             self._inject_services_into_view()
+            # Then set controller
+            self.main_window.set_controller(self)
 
         # Connect signals
         self._connect_signals()
@@ -1004,7 +1006,7 @@ class MainController(QObject):
 
         try:
             # Clear plot data if possible
-            if hasattr(self.main_window, 'clear_plot_data'):
+            if hasattr(self, 'main_window') and self.main_window and hasattr(self.main_window, 'clear_plot_data'):
                 self.main_window.clear_plot_data()
                 self.logger.info("Cleared plot data for memory cleanup")
 

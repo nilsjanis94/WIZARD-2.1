@@ -57,6 +57,10 @@ class ProcessingListDialog(QDialog):
         self.setModal(True)
         self.setMinimumSize(600, 400)
 
+        # Initialize logger
+        import logging
+        self.logger = logging.getLogger(__name__)
+
         # Store project model reference
         self.project_model = project_model
 
@@ -151,7 +155,7 @@ class ProcessingListDialog(QDialog):
 
         tob_file = self.project_model.get_tob_file(file_name)
         if not tob_file:
-            QMessageBox.warning(self, "File Not Found", f"Could not find file '{file_name}' in project.")
+            self.logger.warning(f"Could not find file '{file_name}' in project.")
             return
 
         # Create details message
@@ -175,7 +179,7 @@ TOB File Details: {file_name}
         if tob_file.error_message:
             details += f"❌ Error: {tob_file.error_message}\n"
 
-        QMessageBox.information(self, "TOB File Details", details.strip())
+        self.logger.info(f"TOB file details: {details.strip()}")
 
     def _upload_to_server(self, file_name: str) -> None:
         """
@@ -185,7 +189,7 @@ TOB File Details: {file_name}
             file_name: Name of the TOB file to upload
         """
         if not hasattr(self.parent(), 'controller') or not self.parent().controller:
-            QMessageBox.warning(self, "No Controller", "Controller not available for upload.")
+            self.logger.warning("Controller not available for upload.")
             return
 
         # Use controller's upload method
@@ -203,7 +207,7 @@ TOB File Details: {file_name}
             file_name: Name of the TOB file
         """
         if not hasattr(self.parent(), 'controller') or not self.parent().controller:
-            QMessageBox.warning(self, "No Controller", "Controller not available for status check.")
+            self.logger.warning("Controller not available for status check.")
             return
 
         # Use controller's status check method
@@ -221,7 +225,7 @@ TOB File Details: {file_name}
 
         tob_file = self.project_model.get_tob_file(file_name)
         if not tob_file:
-            QMessageBox.warning(self, "File Not Found", f"Could not find file '{file_name}' in project.")
+            self.logger.warning(f"Could not find file '{file_name}' in project.")
             return
 
         reply = QMessageBox.question(
@@ -288,15 +292,12 @@ TOB File Details: {file_name}
             if success:
                 # Refresh table
                 self._populate_table()
-                QMessageBox.information(self, "Reload Complete",
-                                      f"'{file_name}' has been successfully reloaded from disk.")
+                self.logger.info(f"'{file_name}' has been successfully reloaded from disk.")
             else:
-                QMessageBox.warning(self, "Reload Failed",
-                                  f"Failed to update '{file_name}' data in project.")
+                self.logger.warning(f"Failed to update '{file_name}' data in project.")
 
         except Exception as e:
-            QMessageBox.critical(self, "Reload Error",
-                               f"Error reloading '{file_name}': {str(e)}")
+            self.logger.error(f"Error reloading '{file_name}': {str(e)}")
         finally:
             progress.close()
 
@@ -337,8 +338,7 @@ TOB File Details: {file_name}
 
         if reply == QMessageBox.StandardButton.Yes:
             self.update_tob_file_status(file_name, "loaded")
-            QMessageBox.information(self, "Status Reset",
-                                  f"Status of '{file_name}' has been reset to 'loaded'.")
+            self.logger.info(f"Status of '{file_name}' has been reset to 'loaded'.")
 
     def _mark_file_error(self, file_name: str) -> None:
         """
@@ -362,8 +362,7 @@ TOB File Details: {file_name}
             if tob_file:
                 tob_file.error_message = error_msg
 
-            QMessageBox.information(self, "File Marked as Error",
-                                  f"'{file_name}' has been marked as having an error.")
+            self.logger.info(f"'{file_name}' has been marked as having an error.")
 
     def _mark_file_processed(self, file_name: str) -> None:
         """
@@ -381,8 +380,7 @@ TOB File Details: {file_name}
 
         if reply == QMessageBox.StandardButton.Yes:
             self.update_tob_file_status(file_name, "processed")
-            QMessageBox.information(self, "File Marked as Processed",
-                                  f"'{file_name}' has been marked as successfully processed.")
+            self.logger.info(f"'{file_name}' has been marked as successfully processed.")
 
     def _populate_table(self) -> None:
         """
@@ -785,7 +783,7 @@ TOB File Details: {file_name}
     def _add_file(self) -> None:
         """Add a TOB file to the project."""
         if not self.project_model:
-            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            self.logger.warning("No project is currently loaded.")
             return
 
         file_paths, _ = QFileDialog.getOpenFileNames(
@@ -812,8 +810,7 @@ TOB File Details: {file_name}
                         # Check limits
                         can_add, reason = self.project_model.can_add_tob_file(file_size)
                         if not can_add:
-                            QMessageBox.warning(self, "Cannot Add File",
-                                              f"Cannot add {file_name}: {reason}")
+                            self.logger.warning(f"Cannot add file {file_name}: {reason}")
                             skipped_count += 1
                             continue
 
@@ -821,8 +818,7 @@ TOB File Details: {file_name}
                         if hasattr(self.parent(), 'controller') and self.parent().controller:
                             estimated_mb = file_size / (1024 * 1024) * 2.5  # Rough estimate
                             if not self.parent().controller.check_memory_for_tob_operation(estimated_mb):
-                                QMessageBox.warning(self, "Memory Limit",
-                                                  f"Cannot add {file_name}: Insufficient memory")
+                                self.logger.warning(f"Memory limit exceeded for {file_name}: Insufficient memory")
                                 skipped_count += 1
                                 continue
 
@@ -832,8 +828,7 @@ TOB File Details: {file_name}
 
                         validation = tob_service.validate_tob_file(file_path)
                         if not validation['valid']:
-                            QMessageBox.warning(self, "Validation Failed",
-                                              f"Cannot load {file_name}: {validation['error_message']}")
+                            self.logger.warning(f"Validation failed for {file_name}: {validation['error_message']}")
                             skipped_count += 1
                             continue
 
@@ -885,6 +880,11 @@ TOB File Details: {file_name}
                                 added_count += 1
                                 self.file_added.emit(file_path)
 
+                                # Debug logging
+                                self.logger.info(f"Successfully added TOB file: {file_name}")
+                                self.logger.info(f"Data points: {data_points}, Sensors: {len(sensors)}")
+                                self.logger.info(f"DataFrame shape: {tob_data.data.shape if tob_data.data is not None else 'None'}")
+
                                 # Update memory monitor with new TOB data size
                                 if hasattr(self.parent(), 'controller') and self.parent().controller:
                                     tob_memory_mb = (len(tob_data.data) if tob_data.data is not None else 0) * 0.001  # Rough estimate
@@ -897,21 +897,18 @@ TOB File Details: {file_name}
                             progress.setValue(100)
 
                         except TimeoutError:
-                            QMessageBox.warning(self, "Loading Timeout",
-                                              f"Loading {file_name} timed out. File may be too large or corrupted.")
+                            self.logger.error(f"Loading {file_name} timed out. File may be too large or corrupted.")
                             skipped_count += 1
                             continue
                         except Exception as e:
-                            QMessageBox.warning(self, "Loading Failed",
-                                              f"Failed to load {file_name}: {str(e)}")
+                            self.logger.error(f"Failed to load {file_name}: {str(e)}")
                             skipped_count += 1
                             continue
                         finally:
                             progress.close()
 
                     except Exception as e:
-                        QMessageBox.warning(self, "Error Adding File",
-                                          f"Error adding {Path(file_path).name}: {str(e)}")
+                        self.logger.error(f"Error adding {Path(file_path).name}: {str(e)}")
                         skipped_count += 1
                         # Re-raise to trigger rollback
                         raise
@@ -922,25 +919,22 @@ TOB File Details: {file_name}
 
             # Show result
             if added_count > 0:
-                QMessageBox.information(self, "Files Added",
-                                      f"Successfully added {added_count} file(s)." +
-                                      (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
+                self.logger.info(f"Successfully added {added_count} file(s)." +
+                                (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
                 # Trigger auto-save
                 if hasattr(self.parent(), 'controller') and self.parent().controller:
                     self.parent().controller._mark_project_modified()
 
         except Exception as e:
             # Rollback was automatically performed by the transaction context manager
-            QMessageBox.critical(self, "Import Failed",
-                               f"Failed to import TOB files. All changes have been rolled back.\n\n"
-                               f"Error: {str(e)}")
+            self.logger.error(f"Failed to import TOB files. All changes have been rolled back. Error: {str(e)}")
             # Refresh table to show rolled back state
             self._populate_table()
 
     def _remove_selected_file(self) -> None:
         """Remove the selected file from the project."""
         if not self.project_model:
-            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            self.logger.warning("No project is currently loaded.")
             return
 
         current_row = self.table_widget.currentRow()
@@ -964,8 +958,7 @@ TOB File Details: {file_name}
                     if success:
                         self._populate_table()  # Refresh table
                         self.file_removed.emit(file_name)
-                        QMessageBox.information(self, "File Removed",
-                                              f"'{file_name}' has been removed from the project.")
+                        self.logger.info(f"'{file_name}' has been removed from the project.")
 
                         # Clear plot if this was the active file
                         if (self.project_model.active_tob_file == file_name and
@@ -976,13 +969,12 @@ TOB File Details: {file_name}
                         if hasattr(self.parent(), 'controller') and self.parent().controller:
                             self.parent().controller._mark_project_modified()
                     else:
-                        QMessageBox.warning(self, "Remove Failed",
-                                          f"Could not remove '{file_name}' from the project.")
+                        self.logger.warning(f"Could not remove '{file_name}' from the project.")
 
     def _plot_selected_file(self) -> None:
         """Plot the selected file."""
         if not self.project_model:
-            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            self.logger.warning("No project is currently loaded.")
             return
 
         current_row = self.table_widget.currentRow()
@@ -1003,8 +995,7 @@ TOB File Details: {file_name}
                     # Update table to show active state
                     self._populate_table()
                 else:
-                    QMessageBox.warning(self, "File Not Found",
-                                      f"Could not find file '{file_name}' in project.")
+                    self.logger.warning(f"Could not find file '{file_name}' in project.")
 
     def update_file_list(self, files: List[dict]) -> None:
         """
