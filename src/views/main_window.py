@@ -109,6 +109,17 @@ class MainWindow(QMainWindow):
             self._setup_menu_bar()
             self._setup_status_bar()
 
+        # Setup UI state manager with container references first
+        if self.ui_state_manager and self.welcome_container and self.plot_container:
+            self.ui_state_manager.set_containers(
+                self.welcome_container, self.plot_container
+            )
+            self.logger.info(
+                "UI state manager containers set - welcome: %s, plot: %s",
+                self.welcome_container is not None,
+                self.plot_container is not None,
+            )
+
         # Initialize service-dependent UI components now that services are available
         if self._are_services_available():
             self._initialize_ui_state()
@@ -512,17 +523,6 @@ class MainWindow(QMainWindow):
         self.error_handler.error_occurred.connect(self._on_error_occurred)
         self.error_handler.warning_occurred.connect(self._on_warning_occurred)
         self.error_handler.info_message.connect(self._on_info_message)
-
-        # Setup UI state manager with container references (now that services are available)
-        if self.ui_state_manager and self.welcome_container and self.plot_container:
-            self.ui_state_manager.set_containers(
-                self.welcome_container, self.plot_container
-            )
-            self.logger.info(
-                "UI state manager containers set - welcome: %s, plot: %s",
-                self.welcome_container is not None,
-                self.plot_container is not None,
-            )
 
         # Initialize UI state now that services are available
         self._initialize_ui_state()

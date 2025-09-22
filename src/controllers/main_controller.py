@@ -1264,9 +1264,9 @@ class MainController(QObject):
             total_tob_memory = 0.0
 
             for tob_file in self.project_model.tob_files:
-                if tob_file.tob_data and tob_file.tob_data.dataframe is not None:
+                if tob_file.tob_data and tob_file.tob_data.data is not None:
                     # Calculate memory usage of this TOB file
-                    file_memory = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+                    file_memory = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
                     total_tob_memory += file_memory
 
             # Update memory monitor
