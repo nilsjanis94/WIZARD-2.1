@@ -101,7 +101,9 @@ class ProcessingListDialog(QDialog):
 
             # Status with icon
             status_item = QTableWidgetItem(self._get_status_text(tob_file.status))
-            status_item.setIcon(self._get_status_icon(tob_file.status))
+            status_icon = self._get_status_icon(tob_file.status)
+            if status_icon is not None:
+                status_item.setIcon(status_icon)
             self.table_widget.setItem(row_position, 4, status_item)
 
             # Store file name for later reference
