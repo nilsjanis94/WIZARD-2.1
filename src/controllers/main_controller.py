@@ -1468,6 +1468,18 @@ class MainController(QObject):
             # Then plot the data (will use the updated settings)
             self.main_window.plot_widget.update_data(tob_data_model)
 
+            # Calculate and update data metrics
+            try:
+                metrics = self.data_service._calculate_metrics(tob_data_model)
+                self.logger.info("TOB metrics calculated for auto-plotting")
+
+                # Update data metrics in view
+                self.data_service.update_data_metrics(
+                    self.main_window.get_metrics_widgets(), metrics
+                )
+            except Exception as e:
+                self.logger.error("Failed to calculate data metrics for auto-plotting: %s", e)
+
             # Update axis limits in UI after plotting
             if hasattr(self.main_window, 'axis_ui_service') and self.main_window.axis_ui_service:
                 # Update all axis limits from the current plot
