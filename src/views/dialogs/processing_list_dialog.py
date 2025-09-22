@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QMenu,
     QMessageBox,
@@ -137,6 +138,256 @@ class ProcessingListDialog(QDialog):
         except ValueError:
             # Status not in cycle, reset to loaded
             self.update_tob_file_status(file_name, "loaded")
+
+    def _view_file_details(self, file_name: str) -> None:
+        """
+        Show detailed information about a TOB file.
+
+        Args:
+            file_name: Name of the TOB file
+        """
+        if not self.project_model:
+            return
+
+        tob_file = self.project_model.get_tob_file(file_name)
+        if not tob_file:
+            QMessageBox.warning(self, "File Not Found", f"Could not find file '{file_name}' in project.")
+            return
+
+        # Create details message
+        details = f"""
+TOB File Details: {file_name}
+
+📁 Path: {tob_file.file_path}
+📊 Size: {tob_file.file_size / (1024*1024):.2f} MB
+📈 Data Points: {tob_file.data_points or 'Unknown'}
+🌡️ Sensors: {', '.join(tob_file.sensors) if tob_file.sensors else 'None detected'}
+📊 Status: {self._get_status_text(tob_file.status)}
+🕒 Added: {tob_file.added_date.strftime('%Y-%m-%d %H:%M') if tob_file.added_date else 'Unknown'}
+"""
+
+        if tob_file.upload_date:
+            details += f"⬆️ Uploaded: {tob_file.upload_date.strftime('%Y-%m-%d %H:%M')}\n"
+        if tob_file.server_job_id:
+            details += f"🆔 Job ID: {tob_file.server_job_id}\n"
+        if tob_file.server_status:
+            details += f"🔍 Server Status: {tob_file.server_status}\n"
+        if tob_file.error_message:
+            details += f"❌ Error: {tob_file.error_message}\n"
+
+        QMessageBox.information(self, "TOB File Details", details.strip())
+
+    def _upload_to_server(self, file_name: str) -> None:
+        """
+        Upload a TOB file to the server.
+
+        Args:
+            file_name: Name of the TOB file to upload
+        """
+        if not self.project_model:
+            return
+
+        # Update status to uploading
+        self.update_tob_file_status(file_name, "uploading")
+
+        # TODO: Implement actual server upload
+        # For now, simulate upload with progress
+        QMessageBox.information(
+            self, "Upload Started",
+            f"Upload of '{file_name}' to server has been initiated.\n\n"
+            "Note: Server integration is not yet implemented. "
+            "This would normally upload the file and track progress."
+        )
+
+        # Simulate successful upload after a delay (in real implementation, this would be async)
+        # For now, we'll leave it in "uploading" status
+
+    def _check_server_status(self, file_name: str) -> None:
+        """
+        Check the processing status of a TOB file on the server.
+
+        Args:
+            file_name: Name of the TOB file
+        """
+        if not self.project_model:
+            return
+
+        tob_file = self.project_model.get_tob_file(file_name)
+        if not tob_file:
+            return
+
+        # TODO: Implement actual server status check
+        QMessageBox.information(
+            self, "Server Status",
+            f"Checking server status for '{file_name}'...\n\n"
+            f"Current local status: {self._get_status_text(tob_file.status)}\n"
+            f"Server job ID: {tob_file.server_job_id or 'None'}\n\n"
+            "Note: Server status checking is not yet implemented."
+        )
+
+    def _reload_file_data(self, file_name: str) -> None:
+        """
+        Reload a TOB file from disk and refresh its data.
+
+        Args:
+            file_name: Name of the TOB file to reload
+        """
+        if not self.project_model:
+            return
+
+        tob_file = self.project_model.get_tob_file(file_name)
+        if not tob_file:
+            QMessageBox.warning(self, "File Not Found", f"Could not find file '{file_name}' in project.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Reload File",
+            f"Are you sure you want to reload '{file_name}' from disk?\n\n"
+            "This will replace the current data with fresh data from the file.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            # Show progress
+            progress = QProgressDialog(f"Reloading {file_name}...", "Cancel", 0, 100, self)
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
+            progress.show()
+
+            progress.setValue(10)
+            progress.setLabelText("Validating file...")
+
+            # Validate file exists and is accessible
+            if not Path(tob_file.file_path).exists():
+                raise FileNotFoundError(f"File no longer exists: {tob_file.file_path}")
+
+            progress.setValue(30)
+            progress.setLabelText("Loading TOB data...")
+
+            # Reload the file
+            from ...services.tob_service import TOBService
+            tob_service = TOBService()
+            new_tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
+
+            progress.setValue(70)
+            progress.setLabelText("Updating project data...")
+
+            # Update the TOB file data in project
+            success = self.project_model.update_tob_file_data(
+                file_name=file_name,
+                headers=new_tob_data.headers,
+                dataframe=new_tob_data.data,
+                data_points=len(new_tob_data.data) if new_tob_data.data is not None else 0,
+                sensors=self._extract_sensors_from_data(new_tob_data.data)
+            )
+
+            if success:
+                # Trigger auto-save
+                if hasattr(self.parent(), 'controller') and self.parent().controller:
+                    self.parent().controller._mark_project_modified()
+
+            progress.setValue(100)
+
+            if success:
+                # Refresh table
+                self._populate_table()
+                QMessageBox.information(self, "Reload Complete",
+                                      f"'{file_name}' has been successfully reloaded from disk.")
+            else:
+                QMessageBox.warning(self, "Reload Failed",
+                                  f"Failed to update '{file_name}' data in project.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Reload Error",
+                               f"Error reloading '{file_name}': {str(e)}")
+        finally:
+            progress.close()
+
+    def _extract_sensors_from_data(self, dataframe) -> List[str]:
+        """
+        Extract sensor names from TOB DataFrame.
+
+        Args:
+            dataframe: Pandas DataFrame from TOB file
+
+        Returns:
+            List of sensor names
+        """
+        if dataframe is None or dataframe.empty:
+            return []
+
+        # Exclude non-sensor columns
+        exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
+                      'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
+
+        sensors = [col for col in dataframe.columns
+                  if col.lower() not in exclude_cols]
+        return sensors
+
+    def _reset_file_status(self, file_name: str) -> None:
+        """
+        Reset a TOB file status to 'loaded'.
+
+        Args:
+            file_name: Name of the TOB file
+        """
+        reply = QMessageBox.question(
+            self, "Reset Status",
+            f"Reset status of '{file_name}' to 'loaded'?\n\n"
+            "This allows the file to be uploaded again.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.update_tob_file_status(file_name, "loaded")
+            QMessageBox.information(self, "Status Reset",
+                                  f"Status of '{file_name}' has been reset to 'loaded'.")
+
+    def _mark_file_error(self, file_name: str) -> None:
+        """
+        Mark a TOB file as having an error.
+
+        Args:
+            file_name: Name of the TOB file
+        """
+        error_msg, ok = QInputDialog.getText(
+            self, "Mark as Error",
+            f"Enter error message for '{file_name}':",
+            text="Manual error marking"
+        )
+
+        if ok and error_msg:
+            # Update status to error
+            self.update_tob_file_status(file_name, "error")
+
+            # Set error message in project model
+            tob_file = self.project_model.get_tob_file(file_name)
+            if tob_file:
+                tob_file.error_message = error_msg
+
+            QMessageBox.information(self, "File Marked as Error",
+                                  f"'{file_name}' has been marked as having an error.")
+
+    def _mark_file_processed(self, file_name: str) -> None:
+        """
+        Mark a TOB file as successfully processed.
+
+        Args:
+            file_name: Name of the TOB file
+        """
+        reply = QMessageBox.question(
+            self, "Mark as Processed",
+            f"Mark '{file_name}' as successfully processed?\n\n"
+            "This indicates the file has been fully processed by the server.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.update_tob_file_status(file_name, "processed")
+            QMessageBox.information(self, "File Marked as Processed",
+                                  f"'{file_name}' has been marked as successfully processed.")
 
     def _populate_table(self) -> None:
         """
@@ -457,15 +708,80 @@ class ProcessingListDialog(QDialog):
         if self.table_widget.itemAt(position) is None:
             return
 
-        menu = QMenu(self)
+        # Get the row that was clicked
+        row = self.table_widget.itemAt(position).row()
+        file_name_item = self.table_widget.item(row, 0)
+        if not file_name_item:
+            return
 
-        # Plot action
-        plot_action = QAction("Plot File", self)
+        file_name = file_name_item.data(Qt.ItemDataRole.UserRole)
+        current_status = self.get_tob_file_status(file_name)
+
+        menu = QMenu(self)
+        menu.setTitle(f"TOB File: {file_name}")
+
+        # Plot/View actions
+        plot_action = QAction("📊 Plot Data", self)
+        plot_action.setToolTip("Load and display the TOB file data in diagrams")
         plot_action.triggered.connect(self._plot_selected_file)
         menu.addAction(plot_action)
 
+        view_details_action = QAction("ℹ️ View Details", self)
+        view_details_action.setToolTip("Show detailed information about this TOB file")
+        view_details_action.triggered.connect(lambda: self._view_file_details(file_name))
+        menu.addAction(view_details_action)
+
+        menu.addSeparator()
+
+        # Server operations (only for appropriate statuses)
+        if current_status in ["loaded", "error"]:
+            upload_action = QAction("⬆️ Upload to Server", self)
+            upload_action.setToolTip("Upload this TOB file to the configured server for processing")
+            upload_action.triggered.connect(lambda: self._upload_to_server(file_name))
+            menu.addAction(upload_action)
+
+        if current_status in ["uploaded", "processing", "processed"]:
+            check_status_action = QAction("🔍 Check Server Status", self)
+            check_status_action.setToolTip("Check the current processing status on the server")
+            check_status_action.triggered.connect(lambda: self._check_server_status(file_name))
+            menu.addAction(check_status_action)
+
+        # Reload operations
+        menu.addSeparator()
+
+        reload_action = QAction("🔄 Reload Data", self)
+        reload_action.setToolTip("Reload the TOB file from disk and refresh data")
+        reload_action.triggered.connect(lambda: self._reload_file_data(file_name))
+        menu.addAction(reload_action)
+
+        # Status management
+        menu.addSeparator()
+
+        status_menu = menu.addMenu("📊 Status Management")
+        status_menu.setToolTip("Change or reset the file status")
+
+        if current_status != "loaded":
+            reset_status_action = QAction("🔄 Reset to Loaded", self)
+            reset_status_action.setToolTip("Reset status to 'loaded' (for re-upload)")
+            reset_status_action.triggered.connect(lambda: self._reset_file_status(file_name))
+            status_menu.addAction(reset_status_action)
+
+        mark_error_action = QAction("❌ Mark as Error", self)
+        mark_error_action.setToolTip("Mark this file as having an error")
+        mark_error_action.triggered.connect(lambda: self._mark_file_error(file_name))
+        status_menu.addAction(mark_error_action)
+
+        if current_status in ["processing", "uploaded"]:
+            mark_processed_action = QAction("✅ Mark as Processed", self)
+            mark_processed_action.setToolTip("Mark this file as successfully processed")
+            mark_processed_action.triggered.connect(lambda: self._mark_file_processed(file_name))
+            status_menu.addAction(mark_processed_action)
+
         # Remove action
-        remove_action = QAction("Remove File", self)
+        menu.addSeparator()
+
+        remove_action = QAction("🗑️ Remove File", self)
+        remove_action.setToolTip("Remove this TOB file from the project")
         remove_action.triggered.connect(self._remove_selected_file)
         menu.addAction(remove_action)
 

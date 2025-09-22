@@ -240,6 +240,41 @@ class ProjectModel(BaseModel):
                 return True
         return False
 
+    def update_tob_file_data(self, file_name: str, headers: Optional[Dict] = None,
+                           dataframe: Optional[Any] = None, data_points: Optional[int] = None,
+                           sensors: Optional[List[str]] = None) -> bool:
+        """
+        Update the data of an existing TOB file in the project.
+
+        Args:
+            file_name: Name of the TOB file to update
+            headers: New headers (optional)
+            dataframe: New DataFrame (optional)
+            data_points: New data point count (optional)
+            sensors: New sensor list (optional)
+
+        Returns:
+            True if update was successful, False otherwise
+        """
+        for tob_file in self.tob_files:
+            if tob_file.file_name == file_name:
+                # Update provided fields
+                if headers is not None:
+                    tob_file.headers = headers
+                if dataframe is not None:
+                    tob_file.dataframe = dataframe
+                if data_points is not None:
+                    tob_file.data_points = data_points
+                if sensors is not None:
+                    tob_file.sensors = sensors
+
+                # Update modification date
+                tob_file.added_date = datetime.now()
+
+                return True
+
+        return False
+
     def get_tob_file(self, file_name: str) -> Optional[TOBFileInfo]:
         """
         Get TOB file information by name.
