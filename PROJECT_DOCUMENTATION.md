@@ -14,7 +14,7 @@
 - **TOB-Verarbeitung**: tob-dataloader (Version 1.1.2)
 - **Visualisierung**: matplotlib (Linien-Diagramme)
 - **Projekt-Speicherung**: Verschlüsselte .wzp Dateien (keine separate Datenbank)
-- **Projekt-Verschlüsselung**: AES-256 Verschlüsselung für Projektdateien
+- **Projekt-Verschlüsselung**: AES-256 Verschlüsselung mit app-internem Schlüssel (keine User-Passwörter)
 - **Architektur**: MVC (Model-View-Controller)
 - **Plattform**: Cross-Platform (macOS, Windows, Linux)
 - **Entwicklungsumgebung**: macOS
@@ -122,8 +122,10 @@ WIZARD-2.1/
   - NTC-Checkboxen in Sidebar steuern Sichtbarkeit im Plot (enabled/disabled)
   - Live-Update des Plots bei Checkbox-Änderungen
 - **Projekt-Management**:
-  - Projekt speichert alle Daten in verschlüsselter .wzp Datei
-  - Projekt enthält: Metadaten, .TOB Daten, Server-Konfiguration
+  - Projekt speichert alle Daten in verschlüsselter .wzp Datei (AES-256, app-interner Schlüssel)
+  - Projekt enthält: Metadaten, Server-Konfiguration, zukünftig .TOB Daten
+  - Projekt-Erstellung mit Server-Konfiguration im gleichen Dialog
+  - Projekt-Settings können später bearbeitet werden (Menü: Project → Edit Project Settings)
   - Visual Check durch User vor Server-Übertragung
   - cURL-Befehl an Server mit .TOB Daten
   - Server-Antwort mit Informationen über .TOB Datei
@@ -139,15 +141,15 @@ WIZARD-2.1/
   - Modified_Date (Letzte Änderung)
   - Version (Projekt-Version)
   - Status (Draft, Ready, Sent, Processed)
-- **Server-Konfiguration**:
-  - Key (Server-Authentifizierung/Bearer Token)
-  - URL (Server-Endpoint)
-  - Project_Field_Name (cURL Form-Feld)
-  - Location_Field_Name (cURL Form-Feld)
-  - TOB_File_Field_Name (cURL Form-Feld)
-  - Subconn_Length_Field_Name (cURL Form-Feld)
-  - String_ID_Field_Name (cURL Form-Feld)
-  - Comment_Field_Name (cURL Form-Feld)
+- **Server-Konfiguration** (integriert bei Projekt-Erstellung):
+  - URL (Server-URL für API-Kommunikation)
+  - Bearer_Token (Enter-Key für Server-Authentifizierung)
+  - Project_Field_Name (cURL Form-Feld für Projekt)
+  - Location_Field_Name (cURL Form-Feld für Location)
+  - TOB_File_Field_Name (cURL Form-Feld für TOB-Datei)
+  - Subconn_Length_Field_Name (cURL Form-Feld für Subcon)
+  - String_ID_Field_Name (cURL Form-Feld für String-ID)
+  - Comment_Field_Name (cURL Form-Feld für Kommentar)
 - **TOB-Datei-Informationen**:
   - File_Path (Original .TOB Datei)
   - File_Name (Dateiname)
@@ -176,6 +178,7 @@ WIZARD-2.1/
 - [x] Frontend Framework: PyQt6
 - [x] UI-Design: Qt Designer (.ui Dateien)
 - [x] Projekt-Speicherung: Verschlüsselte .wzp Dateien (keine separate Datenbank)
+- [x] Projekt-Verschlüsselung: App-interne AES-256 Verschlüsselung (keine User-Passwörter)
 - [x] Architektur-Pattern: MVC (Model-View-Controller)
 - [x] Python Version: 3.13.7 (neueste stabile Version)
 - [x] Package Manager: pip mit requirements.txt (für einfaches Dependency Management)
@@ -348,11 +351,11 @@ WIZARD-2.1/
   - Live-Update bei Checkbox-Änderungen
   - Plot zeigt nur aktivierte Sensoren an
 - **Projekt-Workflow**:
-  1. User wählt "Projekt anlegen"
-  2. Dialog: Projekt-Name, Key, URL, Form-Feld-Namen eingeben
-  3. Passwort-Dialog: Master-Passwort für Verschlüsselung eingeben
-  4. .TOB Daten werden in Projekt-Datenmodell geladen
-  5. Projekt wird als .wzp Datei (verschlüsselt) gespeichert
+  1. User wählt "Project → Create Project File"
+  2. Dialog: Projekt-Name, Enter-Key, Server-URL und Beschreibung eingeben
+  3. Projekt wird automatisch mit app-interner Verschlüsselung erstellt und gespeichert (.wzp)
+  4. Später: "Project → Edit Project Settings" für Bearbeitung der Projekt-Konfiguration
+  5. .TOB Daten können später zum Projekt hinzugefügt werden (zukünftiges Feature)
   6. Visual Check durch User (Plot-Analyse)
   7. "Send Data" Button: cURL POST mit multipart/form-data an Server
   8. Server gibt Job-ID zurück
@@ -573,27 +576,25 @@ WIZARD-2.1/
   - **Server-Konfiguration**: Keys, URLs, Form-Feld-Namen (verschlüsselt)
   - **Sensitive Data**: Authentifizierung, Server-Kommunikation (verschlüsselt)
 - **Schlüssel-Management**:
-  - **User-Passwort**: Master-Passwort für Projekt-Entschlüsselung
-  - **Key Derivation**: PBKDF2 mit 100.000 Iterationen
-  - **Salt**: Zufälliger Salt pro Projektdatei
-  - **IV (Initialization Vector)**: Zufälliger IV pro Verschlüsselung
+  - **App-interner Schlüssel**: Konsistenter Schlüssel für alle Projekte
+  - **Keine User-Passwörter**: Transparente Verschlüsselung für den User
+  - **Key Storage**: Hardcoded im Code (für Entwicklung)
+  - **Future**: Key-Derivation oder externe Konfiguration für Production
 - **Sicherheitsfeatures**:
   - **Datei-Header**: Magic Bytes zur Identifikation verschlüsselter Dateien
   - **Integrity Check**: HMAC-SHA256 für Datenintegrität
-  - **Password Hashing**: Argon2 für Passwort-Hashing
   - **Secure Deletion**: Überschreiben sensibler Daten im Speicher
 - **Projekt-Speicherung**:
-  - **Lokale Projekte**: `~/.wizard/projects/` (verschlüsselt)
+  - **Lokale Projekte**: Beliebiger Speicherort (.wzp Dateien)
   - **Temporary Files**: Sichere Löschung nach Verwendung
 - **Benutzer-Interface**:
-  - **Passwort-Dialog**: Bei Projekt-Öffnung/Erstellung
-  - **Passwort-Stärke**: Validierung und Empfehlungen
-  - **Passwort-Wiederherstellung**: Keine - bewusste Design-Entscheidung
-  - **Auto-Lock**: Automatisches Sperren nach Inaktivität
+  - **Kein Passwort-Dialog**: Transparente Verschlüsselung
+  - **Projekt-Bearbeitung**: Edit-Menü für Server-Konfiguration
+  - **File Validation**: Automatische .wzp Datei-Erkennung
 - **Sicherheitsrichtlinien**:
   - **Keine Klartext-Speicherung**: Alle sensiblen Daten verschlüsselt
   - **Memory Protection**: Sichere Löschung nach Verwendung
-  - **File Permissions**: Restriktive Dateiberechtigungen (600)
+  - **File Permissions**: Standard-Dateiberechtigungen
   - **Audit Trail**: Logging von Verschlüsselungs-/Entschlüsselungsvorgängen
 
 ### Processing List Dialog (Projektverwaltung)

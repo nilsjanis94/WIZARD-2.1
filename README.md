@@ -18,7 +18,7 @@ A professional desktop application for processing and analyzing .TOB temperature
 ### ✅ **Implemented Core Features**
 - **📊 TOB File Processing**: Load and analyze .TOB temperature data files with tob-dataloader
 - **📈 Data Visualization**: Interactive matplotlib plots with dual Y-axis system (NTC sensors + additional data)
-- **🔐 Project Management**: Encrypted .wzp project files with AES-256 + PBKDF2 key derivation
+- **🔐 Project Management**: Encrypted .wzp project files with AES-256 app-internal encryption, project creation with server configuration, and project settings editing
 - **🌐 Server Communication**: cURL-based data upload with multipart/form-data and status queries
 - **🖥️ Cross-Platform**: Runs on macOS, Windows, and Linux with CI/CD validation
 - **🌍 Internationalization**: English (default) and German language support with Qt Linguist
@@ -30,8 +30,8 @@ A professional desktop application for processing and analyzing .TOB temperature
 ### 🔧 **Architecture & Quality**
 - **🎯 Code Quality**: Pylint 8.67/10, mypy type checking, black formatting, isort imports
 - **🔧 Modular Architecture**: Clean MVC pattern with dedicated services and controllers
-- **🧪 Testing**: 122 tests (109 unit + 14 integration), 30% coverage with pytest + pytest-qt
-- **🔒 Security**: Bandit security scanning, encrypted project storage, no sensitive data in logs
+- **🧪 Testing**: 127 tests (114 unit + 14 integration), 32% coverage with pytest + pytest-qt
+- **🔒 Security**: Bandit security scanning, app-internal AES-256 project encryption, no sensitive data in logs
 - **📚 Documentation**: Sphinx-generated API docs with Google-style docstrings
 - **⚙️ CI/CD Pipeline**: GitHub Actions with Ubuntu + Windows testing, quality gates, and deployment ready
 
@@ -275,11 +275,11 @@ pyinstaller --onefile --windowed --target-arch=x86_64 src/main.py
 
 ## 🔐 Security
 
-- **AES-256 encryption** for project files
-- **PBKDF2 key derivation** with 100,000 iterations
-- **HMAC-SHA256** for data integrity
-- **Secure password handling** with proper key management
-- **No sensitive data** in logs or configuration
+- **AES-256 encryption** for project files with app-internal key
+- **No user passwords** - app manages encryption transparently
+- **HMAC-SHA256** for data integrity verification
+- **Secure key management** with consistent app-specific encryption
+- **No sensitive data** in logs or configuration files
 
 ## 🌍 Internationalization
 
