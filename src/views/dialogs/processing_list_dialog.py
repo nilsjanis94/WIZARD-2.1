@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMenu,
     QMessageBox,
+    QProgressDialog,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -314,14 +315,73 @@ class ProcessingListDialog(QDialog):
                     skipped_count += 1
                     continue
 
-                # TODO: Load TOB file data (headers, dataframe, etc.)
-                # For now, add with basic info only
-                success = self.project_model.add_tob_file(
-                    file_path=file_path,
-                    file_name=file_name,
-                    file_size=file_size,
-                    # TODO: Add actual TOB data loading here
-                )
+                    # Validate file before loading
+                from ...services.tob_service import TOBService
+                tob_service = TOBService()
+
+                validation = tob_service.validate_tob_file(file_path)
+                if not validation['valid']:
+                    QMessageBox.warning(self, "Validation Failed",
+                                      f"Cannot load {file_name}: {validation['error_message']}")
+                    skipped_count += 1
+                    continue
+
+                # Show progress dialog for loading
+                progress = QProgressDialog(f"Loading {file_name}...", "Cancel", 0, 100, self)
+                progress.setWindowModality(Qt.WindowModality.WindowModal)
+                progress.setAutoClose(True)
+                progress.setAutoReset(True)
+                progress.show()
+
+                try:
+                    # Load TOB file with timeout protection
+                    progress.setValue(10)
+                    progress.setLabelText("Validating file...")
+
+                    tob_data = tob_service.load_tob_file_with_timeout(file_path)
+
+                    progress.setValue(50)
+                    progress.setLabelText("Processing data...")
+
+                    # Extract metadata
+                    data_points = len(tob_data.data) if tob_data.data is not None else 0
+                    sensors = []
+                    if tob_data.data is not None and not tob_data.data.empty:
+                        # Extract sensor columns (exclude time, metadata columns)
+                        exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
+                                      'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
+                        sensors = [col for col in tob_data.data.columns
+                                 if col.lower() not in exclude_cols]
+
+                    progress.setValue(80)
+                    progress.setLabelText("Adding to project...")
+
+                    # Add to project with full data
+                    success = self.project_model.add_tob_file(
+                        file_path=file_path,
+                        file_name=file_name,
+                        file_size=file_size,
+                        headers=tob_data.headers,
+                        dataframe=tob_data.data,
+                        raw_data="",  # TODO: Store raw data if needed
+                        data_points=data_points,
+                        sensors=sensors
+                    )
+
+                    progress.setValue(100)
+
+                except TimeoutError:
+                    QMessageBox.warning(self, "Loading Timeout",
+                                      f"Loading {file_name} timed out. File may be too large or corrupted.")
+                    skipped_count += 1
+                    continue
+                except Exception as e:
+                    QMessageBox.warning(self, "Loading Failed",
+                                      f"Failed to load {file_name}: {str(e)}")
+                    skipped_count += 1
+                    continue
+                finally:
+                    progress.close()
 
                 if success:
                     added_count += 1
