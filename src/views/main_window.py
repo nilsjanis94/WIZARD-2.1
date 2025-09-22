@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QWidget,
 )
@@ -727,23 +728,136 @@ class MainWindow(QMainWindow):
         """
         try:
             if not self.controller or not self.controller.project_model:
+                self.error_handler.handle_error(
+                    ValueError("No project controller available"),
+                    "Project Error", self
+                )
                 return
 
             # Get TOB file data
             tob_file = self.controller.project_model.get_tob_file(file_name)
-            if tob_file and tob_file.tob_data and tob_file.tob_data.dataframe is not None:
-                # TODO: Load data into plot system
-                self.logger.info(f"Selected TOB file for plotting: {file_name}")
-                # This will be implemented when we integrate with the plot system
-            else:
+            if not tob_file:
+                self.error_handler.handle_error(
+                    ValueError(f"TOB file '{file_name}' not found in project"),
+                    "File Not Found", self
+                )
+                return
+
+            if not tob_file.tob_data or tob_file.tob_data.dataframe is None or tob_file.tob_data.dataframe.empty:
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' has no data to plot"),
                     "No Plot Data", self
                 )
+                return
+
+            # Check if plot widget is available
+            if not self.plot_widget:
+                self.error_handler.handle_error(
+                    ValueError("Plot widget is not available"),
+                    "Plot System Error", self
+                )
+                return
+
+            # Create TOBDataModel from project data
+            from ..models.tob_data_model import TOBDataModel
+
+            tob_data_model = TOBDataModel(
+                headers=tob_file.tob_data.headers or {},
+                data=tob_file.tob_data.dataframe,
+                file_path=tob_file.file_path,
+                file_name=tob_file.file_name
+            )
+
+            # Check memory usage before loading
+            memory_mb = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+            if memory_mb > 500:  # Warn if over 500MB
+                reply = QMessageBox.question(
+                    self, "Large Dataset Warning",
+                    f"This dataset uses approximately {memory_mb:.1f}MB of memory.\n\n"
+                    "Loading may take some time and use significant system resources.\n\n"
+                    "Continue with loading?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
+            # Update plot widget with TOB data
+            self.plot_widget.update_data(tob_data_model)
+
+            # Update UI elements
+            self._update_ui_for_tob_plot(tob_file)
+
+            # Show status message
+            sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
+            data_points = len(tob_file.tob_data.dataframe) if tob_file.tob_data.dataframe is not None else 0
+
+            self.show_status_message(
+                f"Loaded '{file_name}' for plotting: {data_points} data points, {sensor_count} sensors"
+            )
+
+            self.logger.info(f"Successfully loaded TOB file '{file_name}' for plotting: "
+                           f"{data_points} points, {sensor_count} sensors")
 
         except Exception as e:
             self.logger.error(f"Error selecting TOB file for plot: {e}")
             self.error_handler.handle_error(e, self, "TOB File Selection Error")
+
+    def _update_ui_for_tob_plot(self, tob_file):
+        """
+        Update UI elements when a TOB file is loaded for plotting.
+
+        Args:
+            tob_file: TOBFileInfo object
+        """
+        try:
+            # Update sensor checkboxes based on available sensors
+            if tob_file.sensors:
+                # Clear current selections
+                for checkbox in self.ntc_checkboxes.values():
+                    checkbox.setChecked(False)
+
+                # Select available sensors
+                for sensor_name in tob_file.sensors:
+                    if sensor_name in self.ntc_checkboxes:
+                        self.ntc_checkboxes[sensor_name].setChecked(True)
+
+                self.logger.debug(f"Updated sensor selections for '{tob_file.file_name}': {tob_file.sensors}")
+
+            # Update project info display
+            if self.controller.project_model:
+                location = (self.controller.project_model.server_config.url
+                          if self.controller.project_model.server_config else "")
+                self.update_project_info(
+                    self.controller.project_model.name,
+                    location,
+                    self.controller.project_model.description
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error updating UI for TOB plot: {e}")
+
+    def clear_plot_data(self):
+        """
+        Clear all data from the plot widget.
+        """
+        try:
+            if self.plot_widget:
+                # Clear sensor selections
+                for checkbox in self.ntc_checkboxes.values():
+                    checkbox.setChecked(False)
+
+                # Clear plot data (if the plot widget supports it)
+                if hasattr(self.plot_widget, 'clear_plot'):
+                    self.plot_widget.clear_plot()
+                elif hasattr(self.plot_widget, '_clear_plot'):
+                    self.plot_widget._clear_plot()
+
+                self.show_status_message("Plot data cleared")
+                self.logger.info("Plot data cleared")
+
+        except Exception as e:
+            self.logger.error(f"Error clearing plot data: {e}")
+            self.error_handler.handle_error(e, self, "Clear Plot Error")
 
     def _on_tob_file_added(self, file_path: str):
         """

@@ -18,6 +18,7 @@ class TOBDataModel(BaseModel):
         headers: Dictionary containing TOB file headers
         data: DataFrame containing temperature and sensor data
         file_path: Path to the original TOB file
+        file_name: Name of the TOB file
         file_size: Size of the TOB file in bytes
         data_points: Number of data points in the file
         sensors: List of available sensors
@@ -26,6 +27,7 @@ class TOBDataModel(BaseModel):
     headers: Dict[str, Any] = Field(default_factory=dict)
     data: Optional[pd.DataFrame] = None
     file_path: Optional[str] = None
+    file_name: Optional[str] = None
     file_size: Optional[int] = None
     data_points: Optional[int] = None
     sensors: List[str] = Field(default_factory=list)
