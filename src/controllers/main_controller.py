@@ -18,6 +18,7 @@ from ..services.analytics_service import AnalyticsService
 from ..services.data_service import DataService
 from ..services.encryption_service import EncryptionService
 from ..services.error_service import ErrorService
+from ..services.http_client_service import HttpClientService
 from ..services.memory_monitor_service import MemoryMonitorService
 from ..services.plot_service import PlotService
 from ..services.project_service import ProjectService
@@ -81,6 +82,7 @@ class MainController(QObject):
         self.error_service = ErrorService()
         self.error_handler = ErrorHandler()
         self.memory_monitor = MemoryMonitorService(error_handler=self.error_handler)
+        self.http_client: Optional[HttpClientService] = None
 
         # Initialize sub-controllers with injected services
         self.plot_controller = PlotController(
@@ -1033,6 +1035,220 @@ class MainController(QObject):
                 )
 
         return can_proceed
+
+    def initialize_http_client(self) -> bool:
+        """
+        Initialize HTTP client based on current project server configuration.
+
+        Returns:
+            True if client was initialized, False otherwise
+        """
+        try:
+            if not self.project_model or not self.project_model.server_config:
+                self.logger.warning("No project or server configuration available for HTTP client")
+                self.http_client = None
+                return False
+
+            config = self.project_model.server_config
+
+            # Validate server configuration
+            if not config.url or not config.bearer_token:
+                self.logger.warning("Incomplete server configuration - missing URL or token")
+                self.http_client = None
+                return False
+
+            # Create HTTP client
+            self.http_client = HttpClientService(
+                base_url=config.url,
+                bearer_token=config.bearer_token,
+                error_handler=self.error_handler
+            )
+
+            # Test connection with health check
+            if self.http_client.health_check():
+                self.logger.info(f"HTTP client initialized successfully for {config.url}")
+                return True
+            else:
+                self.logger.warning("HTTP client health check failed")
+                self.http_client = None
+                return False
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize HTTP client: {e}")
+            self.http_client = None
+            return False
+
+    def upload_tob_file_to_server(self, file_name: str) -> bool:
+        """
+        Upload a TOB file to the configured server.
+
+        Args:
+            file_name: Name of the TOB file to upload
+
+        Returns:
+            True if upload was initiated successfully, False otherwise
+        """
+        try:
+            if not self.http_client:
+                if not self.initialize_http_client():
+                    self.error_handler.handle_error(
+                        ValueError("Server connection not available. Check server configuration."),
+                        "Server Connection Error", self.main_window
+                    )
+                    return False
+
+            if not self.project_model:
+                return False
+
+            # Get TOB file info
+            tob_file = self.project_model.get_tob_file(file_name)
+            if not tob_file:
+                self.error_handler.handle_error(
+                    ValueError(f"TOB file '{file_name}' not found in project"),
+                    "File Not Found", self.main_window
+                )
+                return False
+
+            # Check if file path exists
+            if not Path(tob_file.file_path).exists():
+                self.error_handler.handle_error(
+                    ValueError(f"TOB file '{file_name}' not found on disk"),
+                    "File Not Found", self.main_window
+                )
+                return False
+
+            # Update status to uploading
+            self.project_model.update_tob_file_status(file_name, "uploading")
+
+            # Prepare metadata for upload
+            metadata = {
+                "file_name": tob_file.file_name,
+                "file_size": tob_file.file_size,
+                "data_points": tob_file.data_points,
+                "sensors": tob_file.sensors or [],
+                "project_name": self.project_model.name,
+                "upload_timestamp": tob_file.added_date.isoformat() if tob_file.added_date else None
+            }
+
+            # Upload file
+            upload_result = self.http_client.upload_tob_file(tob_file.file_path, metadata)
+
+            if upload_result.success:
+                # Update file with job ID if available
+                if upload_result.job_id:
+                    tob_file.server_job_id = upload_result.job_id
+
+                # Update status to uploaded
+                self.project_model.update_tob_file_status(file_name, "uploaded")
+
+                # Update upload timestamp
+                tob_file.upload_date = datetime.now()
+
+                # Trigger auto-save
+                self._mark_project_modified()
+
+                self.logger.info(f"Successfully initiated upload for '{file_name}' (job: {upload_result.job_id})")
+
+                if self.main_window:
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self.main_window, "Upload Started",
+                        f"Upload of '{file_name}' to server has been initiated.\n\n"
+                        f"Job ID: {upload_result.job_id or 'N/A'}\n"
+                        f"Message: {upload_result.message or 'Upload in progress'}"
+                    )
+
+                return True
+            else:
+                # Upload failed, reset status
+                self.project_model.update_tob_file_status(file_name, "error")
+                tob_file.error_message = upload_result.message
+
+                self.error_handler.handle_error(
+                    ValueError(f"Upload failed: {upload_result.message}"),
+                    "Upload Failed", self.main_window
+                )
+                return False
+
+        except Exception as e:
+            self.logger.error(f"Error uploading TOB file: {e}")
+
+            # Reset status on error
+            if self.project_model:
+                self.project_model.update_tob_file_status(file_name, "error")
+
+            self.error_handler.handle_error(e, "Upload Error", self.main_window)
+            return False
+
+    def check_tob_file_server_status(self, file_name: str) -> None:
+        """
+        Check the server status of a TOB file upload/processing.
+
+        Args:
+            file_name: Name of the TOB file to check
+        """
+        try:
+            if not self.http_client:
+                if not self.initialize_http_client():
+                    self.error_handler.handle_error(
+                        ValueError("Server connection not available"),
+                        "Server Connection Error", self.main_window
+                    )
+                    return
+
+            if not self.project_model:
+                return
+
+            # Get TOB file info
+            tob_file = self.project_model.get_tob_file(file_name)
+            if not tob_file or not tob_file.server_job_id:
+                self.error_handler.handle_error(
+                    ValueError(f"No server job ID available for '{file_name}'"),
+                    "No Job ID", self.main_window
+                )
+                return
+
+            # Check processing status first (more detailed)
+            status_result = self.http_client.get_processing_status(tob_file.server_job_id)
+
+            if status_result.status == "error":
+                # Check upload status as fallback
+                status_result = self.http_client.get_upload_status(tob_file.server_job_id)
+
+            # Update local status based on server response
+            if status_result.status in ["completed", "processed"]:
+                self.project_model.update_tob_file_status(file_name, "processed")
+            elif status_result.status == "failed":
+                self.project_model.update_tob_file_status(file_name, "error")
+                tob_file.error_message = status_result.error_message
+            elif status_result.status == "processing":
+                self.project_model.update_tob_file_status(file_name, "processing")
+            # Keep current status for other states
+
+            # Show status to user
+            if self.main_window:
+                from PyQt6.QtWidgets import QMessageBox
+
+                message = f"Server Status for '{file_name}':\n\n"
+                message += f"Status: {status_result.status.title()}\n"
+
+                if status_result.progress is not None:
+                    message += f"Progress: {status_result.progress:.1f}%\n"
+
+                if status_result.message:
+                    message += f"Message: {status_result.message}\n"
+
+                if status_result.error_message:
+                    message += f"Error: {status_result.error_message}\n"
+
+                if status_result.result_url:
+                    message += f"Result URL: {status_result.result_url}\n"
+
+                QMessageBox.information(self.main_window, "Server Status", message)
+
+        except Exception as e:
+            self.logger.error(f"Error checking server status: {e}")
+            self.error_handler.handle_error(e, "Status Check Error", self.main_window)
 
     def update_tob_memory_usage(self) -> None:
         """

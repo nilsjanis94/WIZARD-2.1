@@ -184,23 +184,16 @@ TOB File Details: {file_name}
         Args:
             file_name: Name of the TOB file to upload
         """
-        if not self.project_model:
+        if not hasattr(self.parent(), 'controller') or not self.parent().controller:
+            QMessageBox.warning(self, "No Controller", "Controller not available for upload.")
             return
 
-        # Update status to uploading
-        self.update_tob_file_status(file_name, "uploading")
+        # Use controller's upload method
+        success = self.parent().controller.upload_tob_file_to_server(file_name)
 
-        # TODO: Implement actual server upload
-        # For now, simulate upload with progress
-        QMessageBox.information(
-            self, "Upload Started",
-            f"Upload of '{file_name}' to server has been initiated.\n\n"
-            "Note: Server integration is not yet implemented. "
-            "This would normally upload the file and track progress."
-        )
-
-        # Simulate successful upload after a delay (in real implementation, this would be async)
-        # For now, we'll leave it in "uploading" status
+        if not success:
+            # Error handling is done in the controller
+            pass
 
     def _check_server_status(self, file_name: str) -> None:
         """
@@ -209,21 +202,12 @@ TOB File Details: {file_name}
         Args:
             file_name: Name of the TOB file
         """
-        if not self.project_model:
+        if not hasattr(self.parent(), 'controller') or not self.parent().controller:
+            QMessageBox.warning(self, "No Controller", "Controller not available for status check.")
             return
 
-        tob_file = self.project_model.get_tob_file(file_name)
-        if not tob_file:
-            return
-
-        # TODO: Implement actual server status check
-        QMessageBox.information(
-            self, "Server Status",
-            f"Checking server status for '{file_name}'...\n\n"
-            f"Current local status: {self._get_status_text(tob_file.status)}\n"
-            f"Server job ID: {tob_file.server_job_id or 'None'}\n\n"
-            "Note: Server status checking is not yet implemented."
-        )
+        # Use controller's status check method
+        self.parent().controller.check_tob_file_server_status(file_name)
 
     def _reload_file_data(self, file_name: str) -> None:
         """
@@ -250,45 +234,56 @@ TOB File Details: {file_name}
         if reply != QMessageBox.StandardButton.Yes:
             return
 
+        # Create rollback transaction for safe reload
+        rollback_transaction = self.project_model.create_rollback_transaction()
+
         try:
-            # Show progress
-            progress = QProgressDialog(f"Reloading {file_name}...", "Cancel", 0, 100, self)
-            progress.setWindowModality(Qt.WindowModality.WindowModal)
-            progress.show()
+            with rollback_transaction.transaction():
+                # Backup the current file state
+                rollback_transaction.backup_tob_file(file_name)
+                rollback_transaction.record_operation(f"Reloaded TOB file: {file_name}")
 
-            progress.setValue(10)
-            progress.setLabelText("Validating file...")
+                # Show progress
+                progress = QProgressDialog(f"Reloading {file_name}...", "Cancel", 0, 100, self)
+                progress.setWindowModality(Qt.WindowModality.WindowModal)
+                progress.show()
 
-            # Validate file exists and is accessible
-            if not Path(tob_file.file_path).exists():
-                raise FileNotFoundError(f"File no longer exists: {tob_file.file_path}")
+                progress.setValue(10)
+                progress.setLabelText("Validating file...")
 
-            progress.setValue(30)
-            progress.setLabelText("Loading TOB data...")
+                # Validate file exists and is accessible
+                if not Path(tob_file.file_path).exists():
+                    raise FileNotFoundError(f"File no longer exists: {tob_file.file_path}")
 
-            # Reload the file
-            from ...services.tob_service import TOBService
-            tob_service = TOBService()
-            new_tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
+                progress.setValue(30)
+                progress.setLabelText("Loading TOB data...")
 
-            progress.setValue(70)
-            progress.setLabelText("Updating project data...")
+                # Reload the file
+                from ...services.tob_service import TOBService
+                tob_service = TOBService()
+                new_tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
 
-            # Update the TOB file data in project
-            success = self.project_model.update_tob_file_data(
-                file_name=file_name,
-                headers=new_tob_data.headers,
-                dataframe=new_tob_data.data,
-                data_points=len(new_tob_data.data) if new_tob_data.data is not None else 0,
-                sensors=self._extract_sensors_from_data(new_tob_data.data)
-            )
+                progress.setValue(70)
+                progress.setLabelText("Updating project data...")
 
-            if success:
-                # Trigger auto-save
-                if hasattr(self.parent(), 'controller') and self.parent().controller:
-                    self.parent().controller._mark_project_modified()
+                # Update the TOB file data in project
+                success = self.project_model.update_tob_file_data(
+                    file_name=file_name,
+                    headers=new_tob_data.headers,
+                    dataframe=new_tob_data.data,
+                    data_points=len(new_tob_data.data) if new_tob_data.data is not None else 0,
+                    sensors=self._extract_sensors_from_data(new_tob_data.data)
+                )
 
-            progress.setValue(100)
+                if not success:
+                    raise Exception("Failed to update TOB file data in project")
+
+                progress.setValue(100)
+
+            # Transaction completed successfully
+            # Trigger auto-save
+            if hasattr(self.parent(), 'controller') and self.parent().controller:
+                self.parent().controller._mark_project_modified()
 
             if success:
                 # Refresh table
@@ -800,113 +795,147 @@ TOB File Details: {file_name}
         if not file_paths:
             return
 
+        # Create rollback transaction for safe multi-file import
+        rollback_transaction = self.project_model.create_rollback_transaction()
+
         added_count = 0
         skipped_count = 0
 
-        for file_path in file_paths:
-            try:
-                # Get file info
-                file_name = Path(file_path).name
-                file_size = Path(file_path).stat().st_size
+        try:
+            with rollback_transaction.transaction():
+                for file_path in file_paths:
+                    try:
+                        # Get file info
+                        file_name = Path(file_path).name
+                        file_size = Path(file_path).stat().st_size
 
-                # Check limits
-                can_add, reason = self.project_model.can_add_tob_file(file_size)
-                if not can_add:
-                    QMessageBox.warning(self, "Cannot Add File",
-                                      f"Cannot add {file_name}: {reason}")
-                    skipped_count += 1
-                    continue
+                        # Check limits
+                        can_add, reason = self.project_model.can_add_tob_file(file_size)
+                        if not can_add:
+                            QMessageBox.warning(self, "Cannot Add File",
+                                              f"Cannot add {file_name}: {reason}")
+                            skipped_count += 1
+                            continue
 
-                    # Validate file before loading
-                from ...services.tob_service import TOBService
-                tob_service = TOBService()
+                        # Check memory requirements
+                        if hasattr(self.parent(), 'controller') and self.parent().controller:
+                            estimated_mb = file_size / (1024 * 1024) * 2.5  # Rough estimate
+                            if not self.parent().controller.check_memory_for_tob_operation(estimated_mb):
+                                QMessageBox.warning(self, "Memory Limit",
+                                                  f"Cannot add {file_name}: Insufficient memory")
+                                skipped_count += 1
+                                continue
 
-                validation = tob_service.validate_tob_file(file_path)
-                if not validation['valid']:
-                    QMessageBox.warning(self, "Validation Failed",
-                                      f"Cannot load {file_name}: {validation['error_message']}")
-                    skipped_count += 1
-                    continue
+                        # Validate file before loading
+                        from ...services.tob_service import TOBService
+                        tob_service = TOBService()
 
-                # Show progress dialog for loading
-                progress = QProgressDialog(f"Loading {file_name}...", "Cancel", 0, 100, self)
-                progress.setWindowModality(Qt.WindowModality.WindowModal)
-                progress.setAutoClose(True)
-                progress.setAutoReset(True)
-                progress.show()
+                        validation = tob_service.validate_tob_file(file_path)
+                        if not validation['valid']:
+                            QMessageBox.warning(self, "Validation Failed",
+                                              f"Cannot load {file_name}: {validation['error_message']}")
+                            skipped_count += 1
+                            continue
 
-                try:
-                    # Load TOB file with timeout protection
-                    progress.setValue(10)
-                    progress.setLabelText("Validating file...")
+                        # Show progress dialog for loading
+                        progress = QProgressDialog(f"Loading {file_name}...", "Cancel", 0, 100, self)
+                        progress.setWindowModality(Qt.WindowModality.WindowModal)
+                        progress.setAutoClose(True)
+                        progress.setAutoReset(True)
+                        progress.show()
 
-                    tob_data = tob_service.load_tob_file_with_timeout(file_path)
+                        try:
+                            # Load TOB file with timeout protection
+                            progress.setValue(10)
+                            progress.setLabelText("Validating file...")
 
-                    progress.setValue(50)
-                    progress.setLabelText("Processing data...")
+                            tob_data = tob_service.load_tob_file_with_timeout(file_path)
 
-                    # Extract metadata
-                    data_points = len(tob_data.data) if tob_data.data is not None else 0
-                    sensors = []
-                    if tob_data.data is not None and not tob_data.data.empty:
-                        # Extract sensor columns (exclude time, metadata columns)
-                        exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
-                                      'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
-                        sensors = [col for col in tob_data.data.columns
-                                 if col.lower() not in exclude_cols]
+                            progress.setValue(50)
+                            progress.setLabelText("Processing data...")
 
-                    progress.setValue(80)
-                    progress.setLabelText("Adding to project...")
+                            # Extract metadata
+                            data_points = len(tob_data.data) if tob_data.data is not None else 0
+                            sensors = []
+                            if tob_data.data is not None and not tob_data.data.empty:
+                                # Extract sensor columns (exclude time, metadata columns)
+                                exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
+                                              'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
+                                sensors = [col for col in tob_data.data.columns
+                                         if col.lower() not in exclude_cols]
 
-                    # Add to project with full data
-                    success = self.project_model.add_tob_file(
-                        file_path=file_path,
-                        file_name=file_name,
-                        file_size=file_size,
-                        headers=tob_data.headers,
-                        dataframe=tob_data.data,
-                        raw_data="",  # TODO: Store raw data if needed
-                        data_points=data_points,
-                        sensors=sensors
-                    )
+                            progress.setValue(80)
+                            progress.setLabelText("Adding to project...")
 
-                    progress.setValue(100)
+                            # Add to project with full data
+                            success = self.project_model.add_tob_file(
+                                file_path=file_path,
+                                file_name=file_name,
+                                file_size=file_size,
+                                headers=tob_data.headers,
+                                dataframe=tob_data.data,
+                                raw_data="",  # TODO: Store raw data if needed
+                                data_points=data_points,
+                                sensors=sensors
+                            )
 
-                except TimeoutError:
-                    QMessageBox.warning(self, "Loading Timeout",
-                                      f"Loading {file_name} timed out. File may be too large or corrupted.")
-                    skipped_count += 1
-                    continue
-                except Exception as e:
-                    QMessageBox.warning(self, "Loading Failed",
-                                      f"Failed to load {file_name}: {str(e)}")
-                    skipped_count += 1
-                    continue
-                finally:
-                    progress.close()
+                            if success:
+                                # Record successful addition for potential rollback
+                                rollback_transaction.record_operation(f"Added TOB file: {file_name}")
+                                added_count += 1
+                                self.file_added.emit(file_path)
 
-                if success:
-                    added_count += 1
-                    self.file_added.emit(file_path)
-                else:
-                    skipped_count += 1
+                                # Update memory monitor with new TOB data size
+                                if hasattr(self.parent(), 'controller') and self.parent().controller:
+                                    tob_memory_mb = (len(tob_data.data) if tob_data.data is not None else 0) * 0.001  # Rough estimate
+                                    self.parent().controller.memory_monitor.update_tob_memory_usage(
+                                        self.parent().controller.memory_monitor.tob_memory_usage + tob_memory_mb
+                                    )
+                            else:
+                                skipped_count += 1
 
-            except Exception as e:
-                QMessageBox.warning(self, "Error Adding File",
-                                  f"Error adding {Path(file_path).name}: {str(e)}")
-                skipped_count += 1
+                            progress.setValue(100)
 
-        # Update table
-        self._populate_table()
+                        except TimeoutError:
+                            QMessageBox.warning(self, "Loading Timeout",
+                                              f"Loading {file_name} timed out. File may be too large or corrupted.")
+                            skipped_count += 1
+                            continue
+                        except Exception as e:
+                            QMessageBox.warning(self, "Loading Failed",
+                                              f"Failed to load {file_name}: {str(e)}")
+                            skipped_count += 1
+                            continue
+                        finally:
+                            progress.close()
 
-        # Show result
-        if added_count > 0:
-            QMessageBox.information(self, "Files Added",
-                                  f"Successfully added {added_count} file(s)." +
-                                  (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
-            # Trigger auto-save
-            if hasattr(self.parent(), 'controller') and self.parent().controller:
-                self.parent().controller._mark_project_modified()
+                    except Exception as e:
+                        QMessageBox.warning(self, "Error Adding File",
+                                          f"Error adding {Path(file_path).name}: {str(e)}")
+                        skipped_count += 1
+                        # Re-raise to trigger rollback
+                        raise
+
+            # Transaction completed successfully
+            # Update table
+            self._populate_table()
+
+            # Show result
+            if added_count > 0:
+                QMessageBox.information(self, "Files Added",
+                                      f"Successfully added {added_count} file(s)." +
+                                      (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
+                # Trigger auto-save
+                if hasattr(self.parent(), 'controller') and self.parent().controller:
+                    self.parent().controller._mark_project_modified()
+
+        except Exception as e:
+            # Rollback was automatically performed by the transaction context manager
+            QMessageBox.critical(self, "Import Failed",
+                               f"Failed to import TOB files. All changes have been rolled back.\n\n"
+                               f"Error: {str(e)}")
+            # Refresh table to show rolled back state
+            self._populate_table()
 
     def _remove_selected_file(self) -> None:
         """Remove the selected file from the project."""
@@ -937,6 +966,11 @@ TOB File Details: {file_name}
                         self.file_removed.emit(file_name)
                         QMessageBox.information(self, "File Removed",
                                               f"'{file_name}' has been removed from the project.")
+
+                        # Clear plot if this was the active file
+                        if (self.project_model.active_tob_file == file_name and
+                            hasattr(self.parent(), 'clear_plot_data')):
+                            self.parent().clear_plot_data()
 
                         # Trigger auto-save
                         if hasattr(self.parent(), 'controller') and self.parent().controller:
