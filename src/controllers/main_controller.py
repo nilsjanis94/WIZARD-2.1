@@ -227,7 +227,17 @@ class MainController(QObject):
 
             # Update plot with loaded data
             if self.tob_data_model:
-                # Update plot data
+                # Set default Y1 sensor to NTCs for new plot system FIRST
+                self.y1_sensor = "NTCs"
+
+                # Update plot widget with correct sensor settings BEFORE plot data
+                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                    self.main_window.plot_widget.y1_sensor = "NTCs"
+                    self.main_window.plot_widget.tob_data_model = self.tob_data_model
+                    # Ensure all NTC sensors are active initially
+                    self.main_window.plot_widget.active_ntc_sensors = None
+
+                # Update plot data (old system)
                 self.plot_controller.update_plot_data(self.tob_data_model)
 
                 # Auto-select sensors (NTC sensors and PT100)
@@ -241,6 +251,11 @@ class MainController(QObject):
 
                 if selected_sensors:
                     self.plot_controller.update_selected_sensors(selected_sensors)
+
+                # Trigger final plot refresh with NTCs for new plot widget
+                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                    if hasattr(self.main_window.plot_widget, '_refresh_plot'):
+                        self.main_window.plot_widget._refresh_plot()
 
                 # Emit sensors updated signal
                 self.sensors_updated.emit(self.tob_data_model.sensors)
@@ -392,10 +407,46 @@ class MainController(QObject):
             sensor_name: Name of the sensor that changed
             is_selected: Whether the sensor is now selected
         """
-        # Delegate to plot controller
-        self.plot_controller.handle_sensor_selection_changed(
-            sensor_name, is_selected, self.main_window
-        )
+        try:
+            self.logger.debug("Sensor selection changed: %s = %s", sensor_name, is_selected)
+
+            # Handle NTC sensor checkboxes for filtering when Y1 is "NTCs"
+            if sensor_name.startswith("NTC") or sensor_name == "Temp":
+                # This is an NTC sensor checkbox change
+                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                    # Get current active NTC sensors
+                    current_active = self.main_window.plot_widget.active_ntc_sensors
+
+                    # If no filter is set, get all available NTC sensors
+                    if current_active is None:
+                        # Initialize with all NTC sensors that are checked
+                        all_ntc_sensors = []
+                        if hasattr(self.main_window, 'ntc_checkboxes'):
+                            for name, checkbox in self.main_window.ntc_checkboxes.items():
+                                if name.startswith("NTC") or name == "Temp":
+                                    all_ntc_sensors.append(name)
+
+                        # Start with all NTC sensors as active
+                        current_active = all_ntc_sensors.copy()
+
+                    # Update the active list based on checkbox state
+                    if is_selected and sensor_name not in current_active:
+                        current_active.append(sensor_name)
+                    elif not is_selected and sensor_name in current_active:
+                        current_active.remove(sensor_name)
+
+                    # Set the filtered NTC sensors
+                    self.main_window.plot_widget.set_active_ntc_sensors(current_active)
+                    self.logger.debug("NTC sensor filter updated: %s", current_active)
+
+            else:
+                # For other sensors, delegate to plot controller (old system)
+                self.plot_controller.handle_sensor_selection_changed(
+                    sensor_name, is_selected, self.main_window
+                )
+
+        except Exception as e:
+            self.logger.error("Error handling sensor selection change: %s", e)
 
     def update_axis_auto_mode(self, axis_name: str, is_auto: bool):
         """
@@ -443,6 +494,80 @@ class MainController(QObject):
             self.logger.error("Error updating axis settings: %s", e)
             self.error_handler.handle_error(
                 e, self.main_window, "Axis Settings Update Error"
+            )
+
+    def set_primary_sensor(self, sensor_name: str):
+        """
+        Set the primary sensor for the main plot.
+
+        Args:
+            sensor_name: Name of the sensor to display in main plot
+        """
+        try:
+            self.logger.info("Setting primary sensor to: %s", sensor_name)
+            self.y1_sensor = sensor_name
+
+            # Update plot widget if available
+            if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                self.main_window.plot_widget.y1_sensor = sensor_name
+                # Refresh the plot to show the new primary sensor
+                if hasattr(self.main_window.plot_widget, '_refresh_plot'):
+                    self.main_window.plot_widget._refresh_plot()
+
+            self.logger.info("Primary sensor set to: %s", sensor_name)
+
+        except Exception as e:
+            self.logger.error("Error setting primary sensor: %s", e)
+            self.error_handler.handle_error(
+                e, self.main_window, "Primary Sensor Change Error"
+            )
+
+    def set_plot_mode(self, mode: str, secondary_sensor: str = None):
+        """
+        Set the plot display mode (single or dual).
+
+        Args:
+            mode: "single" for one plot, "dual" for two plots
+            secondary_sensor: Sensor for secondary plot (only used in dual mode)
+        """
+        try:
+            self.logger.info("Setting plot mode to: %s", mode)
+
+            if mode == "single":
+                # Single plot mode - main plot takes full space
+                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                    # Ensure y1_sensor and data are set in plot widget
+                    if hasattr(self, 'y1_sensor') and self.y1_sensor:
+                        self.main_window.plot_widget.y1_sensor = self.y1_sensor
+                    if self.tob_data_model:
+                        self.main_window.plot_widget.tob_data_model = self.tob_data_model
+                    self.main_window.plot_widget.set_single_mode()
+                else:
+                    self.logger.warning("No plot widget available for single mode")
+
+            elif mode == "dual" and secondary_sensor:
+                # Dual plot mode - two separate plots
+                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                    # Ensure y1_sensor is set in plot widget
+                    if hasattr(self, 'y1_sensor') and self.y1_sensor:
+                        self.main_window.plot_widget.y1_sensor = self.y1_sensor
+                    # Ensure tob_data_model is available
+                    if self.tob_data_model:
+                        self.main_window.plot_widget.tob_data_model = self.tob_data_model
+                    self.main_window.plot_widget.set_dual_mode(secondary_sensor)
+                else:
+                    self.logger.warning("No plot widget available for dual mode")
+
+            else:
+                self.logger.warning("Invalid plot mode or missing secondary sensor: mode=%s, sensor=%s", mode, secondary_sensor)
+                return
+
+            self.logger.info("Plot mode set successfully to: %s", mode)
+
+        except Exception as e:
+            self.logger.error("Error setting plot mode: %s", e)
+            self.error_handler.handle_error(
+                e, self.main_window, "Plot Mode Change Error"
             )
 
     def update_x_axis_limits(self, min_value: float, max_value: float):

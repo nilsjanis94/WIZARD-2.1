@@ -670,18 +670,25 @@ class MainWindow(QMainWindow):
         self.axis_ui_service.handle_axis_auto_mode_changed(self, "x", is_auto)
 
     def _on_y1_axis_changed(self, sensor_name: str):
-        """Handle Y1 axis sensor selection change."""
+        """Handle Y1 axis sensor selection - sets primary sensor for main plot."""
         if sensor_name:
             self.logger.debug("Y1 axis changed to: %s", sensor_name)
-            # Update axis settings through controller
-            axis_settings = {"y1_sensor": sensor_name}
+            # Update primary sensor through controller
             if self.controller:
-                self.controller.update_axis_settings(axis_settings)
+                self.controller.set_primary_sensor(sensor_name)
 
     def _on_y2_axis_changed(self, sensor_name: str):
-        """Handle Y2 axis sensor selection change."""
-        # Y2 axis signals are disconnected - do nothing
-        self.logger.debug("Y2 axis changed to: %s (signal disconnected)", sensor_name)
+        """Handle Y2 axis selection - controls plot layout mode."""
+        if sensor_name == "None":
+            # Single mode: Only main plot
+            self.logger.debug("Switching to single plot mode")
+            if self.controller:
+                self.controller.set_plot_mode("single")
+        else:
+            # Dual mode: Main plot + secondary plot with selected sensor
+            self.logger.debug("Switching to dual plot mode with sensor: %s", sensor_name)
+            if self.controller:
+                self.controller.set_plot_mode("dual", secondary_sensor=sensor_name)
 
     def _on_x_axis_changed(self, axis_type: str):
         """Handle X axis type selection change."""
