@@ -1310,11 +1310,10 @@ class MainController(QObject):
             location = project.server_config.url if project.server_config else ""
             self.main_window.update_project_info(project.name, location, project.description or "")
 
-            # If project has TOB data, load it (this would need to be implemented)
-            # For now, just show that project is loaded
+            # If project has TOB files, reload their data from disk
             if project.tob_files:
-                self.logger.info("Project has %d TOB files", len(project.tob_files))
-                # TODO: Load first TOB file or show processing list
+                self.logger.info("Project has %d TOB files, reloading data...", len(project.tob_files))
+                self._reload_tob_files_data(project)
 
             # Update memory usage for loaded project
             self.update_tob_memory_usage()
@@ -1336,6 +1335,50 @@ class MainController(QObject):
             )
             self.main_window.show_status_message("Error opening project")
 
+    def _reload_tob_files_data(self, project: ProjectModel) -> None:
+        """
+        Reload TOB file data from disk for a loaded project.
+
+        Args:
+            project: ProjectModel with TOB files to reload
+        """
+        try:
+            from ..services.tob_service import TOBService
+            tob_service = TOBService()
+
+            reloaded_count = 0
+            failed_count = 0
+
+            for tob_file in project.tob_files:
+                try:
+                    # Check if file still exists
+                    if not Path(tob_file.file_path).exists():
+                        self.logger.warning("TOB file no longer exists: %s", tob_file.file_path)
+                        tob_file.status = "error"
+                        failed_count += 1
+                        continue
+
+                    # Reload the TOB data
+                    tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
+
+                    # Update the TOB file data
+                    tob_file.tob_data = tob_data
+                    tob_file.data_points = len(tob_data.data) if tob_data.data is not None else 0
+                    tob_file.status = "loaded"
+
+                    reloaded_count += 1
+                    self.logger.debug("Reloaded TOB file: %s", tob_file.file_name)
+
+                except Exception as e:
+                    self.logger.error("Failed to reload TOB file %s: %s", tob_file.file_name, e)
+                    tob_file.status = "error"
+                    failed_count += 1
+
+            self.logger.info("TOB file reload complete: %d reloaded, %d failed",
+                           reloaded_count, failed_count)
+
+        except Exception as e:
+            self.logger.error("Error reloading TOB files: %s", e)
 
     def update_sensor_selection(self, sensor_name: str, is_selected: bool):
         """

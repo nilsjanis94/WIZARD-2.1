@@ -203,8 +203,15 @@ class TOBFileStatus:
 class TOBFileData(BaseModel):
     """Complete TOB file data storage."""
     headers: Dict[str, Any] = Field(default_factory=dict, description="TOB file headers")
-    dataframe: Optional[Any] = Field(None, description="TOB data as pandas DataFrame")
+    dataframe: Optional[Any] = Field(None, description="TOB data as pandas DataFrame", exclude=True)
     raw_data: Optional[str] = Field(None, description="Raw TOB file content")
+
+    class Config:
+        """Pydantic configuration."""
+        # Exclude dataframe from JSON serialization to avoid pandas serialization issues
+        json_encoders = {
+            # Custom encoder for any non-serializable objects
+        }
 
 
 class TOBFileInfo(BaseModel):
