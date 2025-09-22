@@ -41,11 +41,11 @@ class MainWindow(QMainWindow):
     # Signals for communication with controller
     file_opened = pyqtSignal(str)  # Emitted when a file is opened
     project_created = pyqtSignal(
-        str, str
-    )  # Emitted when project is created (path, password)
+        dict
+    )  # Emitted when project is created (project_data dict)
     project_opened = pyqtSignal(
-        str, str
-    )  # Emitted when project is opened (path, password)
+        str
+    )  # Emitted when project is opened (file_path only - app-internal encryption)
 
     def __init__(self, controller=None):
         """
@@ -573,10 +573,8 @@ class MainWindow(QMainWindow):
             )
 
             if file_path:
-                # TODO: Show password dialog
-                password = "default_password"  # Placeholder
                 self.logger.info("Opening project file: %s", file_path)
-                self.project_opened.emit(file_path, password)
+                self.project_opened.emit(file_path)
                 # Switch to plot mode when project is loaded
                 self.ui_state_manager.show_plot_mode()
 
@@ -592,18 +590,38 @@ class MainWindow(QMainWindow):
         Handle creating a new project.
         """
         try:
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Create Project File",
-                "",
-                "WIZARD Project Files (*.wzp);;All Files (*)",
-            )
+            # First show project creation dialog to get project details
+            from .dialogs.project_dialogs import ProjectDialog
+            project_dialog = ProjectDialog(parent=self)
 
-            if file_path:
-                # TODO: Show project creation dialog with password
-                password = "default_password"  # Placeholder
-                self.logger.info("Creating project file: %s", file_path)
-                self.project_created.emit(file_path, password)
+            if project_dialog.exec() == ProjectDialog.DialogCode.Accepted:
+                # Get project data from dialog
+                name, enter_key, server_url, description = project_dialog.get_project_data()
+
+                # Now get file path for saving
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Create Project File",
+                    f"{name}.wzp",  # Suggest filename based on project name
+                    "WIZARD Project Files (*.wzp);;All Files (*)",
+                )
+
+                if file_path:
+                    # Ensure .wzp extension
+                    if not file_path.lower().endswith('.wzp'):
+                        file_path += '.wzp'
+
+                    # Prepare project data dictionary
+                    project_data = {
+                        "name": name,
+                        "enter_key": enter_key,
+                        "server_url": server_url,
+                        "description": description,
+                        "file_path": file_path
+                    }
+
+                    self.logger.info("Creating project: %s at %s", name, file_path)
+                    self.project_created.emit(project_data)
 
         except (OSError, PermissionError) as e:
             self.logger.error("File system error creating project: %s", e)

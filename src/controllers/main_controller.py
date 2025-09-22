@@ -18,6 +18,7 @@ from ..services.data_service import DataService
 from ..services.encryption_service import EncryptionService
 from ..services.error_service import ErrorService
 from ..services.plot_service import PlotService
+from ..services.project_service import ProjectService
 from ..services.tob_service import TOBService
 from ..utils.error_handler import ErrorHandler
 from .plot_controller import PlotController
@@ -74,6 +75,7 @@ class MainController(QObject):
         self.data_service = DataService(self.analytics_service)
         self.plot_service = PlotService(self.plot_style_service)
         self.encryption_service = EncryptionService()
+        self.project_service = ProjectService()
         self.error_service = ErrorService()
         self.error_handler = ErrorHandler()
 
@@ -686,59 +688,96 @@ class MainController(QObject):
                 e, self.main_window, "Y2-Axis Limits Update Error"
             )
 
-    def _on_project_created(self, project_path: str, password: str):
+    def _on_project_created(self, project_data: dict):
         """
         Handle project created signal from view.
 
         Args:
-            project_path: Path to the project file
-            password: Project password
+            project_data: Dictionary containing project creation data
+                         (name, enter_key, server_url, description, file_path)
         """
         try:
-            self.logger.info("Creating project: %s", project_path)
+            self.logger.info("Creating new project with data: %s", project_data)
             self.main_window.show_status_message("Creating project...")
 
-            # Create project using encryption service
-            self.encryption_service.create_project(
-                project_path, password, self.tob_data_model
+            # Extract project data
+            name = project_data.get("name", "")
+            enter_key = project_data.get("enter_key", "")
+            server_url = project_data.get("server_url", "")
+            description = project_data.get("description", "")
+            file_path = project_data.get("file_path", "")
+
+            # Create project using project service
+            project = self.project_service.create_project(
+                name=name,
+                enter_key=enter_key,
+                server_url=server_url,
+                description=description
             )
 
+            # Save project to file
+            self.project_service.save_project(project, file_path)
+
+            # Update controller's project model
+            self.project_model = project
+
+            # Update UI
+            self.main_window.update_project_info(name, "", description)
+
             self.main_window.show_status_message("Project created successfully")
-            self.logger.info("Project created successfully")
+            self.logger.info("Project '%s' created and saved successfully", name)
+
+        except ValueError as e:
+            # Validation errors
+            self.logger.warning("Project validation error: %s", e)
+            self.error_handler.handle_error(
+                e, "Project Validation", self.main_window
+            )
+            self.main_window.show_status_message("Project validation failed")
 
         except Exception as e:
             self.logger.error("Error creating project: %s", e)
-            self.error_handler.show_error(
-                "Project Creation Error", f"Failed to create project: {e}"
+            self.error_handler.handle_error(
+                e, "Project Creation", self.main_window
             )
             self.main_window.show_status_message("Error creating project")
 
-    def _on_project_opened(self, project_path: str, password: str):
+    def _on_project_opened(self, project_path: str):
         """
         Handle project opened signal from view.
 
         Args:
-            project_path: Path to the project file
-            password: Project password
+            project_path: Path to the project file (no password needed with app-internal encryption)
         """
         try:
             self.logger.info("Opening project: %s", project_path)
             self.main_window.show_status_message("Opening project...")
 
-            # Load project using encryption service
-            project_data = self.encryption_service.load_project(project_path, password)
+            # Load project using project service (app-internal encryption)
+            project = self.project_service.load_project(project_path)
 
-            # Update models
-            self.project_model.set_data(project_data)
-            if project_data.get("tob_data"):
-                self.tob_data_model.set_data(project_data["tob_data"])
+            # Update controller's project model
+            self.project_model = project
 
-                # Process TOB data and calculate metrics (same as file loading)
-                self.tob_controller.process_tob_data(self.tob_data_model)
-                self.tob_controller.calculate_metrics(self.tob_data_model)
+            # Update UI with project info
+            location = project.server_config.url if project.server_config else ""
+            self.main_window.update_project_info(project.name, location, project.description or "")
+
+            # If project has TOB data, load it (this would need to be implemented)
+            # For now, just show that project is loaded
+            if project.tob_files:
+                self.logger.info("Project has %d TOB files", len(project.tob_files))
+                # TODO: Load first TOB file or show processing list
 
             self.main_window.show_status_message("Project opened successfully")
-            self.logger.info("Project opened successfully")
+            self.logger.info("Project '%s' opened successfully", project.name)
+
+        except FileNotFoundError as e:
+            self.logger.error("Project file not found: %s", e)
+            self.error_handler.show_error(
+                "Project File Not Found", f"Could not find project file: {project_path}"
+            )
+            self.main_window.show_status_message("Project file not found")
 
         except Exception as e:
             self.logger.error("Error opening project: %s", e)

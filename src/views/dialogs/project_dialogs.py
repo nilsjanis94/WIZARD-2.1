@@ -24,7 +24,12 @@ class ProjectDialog(QDialog):
     """Dialog for creating or editing projects."""
 
     def __init__(
-        self, parent=None, project_name: str = "", project_description: str = ""
+        self,
+        parent=None,
+        project_name: str = "",
+        project_description: str = "",
+        enter_key: str = "",
+        server_url: str = ""
     ):
         """
         Initialize project dialog.
@@ -33,15 +38,17 @@ class ProjectDialog(QDialog):
             parent: Parent widget
             project_name: Initial project name
             project_description: Initial project description
+            enter_key: Initial enter key for server authentication
+            server_url: Initial server URL
         """
         super().__init__(parent)
-        self.setWindowTitle("Project Settings")
+        self.setWindowTitle("Create New Project")
         self.setModal(True)
-        self.setMinimumSize(400, 300)
+        self.setMinimumSize(450, 350)
 
-        self._setup_ui(project_name, project_description)
+        self._setup_ui(project_name, project_description, enter_key, server_url)
 
-    def _setup_ui(self, project_name: str, project_description: str) -> None:
+    def _setup_ui(self, project_name: str, project_description: str, enter_key: str, server_url: str) -> None:
         """Setup the dialog UI."""
         layout = QVBoxLayout(self)
 
@@ -53,10 +60,21 @@ class ProjectDialog(QDialog):
         self.name_edit.setPlaceholderText("Enter project name")
         form_layout.addRow("Project Name:", self.name_edit)
 
+        # Enter key (for server authentication)
+        self.enter_key_edit = QLineEdit(enter_key)
+        self.enter_key_edit.setPlaceholderText("Enter authentication key for server access")
+        self.enter_key_edit.setEchoMode(QLineEdit.EchoMode.Password)  # Hide sensitive data
+        form_layout.addRow("Enter Key:", self.enter_key_edit)
+
+        # Server URL
+        self.server_url_edit = QLineEdit(server_url)
+        self.server_url_edit.setPlaceholderText("https://api.example.com/endpoint")
+        form_layout.addRow("Server URL:", self.server_url_edit)
+
         # Project description
         self.description_edit = QTextEdit(project_description)
         self.description_edit.setPlaceholderText("Enter project description (optional)")
-        self.description_edit.setMaximumHeight(100)
+        self.description_edit.setMaximumHeight(80)
         form_layout.addRow("Description:", self.description_edit)
 
         layout.addLayout(form_layout)
@@ -69,15 +87,17 @@ class ProjectDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
-    def get_project_data(self) -> Tuple[str, str]:
+    def get_project_data(self) -> Tuple[str, str, str, str]:
         """
         Get project data from the dialog.
 
         Returns:
-            Tuple of (project_name, project_description)
+            Tuple of (project_name, enter_key, server_url, project_description)
         """
         return (
             self.name_edit.text().strip(),
+            self.enter_key_edit.text().strip(),
+            self.server_url_edit.text().strip(),
             self.description_edit.toPlainText().strip(),
         )
 
