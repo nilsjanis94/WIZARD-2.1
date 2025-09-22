@@ -62,7 +62,7 @@ class RollbackTransaction:
         if tob_file.tob_data:
             backup['tob_data'] = {
                 'headers': tob_file.tob_data.headers.copy() if tob_file.tob_data.headers else {},
-                'dataframe': tob_file.tob_data.dataframe.copy() if tob_file.tob_data.dataframe is not None else None,
+                'data': tob_file.tob_data.data.copy() if tob_file.tob_data.data is not None else None,
                 'raw_data': tob_file.tob_data.raw_data
             }
 
@@ -108,7 +108,7 @@ class RollbackTransaction:
                         file_name=backup['file_name'],
                         file_size=backup['file_size'],
                         headers=backup['tob_data']['headers'],
-                        dataframe=backup['tob_data']['dataframe'],
+                        data=backup['tob_data']['data'],
                         raw_data=backup['tob_data']['raw_data'],
                         data_points=backup['data_points'],
                         sensors=backup['sensors']
@@ -203,7 +203,7 @@ class TOBFileStatus:
 class TOBFileData(BaseModel):
     """Complete TOB file data storage."""
     headers: Dict[str, Any] = Field(default_factory=dict, description="TOB file headers")
-    dataframe: Optional[Any] = Field(None, description="TOB data as pandas DataFrame", exclude=True)
+    data: Optional[Any] = Field(None, description="TOB data as pandas DataFrame", exclude=True)
     raw_data: Optional[str] = Field(None, description="Raw TOB file content")
 
     class Config:
@@ -322,7 +322,7 @@ class ProjectModel(BaseModel):
         file_name: str,
         file_size: int,
         headers: Optional[Dict[str, Any]] = None,
-        dataframe: Optional[Any] = None,
+        data: Optional[Any] = None,
         raw_data: Optional[str] = None,
         data_points: Optional[int] = None,
         sensors: Optional[List[str]] = None,
@@ -335,7 +335,7 @@ class ProjectModel(BaseModel):
             file_name: Name of the TOB file
             file_size: Size of the file in bytes
             headers: TOB file headers
-            dataframe: TOB data as pandas DataFrame
+            data: TOB data as pandas DataFrame
             raw_data: Raw TOB file content
             data_points: Number of data points (optional)
             sensors: List of available sensors (optional)
@@ -350,10 +350,10 @@ class ProjectModel(BaseModel):
 
         # Create TOB data object
         tob_data = None
-        if headers or dataframe or raw_data:
+        if headers or data or raw_data:
             tob_data = TOBFileData(
                 headers=headers or {},
-                dataframe=dataframe,
+                data=data,
                 raw_data=raw_data
             )
 
@@ -421,7 +421,7 @@ class ProjectModel(BaseModel):
         self.active_tob_file = None
 
     def update_tob_file_data(self, file_name: str, headers: Optional[Dict] = None,
-                           dataframe: Optional[Any] = None, data_points: Optional[int] = None,
+                           data: Optional[Any] = None, data_points: Optional[int] = None,
                            sensors: Optional[List[str]] = None) -> bool:
         """
         Update the data of an existing TOB file in the project.
@@ -429,7 +429,7 @@ class ProjectModel(BaseModel):
         Args:
             file_name: Name of the TOB file to update
             headers: New headers (optional)
-            dataframe: New DataFrame (optional)
+            data: New DataFrame (optional)
             data_points: New data point count (optional)
             sensors: New sensor list (optional)
 
@@ -441,8 +441,8 @@ class ProjectModel(BaseModel):
                 # Update provided fields
                 if headers is not None:
                     tob_file.headers = headers
-                if dataframe is not None:
-                    tob_file.dataframe = dataframe
+                if data is not None:
+                    tob_file.tob_data.data = data
                 if data_points is not None:
                     tob_file.data_points = data_points
                 if sensors is not None:

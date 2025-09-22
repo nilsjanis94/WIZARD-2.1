@@ -868,7 +868,7 @@ TOB File Details: {file_name}
                                 file_name=file_name,
                                 file_size=file_size,
                                 headers=tob_data.headers,
-                                dataframe=tob_data.data,
+                                data=tob_data.data,
                                 raw_data="",  # TODO: Store raw data if needed
                                 data_points=data_points,
                                 sensors=sensors

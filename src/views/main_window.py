@@ -792,12 +792,12 @@ class MainWindow(QMainWindow):
             self.logger.info(f"TOB data exists: {tob_file.tob_data is not None}")
 
             if tob_file.tob_data:
-                self.logger.info(f"DataFrame exists: {tob_file.tob_data.dataframe is not None}")
-                if tob_file.tob_data.dataframe is not None:
-                    self.logger.info(f"DataFrame shape: {tob_file.tob_data.dataframe.shape}")
-                    self.logger.info(f"DataFrame empty: {tob_file.tob_data.dataframe.empty}")
+                self.logger.info(f"DataFrame exists: {tob_file.tob_data.data is not None}")
+                if tob_file.tob_data.data is not None:
+                    self.logger.info(f"DataFrame shape: {tob_file.tob_data.data.shape}")
+                    self.logger.info(f"DataFrame empty: {tob_file.tob_data.data.empty}")
 
-            if not tob_file.tob_data or tob_file.tob_data.dataframe is None or tob_file.tob_data.dataframe.empty:
+            if not tob_file.tob_data or tob_file.tob_data.data is None or tob_file.tob_data.data.empty:
                 self.logger.error(f"TOB file '{file_name}' has no data to plot")
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' has no data to plot"),
@@ -818,13 +818,13 @@ class MainWindow(QMainWindow):
 
             tob_data_model = TOBDataModel(
                 headers=tob_file.tob_data.headers or {},
-                data=tob_file.tob_data.dataframe,
+                data=tob_file.tob_data.data,
                 file_path=tob_file.file_path,
                 file_name=tob_file.file_name
             )
 
             # Check memory usage before loading
-            memory_mb = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
             if memory_mb > 500:  # Warn if over 500MB
                 # For now, just show a warning but continue loading
                 # TODO: Implement proper user confirmation dialog via signals
@@ -839,7 +839,7 @@ class MainWindow(QMainWindow):
 
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
-            data_points = len(tob_file.tob_data.dataframe) if tob_file.tob_data.dataframe is not None else 0
+            data_points = len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
 
             self.show_status_message(
                 f"Loaded '{file_name}' for plotting: {data_points} data points, {sensor_count} sensors"

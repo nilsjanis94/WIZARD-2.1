@@ -843,7 +843,7 @@ class MainController(QObject):
         try:
             # Auto-save configuration
             self.auto_save_enabled = True
-            self.auto_save_interval_ms = 30000  # 30 seconds
+            self.auto_save_interval_ms = 5000  # 5 seconds (reduced for TOB file changes)
             self.auto_save_pending = False
 
             # Create timer for delayed auto-save
@@ -973,8 +973,8 @@ class MainController(QObject):
                 for tob_file in tob_files[3:]:
                     # Calculate memory usage of this file
                     file_memory = 0.0
-                    if tob_file.tob_data and tob_file.tob_data.dataframe is not None:
-                        file_memory = tob_file.tob_data.dataframe.memory_usage(deep=True).sum() / (1024 * 1024)
+                    if tob_file.tob_data and tob_file.tob_data.data is not None:
+                        file_memory = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
 
                     # Remove the file
                     if self.project_model.remove_tob_file(tob_file.file_name):
@@ -1284,7 +1284,26 @@ class MainController(QObject):
         """
         if self.project_model:
             self.project_model.update_modified_date()
-            self.trigger_auto_save()
+            # For TOB file changes, save immediately instead of waiting
+            if hasattr(self, 'auto_save_enabled') and self.auto_save_enabled:
+                self._perform_immediate_save()
+            else:
+                self.trigger_auto_save()
+
+    def _perform_immediate_save(self) -> None:
+        """
+        Perform immediate save without timer delay.
+        Used for critical changes like TOB file additions/removals.
+        """
+        if not self.project_model or not self.main_window.current_project_path:
+            return
+
+        try:
+            self.logger.debug("Performing immediate save...")
+            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+            self.logger.debug("Immediate save completed successfully")
+        except Exception as e:
+            self.logger.error("Immediate save failed: %s", e)
 
     def _on_project_opened(self, project_path: str):
         """
