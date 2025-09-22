@@ -1462,11 +1462,11 @@ class MainController(QObject):
             # Set as active TOB file
             self.project_model.set_active_tob_file(file_name)
 
-            # Plot the data
-            self.main_window.plot_widget.update_data(tob_data_model)
-
-            # Update UI elements
+            # Update UI elements first (sets active_ntc_sensors and y1_sensor)
             self.main_window._update_ui_for_tob_plot(tob_file)
+
+            # Then plot the data (will use the updated settings)
+            self.main_window.plot_widget.update_data(tob_data_model)
 
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0

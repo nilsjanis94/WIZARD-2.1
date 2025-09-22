@@ -863,18 +863,35 @@ class MainWindow(QMainWindow):
             tob_file: TOBFileInfo object
         """
         try:
-            # Update sensor checkboxes based on available sensors
-            if tob_file.sensors:
-                # Clear current selections
-                for checkbox in self.ntc_checkboxes.values():
-                    checkbox.setChecked(False)
+            # Update sensor checkboxes - select all NTC sensors (NTC01-NTC22 and Temp)
+            # Clear current selections
+            for checkbox in self.ntc_checkboxes.values():
+                checkbox.setChecked(False)
 
-                # Select available sensors
-                for sensor_name in tob_file.sensors:
-                    if sensor_name in self.ntc_checkboxes:
-                        self.ntc_checkboxes[sensor_name].setChecked(True)
+            # Select all NTC sensors instead of just available ones
+            selected_ntc_sensors = []
+            for sensor_name, checkbox in self.ntc_checkboxes.items():
+                if sensor_name.startswith("NTC") or sensor_name == "Temp":
+                    checkbox.setChecked(True)
+                    selected_ntc_sensors.append(sensor_name)
 
-                self.logger.debug(f"Updated sensor selections for '{tob_file.file_name}': {tob_file.sensors}")
+            # Update plot widget with active NTC sensors
+            if hasattr(self, 'plot_widget') and self.plot_widget:
+                self.plot_widget.set_active_ntc_sensors(selected_ntc_sensors)
+
+                # If we have multiple NTC sensors selected, switch to NTCs mode for plotting
+                if len(selected_ntc_sensors) > 1:
+                    # Set y1 sensor to "NTCs" to plot all selected NTC sensors
+                    if hasattr(self.plot_widget, 'y1_sensor'):
+                        self.plot_widget.y1_sensor = "NTCs"
+                        self.logger.debug("Switched to NTCs mode for multi-sensor plotting")
+
+                    # Also update the y1 axis combo box if it exists
+                    if hasattr(self, 'y1_axis_combo') and self.y1_axis_combo:
+                        self.y1_axis_combo.setCurrentText("NTCs")
+                        self.logger.debug("Updated y1 axis combo to NTCs")
+
+            self.logger.debug(f"Selected all NTC sensors for '{tob_file.file_name}': {selected_ntc_sensors}")
 
             # Update project info display
             if self.controller.project_model:
