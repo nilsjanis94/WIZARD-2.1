@@ -721,8 +721,12 @@ class MainController(QObject):
             # Update controller's project model
             self.project_model = project
 
+            # Update main window state
+            self.main_window.current_project_path = file_path
+
             # Update UI
-            self.main_window.update_project_info(name, "", description)
+            location = project.server_config.url if project.server_config else ""
+            self.main_window.update_project_info(name, location, description)
 
             self.main_window.show_status_message("Project created successfully")
             self.logger.info("Project '%s' created and saved successfully", name)
@@ -742,6 +746,72 @@ class MainController(QObject):
             )
             self.main_window.show_status_message("Error creating project")
 
+    def update_project_settings(self, settings_data: dict):
+        """
+        Update settings of the currently loaded project.
+
+        Args:
+            settings_data: Dictionary containing updated project settings
+                           (name, enter_key, server_url, description)
+        """
+        try:
+            self.logger.info("Updating project settings: %s", settings_data)
+
+            if not self.project_model:
+                raise ValueError("No project is currently loaded")
+
+            if not self.main_window.current_project_path:
+                raise ValueError("No project file path available")
+
+            # Extract updated data
+            name = settings_data.get("name", "")
+            enter_key = settings_data.get("enter_key", "")
+            server_url = settings_data.get("server_url", "")
+            description = settings_data.get("description", "")
+
+            # Validate inputs using project service
+            name = name.strip()
+            enter_key = enter_key.strip()
+            server_url = server_url.strip()
+
+            self.project_service._validate_project_inputs(name, enter_key, server_url)
+
+            # Update project model
+            self.project_model.name = name
+            self.project_model.description = description
+
+            # Update server config (this handles URL normalization internally)
+            self.project_service.update_project_server_config(
+                self.project_model,
+                enter_key=enter_key,
+                server_url=server_url
+            )
+
+            # Save updated project
+            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+
+            # Update UI
+            location = self.project_model.server_config.url if self.project_model.server_config else ""
+            self.main_window.update_project_info(name, location, description)
+
+            self.main_window.show_status_message("Project settings updated successfully")
+            self.logger.info("Project settings updated and saved successfully")
+
+        except ValueError as e:
+            # Validation errors
+            self.logger.warning("Project settings validation error: %s", e)
+            self.error_handler.handle_error(
+                e, "Project Settings Validation", self.main_window
+            )
+            self.main_window.show_status_message("Project settings validation failed")
+
+        except Exception as e:
+            self.logger.error("Error updating project settings: %s", e)
+            self.error_handler.handle_error(
+                e, "Project Settings Update", self.main_window
+            )
+            self.main_window.show_status_message("Error updating project settings")
+
     def _on_project_opened(self, project_path: str):
         """
         Handle project opened signal from view.
@@ -758,6 +828,9 @@ class MainController(QObject):
 
             # Update controller's project model
             self.project_model = project
+
+            # Update main window state
+            self.main_window.current_project_path = project_path
 
             # Update UI with project info
             location = project.server_config.url if project.server_config else ""

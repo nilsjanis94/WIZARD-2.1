@@ -312,7 +312,9 @@ class ProjectService:
                 project.server_config.bearer_token = enter_key
 
             if server_url is not None:
-                project.server_config.url = server_url
+                # Normalize URL if provided
+                normalized_url = self._normalize_server_url(server_url)
+                project.server_config.url = normalized_url
 
             project.update_modified_date()
             self.logger.info("Updated server config for project: %s", project.name)

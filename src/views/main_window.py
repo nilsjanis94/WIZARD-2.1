@@ -411,6 +411,9 @@ class MainWindow(QMainWindow):
         if self.actionOpen_Project_File:
             self.actionOpen_Project_File.triggered.connect(self._on_open_project)
 
+        if self.actionEdit_Project_Settings:
+            self.actionEdit_Project_Settings.triggered.connect(self._on_edit_project_settings)
+
         # NTC checkbox changes
         for sensor_name, checkbox in self.ntc_checkboxes.items():
             checkbox.stateChanged.connect(
@@ -629,6 +632,55 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error("Unexpected error creating project: %s", e)
             self.error_handler.handle_error(e, self, "Project Creation Error")
+
+    def _on_edit_project_settings(self):
+        """
+        Handle editing project settings.
+        """
+        try:
+            # Check if a project is currently loaded
+            if not self.current_project_path or not hasattr(self.controller, 'project_model') or not self.controller.project_model:
+                self.error_handler.handle_error(
+                    ValueError("No project is currently loaded. Please create or open a project first."),
+                    "No Project Loaded", self
+                )
+                return
+
+            # Get current project data
+            project = self.controller.project_model
+            current_name = project.name
+            current_enter_key = project.server_config.bearer_token if project.server_config else ""
+            current_server_url = project.server_config.url if project.server_config else ""
+            current_description = project.description or ""
+
+            # Open project dialog in edit mode
+            from .dialogs.project_dialogs import ProjectDialog
+            edit_dialog = ProjectDialog(
+                parent=self,
+                project_name=current_name,
+                project_description=current_description,
+                enter_key=current_enter_key,
+                server_url=current_server_url
+            )
+            edit_dialog.setWindowTitle("Edit Project Settings")
+
+            if edit_dialog.exec() == ProjectDialog.DialogCode.Accepted:
+                # Get updated data from dialog
+                name, enter_key, server_url, description = edit_dialog.get_project_data()
+
+                # Send update request to controller
+                self.controller.update_project_settings({
+                    "name": name,
+                    "enter_key": enter_key,
+                    "server_url": server_url,
+                    "description": description
+                })
+
+                self.logger.info("Project settings updated successfully")
+
+        except Exception as e:
+            self.logger.error("Unexpected error editing project settings: %s", e)
+            self.error_handler.handle_error(e, self, "Project Settings Edit Error")
 
     def _on_sensor_selection_changed(self, sensor_name: str, state: int):
         """
