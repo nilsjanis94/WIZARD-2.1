@@ -1058,7 +1058,9 @@ class MainWindow(QMainWindow):
             axis: "y1" or "y2"
         """
         try:
-            # Get TOB data from current project
+            data = None
+
+            # Try to get TOB data from current project first
             if (self.controller and self.controller.project_model and
                 self.controller.project_model.active_tob_file):
 
@@ -1066,34 +1068,49 @@ class MainWindow(QMainWindow):
                 if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
                     data = active_tob.tob_data.data
 
-                    # Check if sensor exists in data
-                    if sensor_name in data.columns:
-                        sensor_data = data[sensor_name].dropna()
-                        if not sensor_data.empty:
-                            min_val = float(sensor_data.min())
-                            max_val = float(sensor_data.max())
+            # If no project data, try to get data from plot widget (direct TOB loading)
+            elif (hasattr(self, 'plot_widget') and self.plot_widget and
+                  hasattr(self.plot_widget, 'tob_data_model') and
+                  self.plot_widget.tob_data_model and
+                  self.plot_widget.tob_data_model.data is not None):
+                data = self.plot_widget.tob_data_model.data
 
-                            # Set values in UI fields
-                            if axis == "y1":
-                                if self.y1_min_value:
-                                    self.y1_min_value.blockSignals(True)
-                                    self.y1_min_value.setText(f"{min_val:.2f}")
-                                    self.y1_min_value.blockSignals(False)
-                                if self.y1_max_value:
-                                    self.y1_max_value.blockSignals(True)
-                                    self.y1_max_value.setText(f"{max_val:.2f}")
-                                    self.y1_max_value.blockSignals(False)
-                            elif axis == "y2":
-                                if self.y2_min_value:
-                                    self.y2_min_value.blockSignals(True)
-                                    self.y2_min_value.setText(f"{min_val:.2f}")
-                                    self.y2_min_value.blockSignals(False)
-                                if self.y2_max_value:
-                                    self.y2_max_value.blockSignals(True)
-                                    self.y2_max_value.setText(f"{max_val:.2f}")
-                                    self.y2_max_value.blockSignals(False)
+            # If we have data, calculate min/max values
+            if data is not None:
+                # Check if sensor exists in data
+                if sensor_name in data.columns:
+                    sensor_data = data[sensor_name].dropna()
+                    if not sensor_data.empty:
+                        min_val = float(sensor_data.min())
+                        max_val = float(sensor_data.max())
 
-                            self.logger.debug(f"Updated {axis} limits for {sensor_name}: {min_val:.2f} - {max_val:.2f}")
+                        # Set values in UI fields
+                        if axis == "y1":
+                            if self.y1_min_value:
+                                self.y1_min_value.blockSignals(True)
+                                self.y1_min_value.setText(f"{min_val:.2f}")
+                                self.y1_min_value.blockSignals(False)
+                            if self.y1_max_value:
+                                self.y1_max_value.blockSignals(True)
+                                self.y1_max_value.setText(f"{max_val:.2f}")
+                                self.y1_max_value.blockSignals(False)
+                        elif axis == "y2":
+                            if self.y2_min_value:
+                                self.y2_min_value.blockSignals(True)
+                                self.y2_min_value.setText(f"{min_val:.2f}")
+                                self.y2_min_value.blockSignals(False)
+                            if self.y2_max_value:
+                                self.y2_max_value.blockSignals(True)
+                                self.y2_max_value.setText(f"{max_val:.2f}")
+                                self.y2_max_value.blockSignals(False)
+
+                        self.logger.debug(f"Updated {axis} limits for {sensor_name}: {min_val:.2f} - {max_val:.2f}")
+                    else:
+                        self.logger.warning(f"No data available for sensor {sensor_name}")
+                else:
+                    self.logger.warning(f"Sensor {sensor_name} not found in data")
+            else:
+                self.logger.debug("No TOB data available for limit calculation")
 
         except Exception as e:
             self.logger.error(f"Error updating {axis} limits for sensor {sensor_name}: {e}")
