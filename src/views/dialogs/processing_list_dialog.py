@@ -875,6 +875,10 @@ TOB File Details: {file_name}
                             )
 
                             if success:
+                                # Set as active TOB file if this is the first file
+                                if not self.project_model.active_tob_file:
+                                    self.project_model.set_active_tob_file(file_name)
+
                                 # Record successful addition for potential rollback
                                 rollback_transaction.record_operation(f"Added TOB file: {file_name}")
                                 added_count += 1

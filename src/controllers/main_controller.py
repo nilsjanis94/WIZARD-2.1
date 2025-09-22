@@ -1334,6 +1334,13 @@ class MainController(QObject):
                 self.logger.info("Project has %d TOB files, reloading data...", len(project.tob_files))
                 self._reload_tob_files_data(project)
 
+                # Ensure there's an active TOB file
+                if not project.active_tob_file and project.tob_files:
+                    # Set the first TOB file as active if none is set
+                    first_tob_file = project.tob_files[0]
+                    project.set_active_tob_file(first_tob_file.file_name)
+                    self.logger.info("Set first TOB file as active: %s", first_tob_file.file_name)
+
                 # Auto-plot the active TOB file if it exists and has data
                 if project.active_tob_file:
                     active_tob = project.get_active_tob_file()
@@ -1344,7 +1351,7 @@ class MainController(QObject):
                     else:
                         self.logger.warning("Active TOB file '%s' has no data to plot", project.active_tob_file)
                 else:
-                    self.logger.info("No active TOB file set - user needs to select one manually")
+                    self.logger.info("No TOB files available for auto-plotting")
             else:
                 self.logger.info("Project has no TOB files")
 
