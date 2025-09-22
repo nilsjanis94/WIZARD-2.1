@@ -256,6 +256,9 @@ class MainController(QObject):
                 if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
                     if hasattr(self.main_window.plot_widget, '_refresh_plot'):
                         self.main_window.plot_widget._refresh_plot()
+                    # Update axis labels after initial plot refresh
+                    if hasattr(self.main_window.plot_widget, '_update_axis_labels'):
+                        self.main_window.plot_widget._update_axis_labels()
 
                 # Emit sensors updated signal
                 self.sensors_updated.emit(self.tob_data_model.sensors)
@@ -503,24 +506,58 @@ class MainController(QObject):
         Args:
             sensor_name: Name of the sensor to display in main plot
         """
+        self.y1_sensor = sensor_name
+        self._set_sensor(sensor_name, 'y1_sensor', is_primary=True)
+
+    def _set_sensor(self, sensor_name: str, sensor_attr: str, is_primary: bool = True):
+        """
+        Common method to set a sensor (primary or secondary).
+
+        Args:
+            sensor_name: Name of the sensor to display
+            sensor_attr: Attribute name on plot_widget ('y1_sensor' or 'y2_sensor')
+            is_primary: Whether this is the primary sensor
+        """
         try:
-            self.logger.info("Setting primary sensor to: %s", sensor_name)
-            self.y1_sensor = sensor_name
+            sensor_type = "primary" if is_primary else "secondary"
+            self.logger.info("Setting %s sensor to: %s", sensor_type, sensor_name)
 
             # Update plot widget if available
             if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
-                self.main_window.plot_widget.y1_sensor = sensor_name
-                # Refresh the plot to show the new primary sensor
+                setattr(self.main_window.plot_widget, sensor_attr, sensor_name)
+
+                # Refresh the plot to show the new sensor
                 if hasattr(self.main_window.plot_widget, '_refresh_plot'):
                     self.main_window.plot_widget._refresh_plot()
 
-            self.logger.info("Primary sensor set to: %s", sensor_name)
+                # Update axis labels
+                if hasattr(self.main_window.plot_widget, '_update_axis_labels'):
+                    self.main_window.plot_widget._update_axis_labels()
+
+            self.logger.info("%s sensor set to: %s", sensor_type.capitalize(), sensor_name)
 
         except Exception as e:
-            self.logger.error("Error setting primary sensor: %s", e)
-            self.error_handler.handle_error(
-                e, self.main_window, "Primary Sensor Change Error"
-            )
+            sensor_type = "primary" if is_primary else "secondary"
+            self.logger.error("Error setting %s sensor: %s", sensor_type, e)
+            error_title = f"{sensor_type.capitalize()} Sensor Change Error"
+            self.error_handler.handle_error(e, self.main_window, error_title)
+
+    def set_secondary_sensor(self, sensor_name: str):
+        """
+        Set the secondary sensor for dual plot mode.
+
+        Args:
+            sensor_name: Name of the sensor to display in secondary plot
+        """
+        # Check if we're already in dual mode
+        current_mode = getattr(self.main_window.plot_widget, 'plot_mode', 'single') if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget else 'single'
+
+        if current_mode != "dual":
+            # Switch to dual mode first
+            self.set_plot_mode("dual", secondary_sensor=sensor_name)
+        else:
+            # Already in dual mode, just update the sensor
+            self._set_sensor(sensor_name, 'y2_sensor', is_primary=False)
 
     def set_plot_mode(self, mode: str, secondary_sensor: str = None):
         """
@@ -555,6 +592,7 @@ class MainController(QObject):
                     if self.tob_data_model:
                         self.main_window.plot_widget.tob_data_model = self.tob_data_model
                     self.main_window.plot_widget.set_dual_mode(secondary_sensor)
+                    # Note: _update_axis_labels() is already called in set_dual_mode() -> _configure_axes()
                 else:
                     self.logger.warning("No plot widget available for dual mode")
 

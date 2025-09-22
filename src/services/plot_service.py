@@ -496,83 +496,6 @@ class PlotWidget(QWidget):
         """Delegate axis settings updates to plot service."""
         self.plot_service.update_axis_settings(axis_settings)
 
-    def _plot_sensors(self, time_values: np.ndarray):
-        """Plot the selected sensors."""
-        try:
-            if not self.tob_data_model or self.tob_data_model.data is None:
-                return
-
-            data = self.tob_data_model.data
-
-            for sensor in self.selected_sensors:
-                # Special handling for NTCs group - plot all NTC sensors
-                if sensor == "NTCs":
-                    ntc_sensors = [
-                        col
-                        for col in data.columns
-                        if col.startswith("NTC") and col[3:].isdigit()
-                    ]
-                    for ntc_sensor in ntc_sensors:
-                        if ntc_sensor not in data.columns:
-                            continue
-
-                        sensor_data = data[ntc_sensor].dropna()
-                        if sensor_data.empty:
-                            continue
-
-                        # Get styling for individual NTC sensor
-                        color = self.plot_service.get_sensor_color(ntc_sensor)
-                        line_style = self.plot_service.get_line_style(ntc_sensor)
-                        line_width = self.plot_service.get_line_width(ntc_sensor)
-
-                        # All sensors plot on main axis (ax1)
-                        ax = self.ax1
-
-                        # Plot the data
-                        ax.plot(
-                            time_values[: len(sensor_data)],
-                            sensor_data.values,
-                            color=color,
-                            linestyle=line_style,
-                            linewidth=line_width,
-                            label=ntc_sensor,
-                            alpha=0.8,
-                        )
-
-                    continue  # Skip to next sensor in selected_sensors
-
-                # Normal sensor handling
-                if sensor not in data.columns:
-                    continue
-
-                sensor_data = data[sensor].dropna()
-                if sensor_data.empty:
-                    continue
-
-                # Get styling
-                color = self.plot_service.get_sensor_color(sensor)
-                line_style = self.plot_service.get_line_style(sensor)
-                line_width = self.plot_service.get_line_width(sensor)
-
-                # All sensors plot on main axis (ax1)
-                ax = self.ax1
-
-                # Plot the data
-                ax.plot(
-                    time_values[: len(sensor_data)],
-                    sensor_data.values,
-                    color=color,
-                    linestyle=line_style,
-                    linewidth=line_width,
-                    label=sensor,
-                    alpha=0.8,
-                )
-
-            self.logger.debug("Sensors plotted successfully")
-        except Exception as e:
-            self.logger.error("Failed to plot sensors: %s", e)
-            raise
-
     def _configure_axes(self, time_values: np.ndarray, time_unit: str = "Seconds"):
         """Configure the plot axes."""
         try:
@@ -607,60 +530,27 @@ class PlotWidget(QWidget):
                     # Manual y2-axis limits would be set here
                     pass
 
-            # Set labels based on current sensors
-            x_label = f"Time ({time_unit})"
-
-            if self.plot_mode == "dual":
-                # Dual mode: X-label only on bottom plot
-                self.ax1.set_xlabel("")  # No x-label on top plot
-                self.ax2.set_xlabel(x_label, fontweight="bold")
-
-                # Y-labels for both plots
-                if self.y1_sensor:
-                    if self.y1_sensor == "NTCs":
-                        y1_label = "Temperature (°C)"  # All NTC sensors are temperature
-                    else:
-                        y1_label = self.plot_service._get_y_axis_label(self.y1_sensor)
-                    self.ax1.set_ylabel(y1_label, fontweight="bold", color="black")
-
-                if self.y2_sensor:
-                    if self.y2_sensor == "NTCs":
-                        y2_label = "Temperature (°C)"  # All NTC sensors are temperature
-                    else:
-                        y2_label = self.plot_service._get_y_axis_label(self.y2_sensor)
-                    self.ax2.set_ylabel(y2_label, fontweight="bold", color="black")
-
+            # Configure grids and margins based on mode
+            if self.plot_mode == "dual" and self.ax2:
                 # Configure grids for both axes
                 self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
                 self.ax2.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
-                # Set margins
-                self.ax1.margins(x=0, y=0.05)  # No bottom margin for top plot
-                self.ax2.margins(x=0, y=0.05)  # No top margin for bottom plot
+                # Set margins with space for labels
+                self.ax1.margins(x=0.08, y=0.1)  # Space for Y-labels
+                self.ax2.margins(x=0.08, y=0.1)  # Space for Y-labels
 
+                # Adjust subplot positions to leave space for labels (optimized for large windows)
+                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2)
             else:
-                # Single mode: Standard configuration
-                self.ax1.set_xlabel(x_label, fontweight="bold")
-
-                # Determine Y-axis label based on primary sensor
-                if self.y1_sensor:
-                    if self.y1_sensor == "NTCs":
-                        y_label = "Temperature (°C)"  # All NTC sensors are temperature
-                    else:
-                        y_label = self.plot_service._get_y_axis_label(self.y1_sensor)
-                else:
-                    y_label = "Value"
-
-                self.ax1.set_ylabel(y_label, fontweight="bold", color="black")
-
-                # Configure grid
+                # Configure grid for single axis
                 self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
-                # Remove margins and use tight layout for no wasted space
-                self.ax1.margins(x=0, y=0.05)  # Small y-margin for labels, no x-margin
+                # Set margins with space for labels
+                self.ax1.margins(x=0.08, y=0.1)  # Space for Y-labels
 
-            # Use tight layout for no wasted space
-            self.figure.tight_layout(pad=0.5)  # Minimal padding
+                # Adjust subplot position to leave space for labels (optimized for large windows)
+                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.12)
 
             self.logger.debug("Axes configured successfully for mode: %s", self.plot_mode)
         except Exception as e:
@@ -816,9 +706,13 @@ class PlotWidget(QWidget):
             # Set X-axis limits
             self.ax1.set_xlim(min_value, max_value)
 
-            # Apply tight layout and margins for no wasted space
-            self.ax1.margins(x=0, y=0.05)  # No x-margin, small y-margin
-            self.figure.tight_layout(pad=0.5)  # Minimal padding
+            # Apply consistent layout with margins for labels
+            self.ax1.margins(x=0.08, y=0.1)  # Space for Y-labels
+            if self.plot_mode == "dual" and hasattr(self, 'ax2'):
+                self.ax2.margins(x=0.08, y=0.1)  # Space for Y-labels
+                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2)
+            else:
+                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.12)
 
             # Redraw the plot
             self.canvas.draw_idle()
@@ -829,8 +723,129 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to update X-axis limits: %s", e)
             raise
 
+    def _plot_ntc_sensors(self, ax, sensor_name: str, time_values: np.ndarray, data):
+        """
+        Helper method to plot NTC sensors on a given axis.
+
+        Args:
+            ax: Matplotlib axis to plot on
+            sensor_name: Either "NTCs" or a specific NTC sensor
+            time_values: Time values for x-axis
+            data: DataFrame with sensor data
+        """
+        try:
+            if sensor_name == "NTCs":
+                # Plot all NTC sensors (filtered by active_ntc_sensors if set)
+                ntc_sensors = [
+                    col for col in data.columns
+                    if col.startswith("NTC") and col[3:].isdigit()
+                ]
+                if self.active_ntc_sensors is not None:
+                    ntc_sensors = [s for s in ntc_sensors if s in self.active_ntc_sensors]
+
+                for ntc_sensor in ntc_sensors:
+                    if ntc_sensor not in data.columns:
+                        continue
+
+                    sensor_data = data[ntc_sensor].dropna()
+                    if sensor_data.empty:
+                        continue
+
+                    # Get styling for individual NTC sensor
+                    color = self.plot_service.get_sensor_color(ntc_sensor)
+                    line_style = self.plot_service.get_line_style(ntc_sensor)
+                    line_width = self.plot_service.get_line_width(ntc_sensor)
+
+                    # Plot on specified axis
+                    ax.plot(
+                        time_values[: len(sensor_data)],
+                        sensor_data.values,
+                        color=color,
+                        linestyle=line_style,
+                        linewidth=line_width,
+                        label=ntc_sensor,
+                        alpha=0.8,
+                    )
+                self.logger.debug("Plotted %d NTC sensors", len(ntc_sensors))
+            else:
+                # Plot single NTC sensor
+                if sensor_name in data.columns:
+                    sensor_data = data[sensor_name].dropna()
+                    if not sensor_data.empty:
+                        color = self.plot_service.get_sensor_color(sensor_name)
+                        line_style = self.plot_service.get_line_style(sensor_name)
+                        line_width = self.plot_service.get_line_width(sensor_name)
+
+                        ax.plot(
+                            time_values[: len(sensor_data)],
+                            sensor_data.values,
+                            color=color,
+                            linestyle=line_style,
+                            linewidth=line_width,
+                            label=sensor_name,
+                            alpha=0.8,
+                        )
+                        self.logger.debug("Plotted NTC sensor: %s", sensor_name)
+
+        except Exception as e:
+            self.logger.error("Failed to plot NTC sensors: %s", e)
+            raise
+
     def _update_axis_labels(self):
-        """Update axis labels without full plot refresh."""
+        """Update axis labels based on current plot mode and sensors."""
+        try:
+            # Get time unit for X-axis
+            time_unit = self.axis_settings.get("x_axis_type", "Seconds")
+            x_label = f"Time ({time_unit})"
+
+            if self.plot_mode == "dual" and self.ax1 and self.ax2:
+                # Dual mode: X-label only on bottom plot
+                self.ax1.set_xlabel("")
+                self.ax2.set_xlabel(x_label, fontweight="bold")
+
+                # Y-labels for both plots
+                if self.y1_sensor:
+                    if self.y1_sensor == "NTCs":
+                        y1_label = "Temperature (°C)"
+                    else:
+                        y1_label = self.plot_service._get_y_axis_label(self.y1_sensor)
+                else:
+                    y1_label = "Value"
+
+                if self.y2_sensor:
+                    if self.y2_sensor == "NTCs":
+                        y2_label = "Temperature (°C)"
+                    else:
+                        y2_label = self.plot_service._get_y_axis_label(self.y2_sensor)
+                else:
+                    y2_label = "Value"
+
+                self.ax1.set_ylabel(y1_label, fontweight="bold", color="black")
+                self.ax2.set_ylabel(y2_label, fontweight="bold", color="black")
+
+            elif self.plot_mode == "single" and self.ax1:
+                # Single mode: Standard labels
+                self.ax1.set_xlabel(x_label, fontweight="bold")
+
+                if self.y1_sensor:
+                    if self.y1_sensor == "NTCs":
+                        y_label = "Temperature (°C)"
+                    else:
+                        y_label = self.plot_service._get_y_axis_label(self.y1_sensor)
+                else:
+                    y_label = "Value"
+
+                self.ax1.set_ylabel(y_label, fontweight="bold", color="black")
+
+            # Force redraw of labels
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+        except Exception as e:
+            self.logger.error("Failed to update current axis labels: %s", e)
+
+    def _update_single_axis_labels(self):
+        """Update axis labels for single plot mode."""
         try:
             if not self.ax1:
                 return
@@ -840,10 +855,12 @@ class PlotWidget(QWidget):
             x_label = f"Time ({time_unit})"
             self.ax1.set_xlabel(x_label, fontweight="bold")
 
-            # Update Y-axis labels based on selected sensors
-            if self.selected_sensors:
-                primary_sensor = self.selected_sensors[0]
-                y_label = self.plot_service._get_y_axis_label(primary_sensor)
+            # Update Y-axis label based on y1_sensor
+            if self.y1_sensor:
+                if self.y1_sensor == "NTCs":
+                    y_label = "Temperature (°C)"
+                else:
+                    y_label = self.plot_service._get_y_axis_label(self.y1_sensor)
             else:
                 y_label = "Value"
 
@@ -854,7 +871,47 @@ class PlotWidget(QWidget):
             self.canvas.flush_events()
 
         except Exception as e:
-            self.logger.error("Failed to update axis labels: %s", e)
+            self.logger.error("Failed to update single axis labels: %s", e)
+
+    def _update_dual_axis_labels(self):
+        """Update axis labels for dual plot mode."""
+        try:
+            if not self.ax1 or not self.ax2:
+                return
+
+            # Update X-axis label only on bottom plot
+            time_unit = self.axis_settings.get("x_axis_type", "Seconds")
+            x_label = f"Time ({time_unit})"
+            self.ax2.set_xlabel(x_label, fontweight="bold")
+            # Remove X-label from top plot
+            self.ax1.set_xlabel("")
+
+            # Update Y-axis labels for both plots
+            if self.y1_sensor:
+                if self.y1_sensor == "NTCs":
+                    y1_label = "Temperature (°C)"
+                else:
+                    y1_label = self.plot_service._get_y_axis_label(self.y1_sensor)
+            else:
+                y1_label = "Value"
+
+            if self.y2_sensor:
+                if self.y2_sensor == "NTCs":
+                    y2_label = "Temperature (°C)"
+                else:
+                    y2_label = self.plot_service._get_y_axis_label(self.y2_sensor)
+            else:
+                y2_label = "Value"
+
+            self.ax1.set_ylabel(y1_label, fontweight="bold", color="black")
+            self.ax2.set_ylabel(y2_label, fontweight="bold", color="black")
+
+            # Force redraw of labels
+            self.canvas.draw_idle()
+            self.canvas.flush_events()
+
+        except Exception as e:
+            self.logger.error("Failed to update dual axis labels: %s", e)
 
     def update_y1_limits(self, min_value: float, max_value: float):
         """
@@ -947,7 +1004,7 @@ class PlotWidget(QWidget):
                 self._setup_plot_layout()
 
             # Set full-size layout for main plot
-            self.ax1.set_position([0.1, 0.1, 0.8, 0.8])  # Full height
+            # Position will be set by subplots_adjust in _configure_axes
 
             # Plot single sensor and update layout
             if self.tob_data_model and self.tob_data_model.data is not None:
@@ -994,11 +1051,9 @@ class PlotWidget(QWidget):
                 ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
             # Set positions for dual layout (50/50 split with small gap)
-            self.ax1.set_position([0.1, 0.55, 0.8, 0.35])  # Top half
-            self.ax2.set_position([0.1, 0.1, 0.8, 0.35])   # Bottom half
+            # Positions will be set by subplots_adjust in _configure_axes
 
-            # Setup axis labels and titles
-            self._setup_dual_plot_layout()
+            # Note: Axis labels will be set by _configure_axes() -> _update_axis_labels()
 
             # Plot data on both axes using the same logic as _refresh_plot
             if self.tob_data_model and self.tob_data_model.data is not None:
@@ -1008,6 +1063,9 @@ class PlotWidget(QWidget):
                     time_values, _ = self.plot_service.format_time_axis(time_data, time_unit)
                     self._plot_dual_sensors(time_values)
                     self._configure_axes(time_values, time_unit)
+
+            # Update axis labels (ensure they are set even if data plotting failed)
+            self._update_axis_labels()
 
             # Redraw
             self.canvas.draw_idle()
@@ -1019,64 +1077,7 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to set dual mode: %s", e)
             raise
 
-    def _setup_dual_plot_layout(self):
-        """Setup axis labels and styling for dual plot mode."""
-        try:
-            # Setup primary axis (top)
-            self.ax1.set_xlabel("")  # No x-label for top plot
-            self.ax1.set_ylabel(self.plot_service._get_y_axis_label(self.y1_sensor),
-                               fontweight="bold", color="black")
-            self.ax1.set_title(f"Primär: {self.y1_sensor}", fontsize=11, fontweight="bold")
-            self.ax1.tick_params(axis="y", labelcolor="black")
 
-            # Setup secondary axis (bottom)
-            self.ax2.set_xlabel("Time", fontweight="bold")
-            self.ax2.set_ylabel(self.plot_service._get_y_axis_label(self.y2_sensor),
-                               fontweight="bold", color="black")
-            self.ax2.set_title(f"Sekundär: {self.y2_sensor}", fontsize=11, fontweight="bold")
-            self.ax2.tick_params(axis="y", labelcolor="black")
-
-        except Exception as e:
-            self.logger.error("Failed to setup dual plot layout: %s", e)
-            raise
-
-    def _plot_dual_data(self):
-        """Plot data on both axes in dual mode."""
-        try:
-            if not self.tob_data_model or self.tob_data_model.data is None:
-                self.logger.warning("No data available for dual plotting")
-                return
-
-            data = self.tob_data_model.data
-
-            # Plot primary sensor (top plot)
-            if self.y1_sensor in data.columns:
-                time_data = self.tob_data_model.get_time_column()
-                if time_data is not None:
-                    self.ax1.clear()
-                    self.ax1.plot(time_data, data[self.y1_sensor],
-                                color='blue', linewidth=2, label=self.y1_sensor)
-                    self.ax1.legend()
-                    self.ax1.grid(True, alpha=0.3)
-
-            # Plot secondary sensor (bottom plot)
-            if self.y2_sensor in data.columns:
-                time_data = self.tob_data_model.get_time_column()
-                if time_data is not None:
-                    self.ax2.clear()
-                    self.ax2.plot(time_data, data[self.y2_sensor],
-                                color='red', linewidth=2, label=self.y2_sensor)
-                    self.ax2.legend()
-                    self.ax2.grid(True, alpha=0.3)
-
-            # Sync x-axis ranges
-            if hasattr(self.ax1, 'get_xlim') and hasattr(self.ax2, 'get_xlim'):
-                xlims = self.ax1.get_xlim()
-                self.ax2.set_xlim(xlims)
-
-        except Exception as e:
-            self.logger.error("Failed to plot dual data: %s", e)
-            raise
 
     def _plot_single_sensor(self, time_values: np.ndarray):
         """Plot the primary sensor(s) for single mode."""
@@ -1088,39 +1089,7 @@ class PlotWidget(QWidget):
 
             # Handle NTCs group - plot filtered NTC sensors
             if self.y1_sensor == "NTCs":
-                ntc_sensors = [
-                    col for col in data.columns
-                    if col.startswith("NTC") and col[3:].isdigit()
-                ]
-
-                # Filter active NTC sensors if specified
-                if self.active_ntc_sensors is not None:
-                    ntc_sensors = [s for s in ntc_sensors if s in self.active_ntc_sensors]
-
-                for ntc_sensor in ntc_sensors:
-                    if ntc_sensor not in data.columns:
-                        continue
-
-                    sensor_data = data[ntc_sensor].dropna()
-                    if sensor_data.empty:
-                        continue
-
-                    # Get styling for individual NTC sensor
-                    color = self.plot_service.get_sensor_color(ntc_sensor)
-                    line_style = self.plot_service.get_line_style(ntc_sensor)
-                    line_width = self.plot_service.get_line_width(ntc_sensor)
-
-                    # Plot on main axis
-                    self.ax1.plot(
-                        time_values[: len(sensor_data)],
-                        sensor_data.values,
-                        color=color,
-                        linestyle=line_style,
-                        linewidth=line_width,
-                        label=ntc_sensor,
-                        alpha=0.8,
-                    )
-                self.logger.debug("Plotted %d NTC sensors for primary axis", len(ntc_sensors))
+                self._plot_ntc_sensors(self.ax1, self.y1_sensor, time_values, data)
 
             # Handle normal single sensor
             elif self.y1_sensor and self.y1_sensor in data.columns:
@@ -1162,41 +1131,7 @@ class PlotWidget(QWidget):
 
             # Plot primary sensor(s) (y1_sensor) on top axis
             if self.y1_sensor == "NTCs":
-                # Handle NTCs group - plot filtered NTC sensors on top axis
-                ntc_sensors = [
-                    col for col in data.columns
-                    if col.startswith("NTC") and col[3:].isdigit()
-                ]
-
-                # Filter active NTC sensors if specified
-                if self.active_ntc_sensors is not None:
-                    ntc_sensors = [s for s in ntc_sensors if s in self.active_ntc_sensors]
-
-                for ntc_sensor in ntc_sensors:
-                    if ntc_sensor not in data.columns:
-                        continue
-
-                    sensor_data = data[ntc_sensor].dropna()
-                    if sensor_data.empty:
-                        continue
-
-                    # Get styling for individual NTC sensor
-                    color = self.plot_service.get_sensor_color(ntc_sensor)
-                    line_style = self.plot_service.get_line_style(ntc_sensor)
-                    line_width = self.plot_service.get_line_width(ntc_sensor)
-
-                    # Plot on top axis
-                    self.ax1.plot(
-                        time_values[: len(sensor_data)],
-                        sensor_data.values,
-                        color=color,
-                        linestyle=line_style,
-                        linewidth=line_width,
-                        label=ntc_sensor,
-                        alpha=0.8,
-                    )
-                    self.logger.debug("Plotted NTC sensor %s on top axis", ntc_sensor)
-                self.logger.debug("Plotted all NTC sensors for primary axis")
+                self._plot_ntc_sensors(self.ax1, self.y1_sensor, time_values, data)
 
             elif self.y1_sensor and self.y1_sensor in data.columns:
                 # Handle normal single sensor on top axis
@@ -1221,36 +1156,7 @@ class PlotWidget(QWidget):
 
             # Plot secondary sensor(s) (y2_sensor) on bottom axis
             if self.y2_sensor == "NTCs":
-                # Handle NTCs group - plot all NTC sensors on bottom axis
-                ntc_sensors = [
-                    col for col in data.columns
-                    if col.startswith("NTC") and col[3:].isdigit()
-                ]
-                for ntc_sensor in ntc_sensors:
-                    if ntc_sensor not in data.columns:
-                        continue
-
-                    sensor_data = data[ntc_sensor].dropna()
-                    if sensor_data.empty:
-                        continue
-
-                    # Get styling for individual NTC sensor
-                    color = self.plot_service.get_sensor_color(ntc_sensor)
-                    line_style = self.plot_service.get_line_style(ntc_sensor)
-                    line_width = self.plot_service.get_line_width(ntc_sensor)
-
-                    # Plot on bottom axis
-                    self.ax2.plot(
-                        time_values[: len(sensor_data)],
-                        sensor_data.values,
-                        color=color,
-                        linestyle=line_style,
-                        linewidth=line_width,
-                        label=ntc_sensor,
-                        alpha=0.8,
-                    )
-                    self.logger.debug("Plotted NTC sensor %s on bottom axis", ntc_sensor)
-                self.logger.debug("Plotted all NTC sensors for secondary axis")
+                self._plot_ntc_sensors(self.ax2, self.y2_sensor, time_values, data)
 
             elif self.y2_sensor and self.y2_sensor in data.columns:
                 # Handle normal single sensor on bottom axis

@@ -688,7 +688,7 @@ class MainWindow(QMainWindow):
             # Dual mode: Main plot + secondary plot with selected sensor
             self.logger.debug("Switching to dual plot mode with sensor: %s", sensor_name)
             if self.controller:
-                self.controller.set_plot_mode("dual", secondary_sensor=sensor_name)
+                self.controller.set_secondary_sensor(sensor_name)
 
     def _on_x_axis_changed(self, axis_type: str):
         """Handle X axis type selection change."""
