@@ -371,6 +371,7 @@ class UIService:
                 "y1_axis_combo" in axis_combos
                 and axis_combos["y1_axis_combo"] is not None
             ):
+                axis_combos["y1_axis_combo"].clear()
                 axis_combos["y1_axis_combo"].addItems(sensor_options)
                 axis_combos["y1_axis_combo"].setCurrentText("NTC01")
                 # Ensure text colors are set for this combobox
@@ -381,6 +382,7 @@ class UIService:
                 "y2_axis_combo" in axis_combos
                 and axis_combos["y2_axis_combo"] is not None
             ):
+                axis_combos["y2_axis_combo"].clear()
                 y2_options = ["None"] + sensor_options
                 axis_combos["y2_axis_combo"].addItems(y2_options)
                 axis_combos["y2_axis_combo"].setCurrentText(
@@ -395,6 +397,7 @@ class UIService:
                 "x_axis_combo" in axis_combos
                 and axis_combos["x_axis_combo"] is not None
             ):
+                axis_combos["x_axis_combo"].clear()
                 axis_combos["x_axis_combo"].addItems(time_options)
                 axis_combos["x_axis_combo"].setCurrentText("Seconds")
                 # Ensure text colors are set for this combobox
