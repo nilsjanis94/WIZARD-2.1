@@ -6,8 +6,163 @@ Handles project data structure and operations.
 
 from datetime import datetime
 from typing import Any, ClassVar, Dict, List, Optional
+from contextlib import contextmanager
 
 from pydantic import BaseModel, Field
+
+
+class RollbackTransaction:
+    """
+    Context manager for safe TOB file operations with automatic rollback.
+
+    Provides backup and restore functionality for TOB files to ensure
+    data integrity during complex operations.
+    """
+
+    def __init__(self, project_model: "ProjectModel"):
+        """
+        Initialize rollback transaction.
+
+        Args:
+            project_model: The project model to operate on
+        """
+        self.project_model = project_model
+        self.backup_tob_files: List[Dict[str, Any]] = []
+        self.initial_tob_files: List[str] = []  # Files that existed before transaction
+        self.operations_performed: List[str] = []
+        self.rollback_needed = False
+
+    def backup_tob_file(self, file_name: str) -> bool:
+        """
+        Create a backup of a TOB file.
+
+        Args:
+            file_name: Name of the TOB file to backup
+
+        Returns:
+            True if backup was created, False otherwise
+        """
+        tob_file = self.project_model.get_tob_file(file_name)
+        if not tob_file:
+            return False
+
+        # Create deep copy of TOB file data
+        backup = {
+            'file_name': tob_file.file_name,
+            'file_path': tob_file.file_path,
+            'file_size': tob_file.file_size,
+            'added_date': tob_file.added_date,
+            'data_points': tob_file.data_points,
+            'sensors': tob_file.sensors.copy() if tob_file.sensors else [],
+            'status': tob_file.status,
+            'tob_data': None
+        }
+
+        # Backup TOB data if it exists
+        if tob_file.tob_data:
+            backup['tob_data'] = {
+                'headers': tob_file.tob_data.headers.copy() if tob_file.tob_data.headers else {},
+                'dataframe': tob_file.tob_data.dataframe.copy() if tob_file.tob_data.dataframe is not None else None,
+                'raw_data': tob_file.tob_data.raw_data
+            }
+
+        self.backup_tob_files.append(backup)
+        return True
+
+    def record_operation(self, operation: str) -> None:
+        """
+        Record an operation that was performed.
+
+        Args:
+            operation: Description of the operation
+        """
+        self.operations_performed.append(operation)
+
+    def rollback(self) -> bool:
+        """
+        Rollback all changes made during this transaction.
+
+        Returns:
+            True if rollback was successful, False otherwise
+        """
+        try:
+            # Get current files
+            current_files = [f.file_name for f in self.project_model.tob_files]
+
+            # Remove files that were added during transaction
+            for file_name in current_files:
+                if file_name not in self.initial_tob_files:
+                    self.project_model.remove_tob_file(file_name)
+
+            # Restore backed up TOB files (modified existing files)
+            for backup in self.backup_tob_files:
+                file_name = backup['file_name']
+
+                # Remove current version if it exists
+                self.project_model.remove_tob_file(file_name)
+
+                # Restore backup
+                if backup['tob_data']:
+                    self.project_model.add_tob_file(
+                        file_path=backup['file_path'],
+                        file_name=backup['file_name'],
+                        file_size=backup['file_size'],
+                        headers=backup['tob_data']['headers'],
+                        dataframe=backup['tob_data']['dataframe'],
+                        raw_data=backup['tob_data']['raw_data'],
+                        data_points=backup['data_points'],
+                        sensors=backup['sensors']
+                    )
+                else:
+                    # Restore without data
+                    self.project_model.add_tob_file(
+                        file_path=backup['file_path'],
+                        file_name=backup['file_name'],
+                        file_size=backup['file_size'],
+                        data_points=backup['data_points'],
+                        sensors=backup['sensors']
+                    )
+
+                # Restore status
+                self.project_model.update_tob_file_status(file_name, backup['status'])
+
+            return True
+
+        except Exception as e:
+            print(f"Error during rollback: {e}")
+            return False
+
+    @contextmanager
+    def transaction(self):
+        """
+        Context manager for safe TOB file operations.
+
+        Usage:
+            with rollback_transaction.transaction():
+                # Perform operations
+                project.add_tob_file(...)
+                if some_error:
+                    raise Exception("Operation failed")
+                # Changes are committed automatically on success
+        """
+        # Record initial state
+        self.initial_tob_files = [f.file_name for f in self.project_model.tob_files]
+        self.rollback_needed = False
+
+        try:
+            yield self
+        except Exception as e:
+            self.rollback_needed = True
+            if self.rollback():
+                print(f"Transaction rolled back due to error: {e}")
+            else:
+                print(f"Failed to rollback transaction after error: {e}")
+            raise
+        finally:
+            if not self.rollback_needed:
+                # Transaction successful, clear backups
+                self.backup_tob_files.clear()
+                self.initial_tob_files.clear()
 
 
 class ServerConfig(BaseModel):
@@ -240,6 +395,24 @@ class ProjectModel(BaseModel):
                 return True
         return False
 
+    def get_active_tob_file(self) -> Optional["TOBFileInfo"]:
+        """
+        Get the currently active TOB file for plotting.
+
+        Returns:
+            TOBFileInfo of active file or None if no active file
+        """
+        if not self.active_tob_file:
+            return None
+
+        return self.get_tob_file(self.active_tob_file)
+
+    def clear_active_tob_file(self) -> None:
+        """
+        Clear the active TOB file selection.
+        """
+        self.active_tob_file = None
+
     def update_tob_file_data(self, file_name: str, headers: Optional[Dict] = None,
                            dataframe: Optional[Any] = None, data_points: Optional[int] = None,
                            sensors: Optional[List[str]] = None) -> bool:
@@ -274,6 +447,15 @@ class ProjectModel(BaseModel):
                 return True
 
         return False
+
+    def create_rollback_transaction(self) -> RollbackTransaction:
+        """
+        Create a new rollback transaction for safe TOB file operations.
+
+        Returns:
+            RollbackTransaction instance
+        """
+        return RollbackTransaction(self)
 
     def get_tob_file(self, file_name: str) -> Optional[TOBFileInfo]:
         """
