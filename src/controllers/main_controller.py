@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 from ..models.project_model import ProjectModel
 from ..models.tob_data_model import TOBDataModel
@@ -88,6 +88,9 @@ class MainController(QObject):
         # Initialize models
         self.tob_data_model: Optional[TOBDataModel] = None
         self.project_model = ProjectModel(name="Untitled Project")
+
+        # Initialize auto-save
+        self._setup_auto_save()
 
         # Initialize view
         if main_window is not None:
@@ -731,6 +734,8 @@ class MainController(QObject):
             self.main_window.show_status_message("Project created successfully")
             self.logger.info("Project '%s' created and saved successfully", name)
 
+            # Note: Auto-save not needed for creation since we just saved manually
+
         except ValueError as e:
             # Validation errors
             self.logger.warning("Project validation error: %s", e)
@@ -797,6 +802,8 @@ class MainController(QObject):
             self.main_window.show_status_message("Project settings updated successfully")
             self.logger.info("Project settings updated and saved successfully")
 
+            # Note: Auto-save not needed here since we just saved manually
+
         except ValueError as e:
             # Validation errors
             self.logger.warning("Project settings validation error: %s", e)
@@ -811,6 +818,113 @@ class MainController(QObject):
                 e, "Project Settings Update", self.main_window
             )
             self.main_window.show_status_message("Error updating project settings")
+
+    def _setup_auto_save(self) -> None:
+        """
+        Setup auto-save functionality with timer-based saving.
+        """
+        try:
+            # Auto-save configuration
+            self.auto_save_enabled = True
+            self.auto_save_interval_ms = 30000  # 30 seconds
+            self.auto_save_pending = False
+
+            # Create timer for delayed auto-save
+            self.auto_save_timer = QTimer()
+            self.auto_save_timer.setSingleShot(True)
+            self.auto_save_timer.timeout.connect(self._perform_auto_save)
+
+            self.logger.info("Auto-save system initialized (interval: %dms)", self.auto_save_interval_ms)
+
+        except Exception as e:
+            self.logger.error("Failed to setup auto-save: %s", e)
+            self.auto_save_enabled = False
+
+    def trigger_auto_save(self) -> None:
+        """
+        Trigger auto-save after a change. Uses debouncing to avoid excessive saves.
+        """
+        if not self.auto_save_enabled or not self.project_model or not self.main_window.current_project_path:
+            return
+
+        try:
+            if not self.auto_save_pending:
+                self.logger.debug("Auto-save triggered, scheduling in %dms", self.auto_save_interval_ms)
+                self.auto_save_pending = True
+
+            # Reset timer (debounce)
+            self.auto_save_timer.start(self.auto_save_interval_ms)
+
+        except Exception as e:
+            self.logger.error("Error triggering auto-save: %s", e)
+
+    def _perform_auto_save(self) -> None:
+        """
+        Perform the actual auto-save operation.
+        """
+        if not self.auto_save_enabled or not self.project_model or not self.main_window.current_project_path:
+            return
+
+        try:
+            self.logger.info("Performing auto-save...")
+            self.auto_save_pending = False
+
+            # Save project
+            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+
+            # Update status (don't show message to avoid spam)
+            self.logger.info("Auto-save completed successfully")
+
+        except Exception as e:
+            self.logger.error("Auto-save failed: %s", e)
+            self.auto_save_pending = False
+
+            # Show error to user
+            self.error_handler.handle_error(
+                e, "Auto-Save Failed", self.main_window
+            )
+
+    def set_auto_save_interval(self, interval_ms: int) -> None:
+        """
+        Set the auto-save interval.
+
+        Args:
+            interval_ms: Interval in milliseconds (minimum 5000ms = 5 seconds)
+        """
+        try:
+            # Enforce minimum interval
+            interval_ms = max(interval_ms, 5000)
+
+            self.auto_save_interval_ms = interval_ms
+            self.logger.info("Auto-save interval set to %dms", interval_ms)
+
+        except Exception as e:
+            self.logger.error("Error setting auto-save interval: %s", e)
+
+    def disable_auto_save(self) -> None:
+        """
+        Disable auto-save functionality.
+        """
+        self.auto_save_enabled = False
+        if hasattr(self, 'auto_save_timer'):
+            self.auto_save_timer.stop()
+        self.logger.info("Auto-save disabled")
+
+    def enable_auto_save(self) -> None:
+        """
+        Enable auto-save functionality.
+        """
+        self.auto_save_enabled = True
+        self.logger.info("Auto-save enabled")
+
+    def _mark_project_modified(self) -> None:
+        """
+        Mark project as modified and trigger auto-save.
+        Call this whenever project data changes.
+        """
+        if self.project_model:
+            self.project_model.update_modified_date()
+            self.trigger_auto_save()
 
     def _on_project_opened(self, project_path: str):
         """
