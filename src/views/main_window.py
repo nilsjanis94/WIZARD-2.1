@@ -837,6 +837,19 @@ class MainWindow(QMainWindow):
             # Set as active TOB file
             self.controller.project_model.set_active_tob_file(file_name)
 
+            # Calculate and update data metrics
+            if self.controller and hasattr(self.controller, 'data_service'):
+                try:
+                    metrics = self.controller.data_service._calculate_metrics(tob_data_model)
+                    self.logger.info("TOB metrics calculated for manual plotting")
+
+                    # Update data metrics in view
+                    self.controller.data_service.update_data_metrics(
+                        self.get_metrics_widgets(), metrics
+                    )
+                except Exception as e:
+                    self.logger.error("Failed to calculate data metrics for manual plotting: %s", e)
+
             # Update UI elements
             self._update_ui_for_tob_plot(tob_file)
 
