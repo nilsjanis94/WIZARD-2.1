@@ -414,6 +414,9 @@ class MainWindow(QMainWindow):
         if self.actionEdit_Project_Settings:
             self.actionEdit_Project_Settings.triggered.connect(self._on_edit_project_settings)
 
+        if self.actionShow_Processing_List:
+            self.actionShow_Processing_List.triggered.connect(self._on_show_processing_list)
+
         # NTC checkbox changes
         for sensor_name, checkbox in self.ntc_checkboxes.items():
             checkbox.stateChanged.connect(
@@ -681,6 +684,92 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error("Unexpected error editing project settings: %s", e)
             self.error_handler.handle_error(e, self, "Project Settings Edit Error")
+
+    def _on_show_processing_list(self):
+        """
+        Show the processing list dialog for managing TOB files.
+        """
+        try:
+            # Check if a project is loaded
+            if not self.controller or not self.controller.project_model:
+                self.error_handler.handle_error(
+                    ValueError("No project is currently loaded. Please create or open a project first."),
+                    "No Project Loaded", self
+                )
+                return
+
+            # Import and create dialog
+            from .dialogs.processing_list_dialog import ProcessingListDialog
+            dialog = ProcessingListDialog(parent=self, project_model=self.controller.project_model)
+
+            # Connect signals
+            dialog.file_selected.connect(self._on_tob_file_selected_for_plot)
+            dialog.file_added.connect(self._on_tob_file_added)
+            dialog.file_removed.connect(self._on_tob_file_removed)
+            dialog.status_updated.connect(self._on_tob_file_status_updated)
+
+            # Show dialog
+            dialog.exec()
+
+        except Exception as e:
+            self.logger.error("Unexpected error showing processing list: %s", e)
+            self.error_handler.handle_error(e, self, "Processing List Error")
+
+    def _on_tob_file_selected_for_plot(self, file_name: str):
+        """
+        Handle TOB file selection for plotting.
+
+        Args:
+            file_name: Name of the selected TOB file
+        """
+        try:
+            if not self.controller or not self.controller.project_model:
+                return
+
+            # Get TOB file data
+            tob_file = self.controller.project_model.get_tob_file(file_name)
+            if tob_file and tob_file.tob_data and tob_file.tob_data.dataframe is not None:
+                # TODO: Load data into plot system
+                self.logger.info(f"Selected TOB file for plotting: {file_name}")
+                # This will be implemented when we integrate with the plot system
+            else:
+                self.error_handler.handle_error(
+                    ValueError(f"TOB file '{file_name}' has no data to plot"),
+                    "No Plot Data", self
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error selecting TOB file for plot: {e}")
+            self.error_handler.handle_error(e, self, "TOB File Selection Error")
+
+    def _on_tob_file_added(self, file_path: str):
+        """
+        Handle TOB file addition notification.
+
+        Args:
+            file_path: Path of the added file
+        """
+        file_name = Path(file_path).name
+        self.logger.info(f"TOB file added: {file_name}")
+
+    def _on_tob_file_removed(self, file_name: str):
+        """
+        Handle TOB file removal notification.
+
+        Args:
+            file_name: Name of the removed file
+        """
+        self.logger.info(f"TOB file removed: {file_name}")
+
+    def _on_tob_file_status_updated(self, file_name: str, status: str):
+        """
+        Handle TOB file status update notification.
+
+        Args:
+            file_name: Name of the file
+            status: New status
+        """
+        self.logger.info(f"TOB file status updated: {file_name} -> {status}")
 
     def _on_sensor_selection_changed(self, sensor_name: str, state: int):
         """

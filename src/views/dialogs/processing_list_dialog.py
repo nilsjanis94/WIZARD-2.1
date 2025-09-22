@@ -4,6 +4,7 @@ Processing List Dialog for WIZARD-2.1
 Dialog for managing TOB files in a project.
 """
 
+from pathlib import Path
 from typing import List, Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -32,26 +33,113 @@ class ProcessingListDialog(QDialog):
         file_selected: Emitted when a file is selected for plotting
         file_removed: Emitted when a file is removed from the project
         file_added: Emitted when a file is added to the project
+        status_updated: Emitted when TOB file status changes
     """
 
     # Signals
     file_selected = pyqtSignal(str)  # file_path
     file_removed = pyqtSignal(str)  # file_name
     file_added = pyqtSignal(str)  # file_path
+    status_updated = pyqtSignal(str, str)  # file_name, new_status
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, project_model=None):
         """
         Initialize processing list dialog.
 
         Args:
             parent: Parent widget
+            project_model: ProjectModel instance to manage TOB files for
         """
         super().__init__(parent)
         self.setWindowTitle("Processing List")
         self.setModal(True)
         self.setMinimumSize(600, 400)
 
+        # Store project model reference
+        self.project_model = project_model
+
         self._setup_ui()
+        self._populate_table()
+
+    def set_project_model(self, project_model) -> None:
+        """
+        Set or update the project model.
+
+        Args:
+            project_model: ProjectModel instance
+        """
+        self.project_model = project_model
+        self._populate_table()
+
+    def _populate_table(self) -> None:
+        """
+        Populate the table with TOB files from the project model.
+        """
+        self.table_widget.setRowCount(0)  # Clear existing rows
+
+        if not self.project_model or not self.project_model.tob_files:
+            return
+
+        for tob_file in self.project_model.tob_files:
+            row_position = self.table_widget.rowCount()
+            self.table_widget.insertRow(row_position)
+
+            # File name
+            self.table_widget.setItem(row_position, 0, QTableWidgetItem(tob_file.file_name))
+
+            # File size (formatted)
+            size_mb = tob_file.file_size / (1024 * 1024)
+            self.table_widget.setItem(row_position, 1, QTableWidgetItem(f"{size_mb:.1f} MB"))
+
+            # Data points
+            data_points = tob_file.data_points or 0
+            self.table_widget.setItem(row_position, 2, QTableWidgetItem(str(data_points)))
+
+            # Sensors
+            sensors_str = ", ".join(tob_file.sensors) if tob_file.sensors else "None"
+            self.table_widget.setItem(row_position, 3, QTableWidgetItem(sensors_str))
+
+            # Status with icon
+            status_item = QTableWidgetItem(self._get_status_text(tob_file.status))
+            status_item.setIcon(self._get_status_icon(tob_file.status))
+            self.table_widget.setItem(row_position, 4, status_item)
+
+            # Store file name for later reference
+            self.table_widget.item(row_position, 0).setData(Qt.ItemDataRole.UserRole, tob_file.file_name)
+
+    def _get_status_text(self, status: str) -> str:
+        """
+        Get human-readable status text.
+
+        Args:
+            status: Status string
+
+        Returns:
+            Human-readable status text
+        """
+        status_texts = {
+            "loaded": "Loaded",
+            "uploading": "Uploading...",
+            "uploaded": "Uploaded",
+            "processing": "Processing...",
+            "processed": "Processed",
+            "error": "Error"
+        }
+        return status_texts.get(status, status)
+
+    def _get_status_icon(self, status: str):
+        """
+        Get appropriate icon for status.
+
+        Args:
+            status: Status string
+
+        Returns:
+            QIcon for the status
+        """
+        # For now, return None - icons can be added later
+        # This would typically load icons from resources
+        return None
 
     def _setup_ui(self) -> None:
         """Setup the dialog UI."""
@@ -65,7 +153,7 @@ class ProcessingListDialog(QDialog):
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(5)
         self.table_widget.setHorizontalHeaderLabels(
-            ["File Name", "Size", "Data Points", "Sensors", "Added Date"]
+            ["File Name", "Size", "Data Points", "Sensors", "Status"]
         )
 
         # Configure table
@@ -126,7 +214,7 @@ class ProcessingListDialog(QDialog):
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(5)
         self.table_widget.setHorizontalHeaderLabels(
-            ["File Name", "Size", "Data Points", "Sensors", "Added Date"]
+            ["File Name", "Size", "Data Points", "Sensors", "Status"]
         )
 
         # Configure table
@@ -196,15 +284,72 @@ class ProcessingListDialog(QDialog):
 
     def _add_file(self) -> None:
         """Add a TOB file to the project."""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select TOB File", "", "TOB Files (*.tob *.TOB);;All Files (*)"
+        if not self.project_model:
+            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            return
+
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self, "Select TOB File(s)", "", "TOB Files (*.tob *.TOB);;All Files (*)"
         )
 
-        if file_path:
-            self.file_added.emit(file_path)
+        if not file_paths:
+            return
+
+        added_count = 0
+        skipped_count = 0
+
+        for file_path in file_paths:
+            try:
+                # Get file info
+                file_name = Path(file_path).name
+                file_size = Path(file_path).stat().st_size
+
+                # Check limits
+                can_add, reason = self.project_model.can_add_tob_file(file_size)
+                if not can_add:
+                    QMessageBox.warning(self, "Cannot Add File",
+                                      f"Cannot add {file_name}: {reason}")
+                    skipped_count += 1
+                    continue
+
+                # TODO: Load TOB file data (headers, dataframe, etc.)
+                # For now, add with basic info only
+                success = self.project_model.add_tob_file(
+                    file_path=file_path,
+                    file_name=file_name,
+                    file_size=file_size,
+                    # TODO: Add actual TOB data loading here
+                )
+
+                if success:
+                    added_count += 1
+                    self.file_added.emit(file_path)
+                else:
+                    skipped_count += 1
+
+            except Exception as e:
+                QMessageBox.warning(self, "Error Adding File",
+                                  f"Error adding {Path(file_path).name}: {str(e)}")
+                skipped_count += 1
+
+        # Update table
+        self._populate_table()
+
+        # Show result
+        if added_count > 0:
+            QMessageBox.information(self, "Files Added",
+                                  f"Successfully added {added_count} file(s)." +
+                                  (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
+            # Trigger auto-save
+            if hasattr(self.parent(), 'controller') and self.parent().controller:
+                self.parent().controller._mark_project_modified()
 
     def _remove_selected_file(self) -> None:
         """Remove the selected file from the project."""
+        if not self.project_model:
+            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            return
+
         current_row = self.table_widget.currentRow()
         if current_row >= 0:
             file_name_item = self.table_widget.item(current_row, 0)
@@ -215,22 +360,53 @@ class ProcessingListDialog(QDialog):
                 reply = QMessageBox.question(
                     self,
                     "Remove File",
-                    f"Are you sure you want to remove '{file_name}' from the project?",
+                    f"Are you sure you want to remove '{file_name}' from the project?\n\n"
+                    "This action cannot be undone.",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 )
 
                 if reply == QMessageBox.StandardButton.Yes:
-                    self.file_removed.emit(file_name)
+                    # Remove from project model
+                    success = self.project_model.remove_tob_file(file_name)
+                    if success:
+                        self._populate_table()  # Refresh table
+                        self.file_removed.emit(file_name)
+                        QMessageBox.information(self, "File Removed",
+                                              f"'{file_name}' has been removed from the project.")
+
+                        # Trigger auto-save
+                        if hasattr(self.parent(), 'controller') and self.parent().controller:
+                            self.parent().controller._mark_project_modified()
+                    else:
+                        QMessageBox.warning(self, "Remove Failed",
+                                          f"Could not remove '{file_name}' from the project.")
 
     def _plot_selected_file(self) -> None:
         """Plot the selected file."""
+        if not self.project_model:
+            QMessageBox.warning(self, "No Project", "No project is currently loaded.")
+            return
+
         current_row = self.table_widget.currentRow()
         if current_row >= 0:
             file_name_item = self.table_widget.item(current_row, 0)
             if file_name_item:
                 file_name = file_name_item.text()
-                # TODO: Get actual file path from project data
-                self.file_selected.emit(file_name)
+
+                # Get TOB file info from project
+                tob_file = self.project_model.get_tob_file(file_name)
+                if tob_file:
+                    # Set as active file in project
+                    self.project_model.set_active_tob_file(file_name)
+
+                    # Emit signal with file name (parent will handle the plotting)
+                    self.file_selected.emit(file_name)
+
+                    # Update table to show active state
+                    self._populate_table()
+                else:
+                    QMessageBox.warning(self, "File Not Found",
+                                      f"Could not find file '{file_name}' in project.")
 
     def update_file_list(self, files: List[dict]) -> None:
         """
