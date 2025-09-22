@@ -834,6 +834,9 @@ class MainWindow(QMainWindow):
             # Update plot widget with TOB data
             self.plot_widget.update_data(tob_data_model)
 
+            # Set as active TOB file
+            self.controller.project_model.set_active_tob_file(file_name)
+
             # Update UI elements
             self._update_ui_for_tob_plot(tob_file)
 

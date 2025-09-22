@@ -1334,6 +1334,20 @@ class MainController(QObject):
                 self.logger.info("Project has %d TOB files, reloading data...", len(project.tob_files))
                 self._reload_tob_files_data(project)
 
+                # Auto-plot the active TOB file if it exists and has data
+                if project.active_tob_file:
+                    active_tob = project.get_active_tob_file()
+                    if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
+                        self.logger.info("Auto-plotting active TOB file: %s", project.active_tob_file)
+                        # Simulate selecting the TOB file for plotting
+                        self._plot_tob_file(project.active_tob_file)
+                    else:
+                        self.logger.warning("Active TOB file '%s' has no data to plot", project.active_tob_file)
+                else:
+                    self.logger.info("No active TOB file set - user needs to select one manually")
+            else:
+                self.logger.info("Project has no TOB files")
+
             # Update memory usage for loaded project
             self.update_tob_memory_usage()
 
@@ -1398,6 +1412,67 @@ class MainController(QObject):
 
         except Exception as e:
             self.logger.error("Error reloading TOB files: %s", e)
+
+    def _plot_tob_file(self, file_name: str) -> None:
+        """
+        Plot a TOB file (used for auto-plotting when projects are opened).
+
+        Args:
+            file_name: Name of the TOB file to plot
+        """
+        try:
+            if not self.project_model:
+                self.logger.warning("No project loaded for plotting")
+                return
+
+            # Get the TOB file
+            tob_file = self.project_model.get_tob_file(file_name)
+            if not tob_file:
+                self.logger.warning("TOB file '%s' not found in project", file_name)
+                return
+
+            # Ensure plot widget is available
+            if not self.main_window._ensure_plot_widget():
+                self.logger.warning("Plot widget not available for auto-plotting")
+                return
+
+            # Create TOBDataModel from project data
+            from ..models.tob_data_model import TOBDataModel
+
+            tob_data_model = TOBDataModel(
+                headers=tob_file.tob_data.headers or {},
+                data=tob_file.tob_data.data,
+                file_path=tob_file.file_path,
+                file_name=tob_file.file_name
+            )
+
+            # Check memory usage before loading
+            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
+            if memory_mb > 500:  # Warn if over 500MB
+                self.logger.warning(f"Auto-loading large dataset: {memory_mb:.1f}MB")
+                # Continue with loading for auto-plotting
+
+            # Set as active TOB file
+            self.project_model.set_active_tob_file(file_name)
+
+            # Plot the data
+            self.main_window.plot_widget.update_data(tob_data_model)
+
+            # Update UI elements
+            self.main_window._update_ui_for_tob_plot(tob_file)
+
+            # Show status message
+            sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
+            data_points = len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
+
+            self.main_window.show_status_message(
+                f"Auto-loaded '{file_name}' for plotting: {data_points} data points, {sensor_count} sensors"
+            )
+
+            self.logger.info("Auto-plotted TOB file: %s", file_name)
+
+        except Exception as e:
+            self.logger.error("Error auto-plotting TOB file '%s': %s", file_name, e)
 
     def update_sensor_selection(self, sensor_name: str, is_selected: bool):
         """
