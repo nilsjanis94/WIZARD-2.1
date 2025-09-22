@@ -893,6 +893,12 @@ class MainWindow(QMainWindow):
 
             self.logger.debug(f"Selected all NTC sensors for '{tob_file.file_name}': {selected_ntc_sensors}")
 
+            # Update X axis limits based on current time unit
+            current_time_unit = "Seconds"  # Default
+            if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
+                current_time_unit = self.x_axis_combo.currentText() or "Seconds"
+            self._update_x_axis_limits_for_unit(current_time_unit)
+
             # Update project info display
             if self.controller.project_model:
                 location = (self.controller.project_model.server_config.url
@@ -1115,6 +1121,71 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error(f"Error updating {axis} limits for sensor {sensor_name}: {e}")
 
+    def _update_x_axis_limits_for_unit(self, time_unit: str):
+        """
+        Update X axis min/max values based on TOB data and selected time unit.
+
+        Args:
+            time_unit: Time unit ("Seconds", "Minutes", "Hours")
+        """
+        try:
+            data = None
+
+            # Get TOB data from current project or plot widget
+            if (self.controller and self.controller.project_model and
+                self.controller.project_model.active_tob_file):
+
+                active_tob = self.controller.project_model.get_active_tob_file()
+                if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
+                    data = active_tob.tob_data.data
+
+            elif (hasattr(self, 'plot_widget') and self.plot_widget and
+                  hasattr(self.plot_widget, 'tob_data_model') and
+                  self.plot_widget.tob_data_model and
+                  self.plot_widget.tob_data_model.data is not None):
+                data = self.plot_widget.tob_data_model.data
+
+            if data is not None:
+                # Get time column (use same logic as TOBDataModel)
+                time_col = None
+                time_columns = ["Time", "time", "TIMESTAMP", "timestamp", "Datasets"]
+                for col in time_columns:
+                    if col in data.columns:
+                        time_col = data[col]
+                        break
+
+                if time_col is not None and not time_col.empty:
+                    time_min = float(time_col.min())
+                    time_max = float(time_col.max())
+
+                    # Convert to selected time unit
+                    if time_unit == "Minutes":
+                        time_min = time_min / 60.0
+                        time_max = time_max / 60.0
+                    elif time_unit == "Hours":
+                        time_min = time_min / 3600.0
+                        time_max = time_max / 3600.0
+                    # For "Seconds", keep as is
+
+                    # Set values in UI fields
+                    if self.x_min_value:
+                        self.x_min_value.blockSignals(True)
+                        self.x_min_value.setText(f"{time_min:.2f}")
+                        self.x_min_value.blockSignals(False)
+                    if self.x_max_value:
+                        self.x_max_value.blockSignals(True)
+                        self.x_max_value.setText(f"{time_max:.2f}")
+                        self.x_max_value.blockSignals(False)
+
+                    self.logger.debug(f"Updated X axis limits for {time_unit}: {time_min:.2f} - {time_max:.2f}")
+                else:
+                    self.logger.warning("No time column found in TOB data")
+            else:
+                self.logger.debug("No TOB data available for X axis limit calculation")
+
+        except Exception as e:
+            self.logger.error(f"Error updating X axis limits for unit {time_unit}: {e}")
+
     def _on_y1_axis_changed(self, sensor_name: str):
         """Handle Y1 axis sensor selection - sets primary sensor for main plot."""
         if sensor_name:
@@ -1146,6 +1217,9 @@ class MainWindow(QMainWindow):
         """Handle X axis type selection change."""
         if axis_type:
             self.logger.debug("X axis changed to: %s", axis_type)
+
+            # Update X axis limits based on TOB data
+            self._update_x_axis_limits_for_unit(axis_type)
 
             # If in manual mode, convert existing manual limits to new time unit
             if (

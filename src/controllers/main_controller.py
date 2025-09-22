@@ -1468,6 +1468,14 @@ class MainController(QObject):
             # Then plot the data (will use the updated settings)
             self.main_window.plot_widget.update_data(tob_data_model)
 
+            # Update axis limits in UI after plotting
+            if hasattr(self.main_window, 'axis_ui_service') and self.main_window.axis_ui_service:
+                # Update all axis limits from the current plot
+                self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "x")
+                self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "y1")
+                if hasattr(self.main_window.plot_widget, 'plot_mode') and self.main_window.plot_widget.plot_mode == "dual":
+                    self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "y2")
+
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
             data_points = len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
