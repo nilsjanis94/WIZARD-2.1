@@ -249,6 +249,10 @@ class MainController(QObject):
                 self.main_window.get_metrics_widgets(), metrics
             )
 
+            # Update project container with TOB header data
+            if hasattr(self.main_window, "update_project_container"):
+                self.main_window.update_project_container(self.tob_data_model)
+
             # Update plot with loaded data
             if self.tob_data_model:
                 # Update plot widget with data BEFORE sensor selection
@@ -379,6 +383,11 @@ class MainController(QObject):
         self.main_window.file_opened.connect(self._on_file_opened)
         self.main_window.project_created.connect(self._on_project_created)
         self.main_window.project_opened.connect(self._on_project_opened)
+
+        # Connect project container signals
+        self.main_window.send_data_requested.connect(self._on_send_data_requested)
+        self.main_window.quality_control_requested.connect(self._on_quality_control_requested)
+        self.main_window.status_request_requested.connect(self._on_status_request_requested)
 
         # Connect controller signals to view slots
         self.plot_data_update.connect(self.main_window.update_plot_data)
@@ -1267,6 +1276,10 @@ class MainController(QObject):
                 # Update upload timestamp
                 tob_file.upload_date = datetime.now()
 
+                # Update project container status
+                if hasattr(self.main_window, "update_project_container_status"):
+                    self.main_window.update_project_container_status()
+
                 # Trigger auto-save
                 self._mark_project_modified()
 
@@ -1287,6 +1300,10 @@ class MainController(QObject):
                 # Upload failed, reset status
                 self.project_model.update_tob_file_status(file_name, "error")
                 tob_file.error_message = upload_result.message
+
+                # Update project container status
+                if hasattr(self.main_window, "update_project_container_status"):
+                    self.main_window.update_project_container_status()
 
                 self.error_handler.handle_error(
                     ValueError(f"Upload failed: {upload_result.message}"),
@@ -1354,6 +1371,10 @@ class MainController(QObject):
                 tob_file.error_message = status_result.error_message
             elif status_result.status == "processing":
                 self.project_model.update_tob_file_status(file_name, "processing")
+
+            # Update project container status
+            if hasattr(self.main_window, "update_project_container_status"):
+                self.main_window.update_project_container_status()
             # Keep current status for other states
 
             # Show status to user
@@ -1378,6 +1399,52 @@ class MainController(QObject):
         except Exception as e:
             self.logger.error(f"Error checking server status: {e}")
             self.error_handler.handle_error(e, "Status Check Error", self.main_window)
+
+    def _on_send_data_requested(self, file_name: str):
+        """
+        Handle send data request from project container.
+
+        Args:
+            file_name: Name of the TOB file to send
+        """
+        try:
+            self.logger.info("Send data requested for file: %s", file_name)
+            success = self.upload_tob_file_to_server(file_name)
+            if success:
+                self.logger.info("Data upload initiated successfully for: %s", file_name)
+            else:
+                self.logger.warning("Data upload failed for: %s", file_name)
+        except Exception as e:
+            self.logger.error("Error handling send data request: %s", e)
+            self.error_handler.handle_error(e, "Send Data Error", self.main_window)
+
+    def _on_quality_control_requested(self):
+        """
+        Handle quality control request from project container.
+        """
+        try:
+            self.logger.info("Quality control requested")
+            # TODO: Implement quality control dialog/logic
+            # For now, just show a placeholder message
+            if hasattr(self.main_window, "show_status_message"):
+                self.main_window.show_status_message("Quality control feature coming soon", 3000)
+        except Exception as e:
+            self.logger.error("Error handling quality control request: %s", e)
+            self.error_handler.handle_error(e, "Quality Control Error", self.main_window)
+
+    def _on_status_request_requested(self, file_name: str):
+        """
+        Handle status request from project container.
+
+        Args:
+            file_name: Name of the TOB file to check status for
+        """
+        try:
+            self.logger.info("Status request requested for file: %s", file_name)
+            self.check_tob_file_server_status(file_name)
+        except Exception as e:
+            self.logger.error("Error handling status request: %s", e)
+            self.error_handler.handle_error(e, "Status Request Error", self.main_window)
 
     def update_tob_memory_usage(self) -> None:
         """
@@ -1461,6 +1528,10 @@ class MainController(QObject):
                 project.name, location, project.description or ""
             )
 
+            # Reset project container if no active TOB file
+            if not project.active_tob_file and hasattr(self.main_window, "update_project_container"):
+                self.main_window.update_project_container(None)
+
             # If project has TOB files, reload their data from disk
             if project.tob_files:
                 self.logger.info(
@@ -1491,6 +1562,20 @@ class MainController(QObject):
                         )
                         # Simulate selecting the TOB file for plotting
                         self._plot_tob_file(project.active_tob_file)
+
+                        # Update project container with TOB header data
+                        if hasattr(self.main_window, "update_project_container"):
+                            from ..models.tob_data_model import TOBDataModel
+                            tob_data_model = TOBDataModel(
+                                headers=active_tob.tob_data.headers or {},
+                                data=active_tob.tob_data.data,
+                                file_path=active_tob.file_path,
+                                file_name=active_tob.file_name,
+                                file_size=active_tob.file_size,
+                                data_points=active_tob.data_points,
+                                sensors=active_tob.sensors,
+                            )
+                            self.main_window.update_project_container(tob_data_model)
                     else:
                         self.logger.warning(
                             "Active TOB file '%s' has no data to plot",

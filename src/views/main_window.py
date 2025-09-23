@@ -6,6 +6,7 @@ for the temperature data analysis application.
 """
 
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -50,6 +51,11 @@ class MainWindow(QMainWindow):
     tob_file_status_updated = pyqtSignal(
         str, str
     )  # Emitted when TOB file status changes (file_name, status)
+
+    # Project container signals
+    send_data_requested = pyqtSignal(str)  # Emitted when send data button is clicked (file_name)
+    quality_control_requested = pyqtSignal()  # Emitted when quality control button is clicked
+    status_request_requested = pyqtSignal(str)  # Emitted when request status button is clicked (file_name)
 
     def __init__(self, controller=None):
         """
@@ -205,6 +211,18 @@ class MainWindow(QMainWindow):
         self.logger.info(
             "Plot info container found: %s", self.plot_info_container is not None
         )
+
+        # Bottom container widgets
+        self.bottom_container = self.findChild(QFrame, "bottom_container")
+        self.data_metrics_frame = self.findChild(QFrame, "data_metrics_frame")
+        self.secondary_plot_control_frame = self.findChild(QFrame, "secondary_plot_control_frame")
+        self.project_control_frame = self.findChild(QFrame, "project_control_frame")
+
+        # Debug logging for bottom containers
+        self.logger.info("Bottom container found: %s", self.bottom_container is not None)
+        self.logger.info("Data metrics frame found: %s", self.data_metrics_frame is not None)
+        self.logger.info("Secondary plot control frame found: %s", self.secondary_plot_control_frame is not None)
+        self.logger.info("Project control frame found: %s", self.project_control_frame is not None)
 
         # Initialize plot widget (lazy initialization)
         self.plot_widget = None
@@ -703,6 +721,9 @@ class MainWindow(QMainWindow):
         }
         self.ui_service.reset_ui_widgets(project_widgets)
 
+        # Also reset project container widgets
+        self.update_project_container(None)
+
     # Event handlers
     def _on_open_tob_file(self):
         """
@@ -1033,6 +1054,10 @@ class MainWindow(QMainWindow):
             # Set as active TOB file
             self.controller.project_model.set_active_tob_file(file_name)
 
+            # Update project container status after changing active file
+            if hasattr(self, "update_project_container_status"):
+                self.update_project_container_status()
+
             # Calculate and update data metrics
             if self.controller and hasattr(self.controller, "data_service"):
                 try:
@@ -1059,6 +1084,10 @@ class MainWindow(QMainWindow):
 
             # Update UI elements
             self._update_ui_for_tob_plot(tob_file)
+
+            # Update project container with TOB header data
+            if hasattr(self, "update_project_container"):
+                self.update_project_container(tob_data_model)
 
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
@@ -1569,17 +1598,33 @@ class MainWindow(QMainWindow):
     def _on_quality_control(self):
         """Handle quality control button click."""
         self.logger.info("Quality control requested")
-        # TODO: Implement quality control dialog
+        self.quality_control_requested.emit()
 
     def _on_send_data(self):
         """Handle send data button click."""
         self.logger.info("Send data requested")
-        # TODO: Implement data sending
+        # Get the current active TOB file name from controller
+        if self.controller and hasattr(self.controller, 'get_current_tob_data'):
+            tob_data = self.controller.get_current_tob_data()
+            if tob_data and tob_data.file_name:
+                self.send_data_requested.emit(tob_data.file_name)
+            else:
+                self.logger.warning("No active TOB file available for sending")
+        else:
+            self.logger.warning("No controller available for send data operation")
 
     def _on_request_status(self):
         """Handle request status button click."""
         self.logger.info("Status request requested")
-        # TODO: Implement status request
+        # Get the current active TOB file name from controller
+        if self.controller and hasattr(self.controller, 'get_current_tob_data'):
+            tob_data = self.controller.get_current_tob_data()
+            if tob_data and tob_data.file_name:
+                self.status_request_requested.emit(tob_data.file_name)
+            else:
+                self.logger.warning("No active TOB file available for status request")
+        else:
+            self.logger.warning("No controller available for status request operation")
 
     # Public methods for controller communication
     def update_project_info(self, project_name: str, location: str, comment: str = ""):
@@ -1602,6 +1647,105 @@ class MainWindow(QMainWindow):
 
         self.logger.info("Project info updated: %s, %s (labels now show TOB header data)",
                         project_name, location)
+
+    def update_project_container(self, tob_data_model=None):
+        """
+        Update project container widgets with TOB header data.
+
+        Args:
+            tob_data_model: TOBDataModel instance with header information
+        """
+        try:
+            if not tob_data_model or not tob_data_model.headers:
+                # Reset to default values
+                if self.location_subcon_spin:
+                    self.location_subcon_spin.setValue(0.0)
+                if self.location_comment_value:
+                    self.location_comment_value.setText("-")
+                if self.location_sensorstring_value:
+                    self.location_sensorstring_value.setText("-")
+                return
+
+            headers = tob_data_model.headers
+
+            # Update Subcon Extension (Subconn_Length from project settings or header)
+            subcon_value = 0.0
+            if "Subconn_Length" in headers:
+                try:
+                    subcon_value = float(headers["Subconn_Length"])
+                except (ValueError, TypeError):
+                    subcon_value = 0.0
+
+            if self.location_subcon_spin:
+                self.location_subcon_spin.setValue(subcon_value)
+
+            # Update Comment (filter out brackets and quotes)
+            comment = headers.get("Comments", "-")
+            if comment != "-":
+                # Remove brackets and quotes
+                comment = re.sub(r'[\[\]\'""]', '', str(comment))
+            if self.location_comment_value:
+                self.location_comment_value.setText(comment)
+
+            # Update Sensor String (FLX- + string from comment starting with T, ending with SD)
+            sensor_string = "-"
+            if headers.get("Comments"):
+                comment = str(headers["Comments"])
+                # Find pattern: T followed by numbers, ending with SD
+                match = re.search(r'T(\d+)SD', comment)
+                if match:
+                    sensor_number = match.group(1)
+                    sensor_string = f"FLX-T{sensor_number}SD"
+
+            if self.location_sensorstring_value:
+                self.location_sensorstring_value.setText(sensor_string)
+
+            # Update Status
+            self.update_project_container_status()
+
+            self.logger.info("Project container updated with TOB header data")
+
+        except Exception as e:
+            self.logger.error("Error updating project container: %s", e)
+
+    def _get_status_text(self, status: str) -> str:
+        """
+        Get human-readable status text (same as in Processing List Dialog).
+
+        Args:
+            status: Status string
+
+        Returns:
+            Human-readable status text
+        """
+        status_texts = {
+            "loaded": "Loaded",
+            "uploading": "Uploading...",
+            "uploaded": "Uploaded",
+            "processing": "Processing...",
+            "processed": "Processed",
+            "error": "Error",
+        }
+        return status_texts.get(status, status)
+
+    def update_project_container_status(self):
+        """
+        Update the status field in the project container based on the active TOB file.
+        """
+        try:
+            status_text = "-"
+            if self.controller and hasattr(self.controller, 'project_model') and self.controller.project_model:
+                active_tob = self.controller.project_model.get_active_tob_file()
+                if active_tob:
+                    status_text = self._get_status_text(active_tob.status)
+
+            if self.status_lineEdit:
+                self.status_lineEdit.setText(status_text)
+
+            self.logger.debug("Project container status updated: %s", status_text)
+
+        except Exception as e:
+            self.logger.error("Error updating project container status: %s", e)
 
     def update_data_metrics(self, metrics: Dict[str, Any]):
         """
