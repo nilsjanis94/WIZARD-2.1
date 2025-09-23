@@ -35,7 +35,7 @@ class ProjectService:
         name: str,
         enter_key: str,
         server_url: str,
-        description: Optional[str] = None
+        description: Optional[str] = None,
     ) -> ProjectModel:
         """
         Create a new project with server configuration.
@@ -72,7 +72,7 @@ class ProjectService:
                 tob_file_field_name="tob_file",
                 subconn_length_field_name="subcon",
                 string_id_field_name="string_id",
-                comment_field_name="comment"
+                comment_field_name="comment",
             )
 
             # Create project model
@@ -80,7 +80,7 @@ class ProjectService:
                 name=name,
                 description=description,
                 server_config=server_config,
-                encryption_key=self.APP_ENCRYPTION_KEY
+                encryption_key=self.APP_ENCRYPTION_KEY,
             )
 
             self.logger.info("Successfully created project: %s", name)
@@ -111,9 +111,7 @@ class ProjectService:
 
             # Use app-internal encryption
             self.encryption_service.save_encrypted_project(
-                project=project,
-                password=self.APP_ENCRYPTION_KEY,
-                file_path=file_path
+                project=project, password=self.APP_ENCRYPTION_KEY, file_path=file_path
             )
 
             self.logger.info("Successfully saved project: %s", project.name)
@@ -145,8 +143,7 @@ class ProjectService:
 
             # Load with app-internal encryption
             project = self.encryption_service.load_encrypted_project(
-                file_path=file_path,
-                password=self.APP_ENCRYPTION_KEY
+                file_path=file_path, password=self.APP_ENCRYPTION_KEY
             )
 
             self.logger.info("Successfully loaded project: %s", project.name)
@@ -170,7 +167,7 @@ class ProjectService:
             file_path_obj = Path(file_path)
 
             # Check file extension
-            if not file_path_obj.suffix.lower() == '.wzp':
+            if not file_path_obj.suffix.lower() == ".wzp":
                 return False
 
             # Check if file exists and is readable
@@ -207,32 +204,32 @@ class ProjectService:
 
             # Basic file information
             exists = file_path_obj.exists()
-            is_valid_extension = file_path_obj.suffix.lower() == '.wzp'
+            is_valid_extension = file_path_obj.suffix.lower() == ".wzp"
 
             info = {
-                'file_path': str(file_path),
-                'file_name': file_path_obj.name,
-                'file_size': file_path_obj.stat().st_size if exists else 0,
-                'exists': exists,
-                'is_valid_extension': is_valid_extension,
-                'is_valid': False  # Will be set below
+                "file_path": str(file_path),
+                "file_name": file_path_obj.name,
+                "file_size": file_path_obj.stat().st_size if exists else 0,
+                "exists": exists,
+                "is_valid_extension": is_valid_extension,
+                "is_valid": False,  # Will be set below
             }
 
             # Only validate if file exists and has correct extension
             if exists and is_valid_extension:
                 try:
                     # Quick validation without full decryption
-                    info['is_valid'] = file_path_obj.stat().st_size > 0
+                    info["is_valid"] = file_path_obj.stat().st_size > 0
                 except Exception:
-                    info['is_valid'] = False
+                    info["is_valid"] = False
             else:
-                info['is_valid'] = False
+                info["is_valid"] = False
 
             return info
 
         except Exception as e:
             self.logger.error("Error getting project info for %s: %s", file_path, e)
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def _normalize_server_url(self, url: str) -> str:
         """
@@ -249,12 +246,14 @@ class ProjectService:
             return url
 
         # If no protocol specified, assume https://
-        if not url.startswith(('http://', 'https://')):
+        if not url.startswith(("http://", "https://")):
             url = f"https://{url}"
 
         return url
 
-    def _validate_project_inputs(self, name: str, enter_key: str, server_url: str) -> None:
+    def _validate_project_inputs(
+        self, name: str, enter_key: str, server_url: str
+    ) -> None:
         """
         Validate project creation inputs.
 
@@ -279,19 +278,19 @@ class ProjectService:
         # No minimum length restriction for maximum flexibility
 
         # Basic URL validation - check if it looks like a valid URL
-        if not (server_url.startswith('http://') or server_url.startswith('https://')):
+        if not (server_url.startswith("http://") or server_url.startswith("https://")):
             raise ValueError("Server URL must be a valid URL")
 
         # Check for basic domain structure
-        url_without_protocol = server_url.replace('http://', '').replace('https://', '')
-        if not ('.' in url_without_protocol or '/' in url_without_protocol):
+        url_without_protocol = server_url.replace("http://", "").replace("https://", "")
+        if not ("." in url_without_protocol or "/" in url_without_protocol):
             raise ValueError("Server URL must contain a valid domain or path")
 
     def update_project_server_config(
         self,
         project: ProjectModel,
         enter_key: Optional[str] = None,
-        server_url: Optional[str] = None
+        server_url: Optional[str] = None,
     ) -> None:
         """
         Update server configuration of an existing project.
@@ -303,10 +302,7 @@ class ProjectService:
         """
         try:
             if not project.server_config:
-                project.server_config = ServerConfig(
-                    url="",
-                    bearer_token=""
-                )
+                project.server_config = ServerConfig(url="", bearer_token="")
 
             if enter_key is not None:
                 project.server_config.bearer_token = enter_key
@@ -320,5 +316,7 @@ class ProjectService:
             self.logger.info("Updated server config for project: %s", project.name)
 
         except Exception as e:
-            self.logger.error("Error updating server config for project %s: %s", project.name, e)
+            self.logger.error(
+                "Error updating server config for project %s: %s", project.name, e
+            )
             raise

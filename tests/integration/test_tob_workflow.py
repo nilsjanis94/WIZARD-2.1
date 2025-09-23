@@ -31,17 +31,23 @@ class TestTOBWorkflow:
 
         # Setup methods
         def update_tob_memory_usage():
-            if controller.project_model and hasattr(controller.project_model, 'tob_files'):
+            if controller.project_model and hasattr(
+                controller.project_model, "tob_files"
+            ):
                 total_memory = 0.0
                 for tob_file in controller.project_model.tob_files:
                     # Estimate memory usage (rough calculation)
-                    if tob_file.tob_data and hasattr(tob_file.tob_data, 'dataframe'):
+                    if tob_file.tob_data and hasattr(tob_file.tob_data, "dataframe"):
                         df = tob_file.tob_data.dataframe
-                        if hasattr(df, 'memory_usage'):
-                            total_memory += df.memory_usage(deep=True).sum() / (1024 * 1024)
+                        if hasattr(df, "memory_usage"):
+                            total_memory += df.memory_usage(deep=True).sum() / (
+                                1024 * 1024
+                            )
                         else:
                             # Fallback estimate
-                            total_memory += len(df) * len(df.columns) * 8 / (1024 * 1024)
+                            total_memory += (
+                                len(df) * len(df.columns) * 8 / (1024 * 1024)
+                            )
                 controller.memory_monitor.tob_memory_usage = total_memory
             else:
                 controller.memory_monitor.tob_memory_usage = 0.0
@@ -61,12 +67,14 @@ class TestTOBWorkflow:
         controller.project_model = ProjectModel(name="Integration Test")
 
         # Create sample TOB data
-        sample_data = pd.DataFrame({
-            'time': [1, 2, 3, 4, 5],
-            'NTC01': [20.1, 20.5, 21.0, 20.8, 21.2],
-            'PT100': [25.0, 25.2, 25.1, 25.3, 25.4],
-            'VBATT': [3.7, 3.6, 3.7, 3.6, 3.7]
-        })
+        sample_data = pd.DataFrame(
+            {
+                "time": [1, 2, 3, 4, 5],
+                "NTC01": [20.1, 20.5, 21.0, 20.8, 21.2],
+                "PT100": [25.0, 25.2, 25.1, 25.3, 25.4],
+                "VBATT": [3.7, 3.6, 3.7, 3.6, 3.7],
+            }
+        )
 
         # Test adding TOB file (without dataframe to avoid truthiness issue)
         success = controller.project_model.add_tob_file(
@@ -74,7 +82,7 @@ class TestTOBWorkflow:
             file_name="sample.TOB",
             file_size=1024,
             data_points=5,
-            sensors=['NTC01', 'PT100', 'VBATT']
+            sensors=["NTC01", "PT100", "VBATT"],
         )
 
         assert success
@@ -100,8 +108,7 @@ class TestTOBWorkflow:
 
         with transaction.transaction():
             controller.project_model.update_tob_file_data(
-                file_name="sample.TOB",
-                data_points=10
+                file_name="sample.TOB", data_points=10
             )
             # Should complete successfully
 
@@ -117,9 +124,7 @@ class TestTOBWorkflow:
         # Mock HTTP client
         mock_client = MagicMock()
         mock_client.upload_tob_file.return_value = UploadResult(
-            success=True,
-            job_id="test_job_123",
-            message="Upload successful"
+            success=True, job_id="test_job_123", message="Upload successful"
         )
         controller.http_client = mock_client
 
@@ -129,12 +134,13 @@ class TestTOBWorkflow:
             file_name="upload.TOB",
             file_size=1024,
             data_points=1,
-            sensors=['sensor']
+            sensors=["sensor"],
         )
 
         # Mock initialize_http_client
         def mock_initialize():
             return True
+
         controller.initialize_http_client = mock_initialize
 
         # Mock upload method
@@ -145,6 +151,7 @@ class TestTOBWorkflow:
                 controller.project_model.update_tob_file_status(file_name, "uploaded")
                 return True
             return False
+
         controller.upload_tob_file_to_server = mock_upload
 
         # Test upload
@@ -168,7 +175,7 @@ class TestTOBWorkflow:
                 file_name=f"file{i}.TOB",
                 file_size=1024 * (i + 1),  # Different sizes
                 data_points=3,
-                sensors=[f'sensor{i}']
+                sensors=[f"sensor{i}"],
             )
 
         # Update memory usage
@@ -191,7 +198,7 @@ class TestTOBWorkflow:
             file_name="initial.TOB",
             file_size=1024,
             data_points=5,
-            sensors=['initial']
+            sensors=["initial"],
         )
 
         # Test successful transaction
@@ -200,15 +207,13 @@ class TestTOBWorkflow:
         with transaction.transaction():
             # Modify file
             controller.project_model.update_tob_file_data(
-                file_name="initial.TOB",
-                data_points=10,
-                sensors=['modified']
+                file_name="initial.TOB", data_points=10, sensors=["modified"]
             )
 
         # Transaction should succeed
         tob_file = controller.project_model.get_tob_file("initial.TOB")
         assert tob_file.data_points == 10
-        assert tob_file.sensors == ['modified']
+        assert tob_file.sensors == ["modified"]
 
         # Test failed transaction with rollback (simplified)
         transaction2 = controller.project_model.create_rollback_transaction()
@@ -217,8 +222,7 @@ class TestTOBWorkflow:
             with transaction2.transaction():
                 # Make changes that should be rolled back
                 controller.project_model.update_tob_file_data(
-                    file_name="initial.TOB",
-                    data_points=15
+                    file_name="initial.TOB", data_points=15
                 )
                 # Simulate failure
                 raise ValueError("Simulated failure")
@@ -235,10 +239,14 @@ class TestTOBWorkflow:
         controller.project_model = ProjectModel(name="Limits Test")
 
         # Test file size limit (100MB) - before adding files
-        can_add, reason = controller.project_model.can_add_tob_file(50 * 1024 * 1024)  # 50MB
+        can_add, reason = controller.project_model.can_add_tob_file(
+            50 * 1024 * 1024
+        )  # 50MB
         assert can_add
 
-        can_add, reason = controller.project_model.can_add_tob_file(150 * 1024 * 1024)  # 150MB
+        can_add, reason = controller.project_model.can_add_tob_file(
+            150 * 1024 * 1024
+        )  # 150MB
         assert not can_add
         assert "too large" in reason
 
@@ -249,7 +257,7 @@ class TestTOBWorkflow:
                 file_name=f"file{i}.TOB",
                 file_size=1024,
                 data_points=1,
-                sensors=['sensor']
+                sensors=["sensor"],
             )
 
             if i < 20:
@@ -275,11 +283,18 @@ class TestTOBWorkflow:
             file_name="status.TOB",
             file_size=1024,
             data_points=1,
-            sensors=['sensor']
+            sensors=["sensor"],
         )
 
         # Test status progression
-        statuses = ["loaded", "uploading", "uploaded", "processing", "processed", "error"]
+        statuses = [
+            "loaded",
+            "uploading",
+            "uploaded",
+            "processing",
+            "processed",
+            "error",
+        ]
 
         for status in statuses:
             controller.project_model.update_tob_file_status("status.TOB", status)
@@ -288,8 +303,8 @@ class TestTOBWorkflow:
 
         # Test project summary includes status
         summary = controller.project_model.get_project_summary()
-        assert 'tob_files_count' in summary
-        assert summary['tob_files_count'] == 1
+        assert "tob_files_count" in summary
+        assert summary["tob_files_count"] == 1
 
     def test_server_communication_workflow(self, mock_controller):
         """Test complete server communication workflow."""
@@ -305,7 +320,7 @@ class TestTOBWorkflow:
             status="completed",
             progress=100.0,
             message="Processing complete",
-            result_url="https://api.test.com/results/123"
+            result_url="https://api.test.com/results/123",
         )
         controller.http_client = mock_client
 
@@ -315,12 +330,13 @@ class TestTOBWorkflow:
             file_name="server.TOB",
             file_size=1024,
             data_points=1,
-            sensors=['sensor']
+            sensors=["sensor"],
         )
 
         # Mock methods
         def mock_initialize():
             return True
+
         controller.initialize_http_client = mock_initialize
 
         def mock_upload(file_name):
@@ -330,12 +346,14 @@ class TestTOBWorkflow:
                 controller.project_model.update_tob_file_status(file_name, "uploaded")
                 return True
             return False
+
         controller.upload_tob_file_to_server = mock_upload
 
         def mock_check_status(file_name):
             tob_file = controller.project_model.get_tob_file(file_name)
             if tob_file and tob_file.server_job_id:
                 controller.project_model.update_tob_file_status(file_name, "processed")
+
         controller.check_tob_file_server_status = mock_check_status
 
         # Test upload

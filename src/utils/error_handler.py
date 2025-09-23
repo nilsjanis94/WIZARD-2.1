@@ -23,7 +23,9 @@ class ErrorHandler(QObject):
     """
 
     # Signals for thread-safe GUI operations
-    error_occurred = pyqtSignal(str, str, object)  # error_type, error_message, parent_widget
+    error_occurred = pyqtSignal(
+        str, str, object
+    )  # error_type, error_message, parent_widget
     warning_occurred = pyqtSignal(str, object)  # warning_message, parent_widget
     info_message = pyqtSignal(str, object)  # info_message, parent_widget
 
@@ -118,7 +120,6 @@ class ErrorHandler(QObject):
 
         except Exception as e:
             self.logger.error("Error in info handling: %s", e)
-
 
     def _create_user_message(self, error_type: str, error_message: str) -> str:
         """

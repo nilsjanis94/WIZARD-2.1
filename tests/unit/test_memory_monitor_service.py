@@ -24,13 +24,13 @@ class TestMemoryMonitorService:
         assert service.tob_memory_usage == 0.0
         assert not service.monitoring_active
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_get_memory_stats(self, mock_virtual_memory):
         """Test getting memory statistics."""
         # Mock psutil response
         mock_memory = MagicMock()
         mock_memory.total = 16 * 1024 * 1024 * 1024  # 16GB
-        mock_memory.used = 2 * 1024 * 1024 * 1024   # 2GB (below critical threshold)
+        mock_memory.used = 2 * 1024 * 1024 * 1024  # 2GB (below critical threshold)
         mock_memory.available = 14 * 1024 * 1024 * 1024  # 14GB
         mock_memory.percent = 12.5  # Low usage
         mock_virtual_memory.return_value = mock_memory
@@ -73,11 +73,15 @@ class TestMemoryMonitorService:
         """Test memory check before operation."""
         service = MemoryMonitorService()
 
-        with patch.object(service, 'get_memory_stats') as mock_stats:
+        with patch.object(service, "get_memory_stats") as mock_stats:
             # Mock moderate memory usage
             mock_stats.return_value = MemoryStats(
-                total_mb=8192, used_mb=1000, available_mb=7192,  # 1GB used, well below limits
-                usage_percent=12.2, level=MemoryLevel.LOW, tob_data_mb=100
+                total_mb=8192,
+                used_mb=1000,
+                available_mb=7192,  # 1GB used, well below limits
+                usage_percent=12.2,
+                level=MemoryLevel.LOW,
+                tob_data_mb=100,
             )
 
             # Should allow small operation
@@ -87,8 +91,12 @@ class TestMemoryMonitorService:
 
             # Mock high memory usage
             mock_stats.return_value = MemoryStats(
-                total_mb=8192, used_mb=1900, available_mb=6292,  # 1.9GB used, critical
-                usage_percent=23.2, level=MemoryLevel.CRITICAL, tob_data_mb=100
+                total_mb=8192,
+                used_mb=1900,
+                available_mb=6292,  # 1.9GB used, critical
+                usage_percent=23.2,
+                level=MemoryLevel.CRITICAL,
+                tob_data_mb=100,
             )
 
             # Should block operation when memory is critical
@@ -112,21 +120,25 @@ class TestMemoryMonitorService:
         service = MemoryMonitorService()
         service.update_tob_memory_usage(200.0)
 
-        with patch.object(service, 'get_memory_stats') as mock_stats:
+        with patch.object(service, "get_memory_stats") as mock_stats:
             mock_stats.return_value = MemoryStats(
-                total_mb=8192, used_mb=4096, available_mb=4096,
-                usage_percent=50.0, level=MemoryLevel.MODERATE, tob_data_mb=200.0
+                total_mb=8192,
+                used_mb=4096,
+                available_mb=4096,
+                usage_percent=50.0,
+                level=MemoryLevel.MODERATE,
+                tob_data_mb=200.0,
             )
 
             report = service.get_memory_report()
 
-            assert report['current_usage_mb'] == 4096
-            assert report['total_memory_mb'] == 8192
-            assert report['tob_data_mb'] == 200.0
-            assert report['memory_level'] == 'moderate'
-            assert 'can_allocate_mb' in report
+            assert report["current_usage_mb"] == 4096
+            assert report["total_memory_mb"] == 8192
+            assert report["tob_data_mb"] == 200.0
+            assert report["memory_level"] == "moderate"
+            assert "can_allocate_mb" in report
 
-    @patch('threading.Thread')
+    @patch("threading.Thread")
     def test_start_stop_monitoring(self, mock_thread):
         """Test starting and stopping memory monitoring."""
         service = MemoryMonitorService()
@@ -153,7 +165,9 @@ class TestMemoryMonitorService:
 
         # Add test cleanup callbacks
         call_count = [0]
-        service.add_cleanup_callback(lambda: (call_count.__setitem__(0, call_count[0] + 1), 50.0)[1])
+        service.add_cleanup_callback(
+            lambda: (call_count.__setitem__(0, call_count[0] + 1), 50.0)[1]
+        )
         service.add_cleanup_callback(lambda: 75.0)
 
         total_freed = service._perform_cleanup()

@@ -6,18 +6,20 @@ Provides automatic cleanup and warnings when memory limits are approached.
 """
 
 import logging
-import psutil
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
+import psutil
 
 from ..utils.error_handler import ErrorHandler
 
 
 class MemoryLevel(Enum):
     """Memory usage levels."""
+
     LOW = "low"
     MODERATE = "moderate"
     HIGH = "high"
@@ -28,6 +30,7 @@ class MemoryLevel(Enum):
 @dataclass
 class MemoryStats:
     """Memory statistics."""
+
     total_mb: float
     used_mb: float
     available_mb: float
@@ -45,9 +48,9 @@ class MemoryMonitorService:
     """
 
     # Memory limits in MB for TOB data
-    WARNING_THRESHOLD_MB = 2048   # 2.0GB - start warning user
+    WARNING_THRESHOLD_MB = 2048  # 2.0GB - start warning user
     CRITICAL_THRESHOLD_MB = 3072  # 3.0GB - force cleanup
-    MAX_MEMORY_MB = 4096           # 4.0GB - absolute maximum for TOB data
+    MAX_MEMORY_MB = 4096  # 4.0GB - absolute maximum for TOB data
 
     # Monitoring intervals in seconds
     MONITORING_INTERVAL = 30.0  # Check every 30 seconds (TOB data changes infrequently)
@@ -90,9 +93,7 @@ class MemoryMonitorService:
         self.stop_event.clear()
 
         self.monitoring_thread = threading.Thread(
-            target=self._monitoring_loop,
-            name="MemoryMonitor",
-            daemon=True
+            target=self._monitoring_loop, name="MemoryMonitor", daemon=True
         )
         self.monitoring_thread.start()
 
@@ -136,7 +137,7 @@ class MemoryMonitorService:
                 available_mb=available_mb,
                 usage_percent=usage_percent,
                 level=level,
-                tob_data_mb=self.tob_memory_usage
+                tob_data_mb=self.tob_memory_usage,
             )
 
         except Exception as e:
@@ -148,7 +149,7 @@ class MemoryMonitorService:
                 available_mb=0,
                 usage_percent=0,
                 level=MemoryLevel.LOW,
-                tob_data_mb=self.tob_memory_usage
+                tob_data_mb=self.tob_memory_usage,
             )
 
     def _calculate_memory_level(self, used_mb: float) -> MemoryLevel:
@@ -216,11 +217,17 @@ class MemoryMonitorService:
         projected_tob_usage = self.tob_memory_usage + estimated_mb
 
         if projected_tob_usage >= self.MAX_MEMORY_MB:
-            return False, f"Operation would exceed TOB data memory limit ({projected_tob_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"
+            return (
+                False,
+                f"Operation would exceed TOB data memory limit ({projected_tob_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)",
+            )
 
         tob_memory_level = self._calculate_memory_level(self.tob_memory_usage)
         if tob_memory_level in [MemoryLevel.CRITICAL, MemoryLevel.EXCEEDED]:
-            return False, f"TOB data memory usage is critical ({self.tob_memory_usage:.1f}MB). Please remove some TOB files first."
+            return (
+                False,
+                f"TOB data memory usage is critical ({self.tob_memory_usage:.1f}MB). Please remove some TOB files first.",
+            )
 
         return True, ""
 
@@ -267,18 +274,24 @@ class MemoryMonitorService:
         tob_memory_level = self._calculate_memory_level(self.tob_memory_usage)
 
         if tob_memory_level == MemoryLevel.EXCEEDED:
-            self.logger.critical(f"TOB data memory limit exceeded: {self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB")
+            self.logger.critical(
+                f"TOB data memory limit exceeded: {self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB"
+            )
             self._perform_emergency_cleanup()
 
             if self.error_handler:
                 self.error_handler.handle_error(
-                    MemoryError(f"TOB data memory limit exceeded ({self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"),
+                    MemoryError(
+                        f"TOB data memory limit exceeded ({self.tob_memory_usage:.1f}MB > {self.MAX_MEMORY_MB}MB)"
+                    ),
                     "TOB Memory Limit Exceeded",
-                    None
+                    None,
                 )
 
         elif tob_memory_level == MemoryLevel.CRITICAL:
-            self.logger.warning(f"TOB data memory usage critical: {self.tob_memory_usage:.1f}MB")
+            self.logger.warning(
+                f"TOB data memory usage critical: {self.tob_memory_usage:.1f}MB"
+            )
             freed_mb = self._perform_cleanup()
 
             if current_time - self.last_warning_time > self.warning_cooldown:
@@ -287,11 +300,13 @@ class MemoryMonitorService:
                     self.error_handler.handle_warning(
                         f"TOB data memory usage is critical ({self.tob_memory_usage:.1f}MB). "
                         "Consider removing some TOB files to free up memory.",
-                        None
+                        None,
                     )
 
         elif tob_memory_level == MemoryLevel.HIGH:
-            self.logger.info(f"TOB data memory usage high: {self.tob_memory_usage:.1f}MB")
+            self.logger.info(
+                f"TOB data memory usage high: {self.tob_memory_usage:.1f}MB"
+            )
 
             if current_time - self.last_warning_time > self.warning_cooldown:
                 self.last_warning_time = current_time
@@ -299,7 +314,7 @@ class MemoryMonitorService:
                     self.error_handler.handle_warning(
                         f"TOB data memory usage is high ({self.tob_memory_usage:.1f}MB). "
                         "Consider removing unused TOB files.",
-                        None
+                        None,
                     )
 
     def _perform_cleanup(self) -> float:
@@ -343,7 +358,9 @@ class MemoryMonitorService:
         self.logger.critical(f"Emergency cleanup freed {total_freed:.1f}MB")
 
         if total_freed < 500:  # Still couldn't free enough
-            self.logger.critical("Emergency cleanup insufficient. Application may become unstable.")
+            self.logger.critical(
+                "Emergency cleanup insufficient. Application may become unstable."
+            )
 
     def get_memory_report(self) -> Dict[str, Any]:
         """
@@ -364,5 +381,5 @@ class MemoryMonitorService:
             "warning_threshold_mb": self.WARNING_THRESHOLD_MB,
             "critical_threshold_mb": self.CRITICAL_THRESHOLD_MB,
             "max_memory_mb": self.MAX_MEMORY_MB,
-            "can_allocate_mb": max(0, self.MAX_MEMORY_MB - stats.used_mb)
+            "can_allocate_mb": max(0, self.MAX_MEMORY_MB - stats.used_mb),
         }

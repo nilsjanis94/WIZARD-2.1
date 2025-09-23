@@ -4,9 +4,9 @@ Project Model for WIZARD-2.1
 Handles project data structure and operations.
 """
 
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, ClassVar, Dict, List, Optional
-from contextlib import contextmanager
 
 from pydantic import BaseModel, Field
 
@@ -48,22 +48,30 @@ class RollbackTransaction:
 
         # Create deep copy of TOB file data
         backup = {
-            'file_name': tob_file.file_name,
-            'file_path': tob_file.file_path,
-            'file_size': tob_file.file_size,
-            'added_date': tob_file.added_date,
-            'data_points': tob_file.data_points,
-            'sensors': tob_file.sensors.copy() if tob_file.sensors else [],
-            'status': tob_file.status,
-            'tob_data': None
+            "file_name": tob_file.file_name,
+            "file_path": tob_file.file_path,
+            "file_size": tob_file.file_size,
+            "added_date": tob_file.added_date,
+            "data_points": tob_file.data_points,
+            "sensors": tob_file.sensors.copy() if tob_file.sensors else [],
+            "status": tob_file.status,
+            "tob_data": None,
         }
 
         # Backup TOB data if it exists
         if tob_file.tob_data:
-            backup['tob_data'] = {
-                'headers': tob_file.tob_data.headers.copy() if tob_file.tob_data.headers else {},
-                'data': tob_file.tob_data.data.copy() if tob_file.tob_data.data is not None else None,
-                'raw_data': tob_file.tob_data.raw_data
+            backup["tob_data"] = {
+                "headers": (
+                    tob_file.tob_data.headers.copy()
+                    if tob_file.tob_data.headers
+                    else {}
+                ),
+                "data": (
+                    tob_file.tob_data.data.copy()
+                    if tob_file.tob_data.data is not None
+                    else None
+                ),
+                "raw_data": tob_file.tob_data.raw_data,
             }
 
         self.backup_tob_files.append(backup)
@@ -96,35 +104,35 @@ class RollbackTransaction:
 
             # Restore backed up TOB files (modified existing files)
             for backup in self.backup_tob_files:
-                file_name = backup['file_name']
+                file_name = backup["file_name"]
 
                 # Remove current version if it exists
                 self.project_model.remove_tob_file(file_name)
 
                 # Restore backup
-                if backup['tob_data']:
+                if backup["tob_data"]:
                     self.project_model.add_tob_file(
-                        file_path=backup['file_path'],
-                        file_name=backup['file_name'],
-                        file_size=backup['file_size'],
-                        headers=backup['tob_data']['headers'],
-                        data=backup['tob_data']['data'],
-                        raw_data=backup['tob_data']['raw_data'],
-                        data_points=backup['data_points'],
-                        sensors=backup['sensors']
+                        file_path=backup["file_path"],
+                        file_name=backup["file_name"],
+                        file_size=backup["file_size"],
+                        headers=backup["tob_data"]["headers"],
+                        data=backup["tob_data"]["data"],
+                        raw_data=backup["tob_data"]["raw_data"],
+                        data_points=backup["data_points"],
+                        sensors=backup["sensors"],
                     )
                 else:
                     # Restore without data
                     self.project_model.add_tob_file(
-                        file_path=backup['file_path'],
-                        file_name=backup['file_name'],
-                        file_size=backup['file_size'],
-                        data_points=backup['data_points'],
-                        sensors=backup['sensors']
+                        file_path=backup["file_path"],
+                        file_name=backup["file_name"],
+                        file_size=backup["file_size"],
+                        data_points=backup["data_points"],
+                        sensors=backup["sensors"],
                     )
 
                 # Restore status
-                self.project_model.update_tob_file_status(file_name, backup['status'])
+                self.project_model.update_tob_file_status(file_name, backup["status"])
 
             return True
 
@@ -192,6 +200,7 @@ class ServerConfig(BaseModel):
 
 class TOBFileStatus:
     """Enumeration for TOB file processing status."""
+
     LOADED = "loaded"
     UPLOADING = "uploading"
     UPLOADED = "uploaded"
@@ -202,12 +211,18 @@ class TOBFileStatus:
 
 class TOBFileData(BaseModel):
     """Complete TOB file data storage."""
-    headers: Dict[str, Any] = Field(default_factory=dict, description="TOB file headers")
-    data: Optional[Any] = Field(None, description="TOB data as pandas DataFrame", exclude=True)
+
+    headers: Dict[str, Any] = Field(
+        default_factory=dict, description="TOB file headers"
+    )
+    data: Optional[Any] = Field(
+        None, description="TOB data as pandas DataFrame", exclude=True
+    )
     raw_data: Optional[str] = Field(None, description="Raw TOB file content")
 
     class Config:
         """Pydantic configuration."""
+
         # Exclude dataframe from JSON serialization to avoid pandas serialization issues
         json_encoders = {
             # Custom encoder for any non-serializable objects
@@ -232,16 +247,23 @@ class TOBFileInfo(BaseModel):
 
     # Processing status
     status: str = Field(
-        default=TOBFileStatus.LOADED,
-        description="Current processing status"
+        default=TOBFileStatus.LOADED, description="Current processing status"
     )
     server_job_id: Optional[str] = Field(None, description="Server job ID after upload")
-    server_status: Optional[str] = Field(None, description="Status from server processing")
-    upload_date: Optional[datetime] = Field(None, description="Date when uploaded to server")
-    error_message: Optional[str] = Field(None, description="Error message if status is ERROR")
+    server_status: Optional[str] = Field(
+        None, description="Status from server processing"
+    )
+    upload_date: Optional[datetime] = Field(
+        None, description="Date when uploaded to server"
+    )
+    error_message: Optional[str] = Field(
+        None, description="Error message if status is ERROR"
+    )
 
     # UI state
-    is_active: bool = Field(default=False, description="Whether file is currently displayed")
+    is_active: bool = Field(
+        default=False, description="Whether file is currently displayed"
+    )
 
     def update_status(self, new_status: str, error_msg: Optional[str] = None) -> None:
         """Update the processing status."""
@@ -307,7 +329,10 @@ class ProjectModel(BaseModel):
             Tuple of (can_add, reason_if_not)
         """
         if len(self.tob_files) >= self.MAX_TOB_FILES:
-            return False, f"Maximum of {self.MAX_TOB_FILES} TOB files per project reached"
+            return (
+                False,
+                f"Maximum of {self.MAX_TOB_FILES} TOB files per project reached",
+            )
 
         max_size_bytes = self.MAX_TOB_FILE_SIZE_MB * 1024 * 1024
         if file_size > max_size_bytes:
@@ -351,11 +376,7 @@ class ProjectModel(BaseModel):
         # Create TOB data object
         tob_data = None
         if headers or data or raw_data:
-            tob_data = TOBFileData(
-                headers=headers or {},
-                data=data,
-                raw_data=raw_data
-            )
+            tob_data = TOBFileData(headers=headers or {}, data=data, raw_data=raw_data)
 
         # Check for duplicate file names
         if any(tob.file_name == file_name for tob in self.tob_files):
@@ -378,7 +399,7 @@ class ProjectModel(BaseModel):
                 tob_data=tob_data,
                 data_points=data_points,
                 sensors=sensors or [],
-                status=TOBFileStatus.LOADED
+                status=TOBFileStatus.LOADED,
             )
             self.tob_files.append(tob_file)
 
@@ -420,9 +441,14 @@ class ProjectModel(BaseModel):
         """
         self.active_tob_file = None
 
-    def update_tob_file_data(self, file_name: str, headers: Optional[Dict] = None,
-                           data: Optional[Any] = None, data_points: Optional[int] = None,
-                           sensors: Optional[List[str]] = None) -> bool:
+    def update_tob_file_data(
+        self,
+        file_name: str,
+        headers: Optional[Dict] = None,
+        data: Optional[Any] = None,
+        data_points: Optional[int] = None,
+        sensors: Optional[List[str]] = None,
+    ) -> bool:
         """
         Update the data of an existing TOB file in the project.
 
@@ -497,7 +523,7 @@ class ProjectModel(BaseModel):
             self.active_tob_file = file_name
             # Update is_active flags
             for tob in self.tob_files:
-                tob.is_active = (tob.file_name == file_name)
+                tob.is_active = tob.file_name == file_name
             return True
         return False
 
@@ -512,7 +538,9 @@ class ProjectModel(BaseModel):
             return None
         return self.get_tob_file(self.active_tob_file)
 
-    def update_tob_file_status(self, file_name: str, status: str, error_msg: Optional[str] = None) -> bool:
+    def update_tob_file_status(
+        self, file_name: str, status: str, error_msg: Optional[str] = None
+    ) -> bool:
         """
         Update the status of a TOB file.
 
@@ -539,7 +567,9 @@ class ProjectModel(BaseModel):
             Memory usage in MB
         """
         # Rough estimation: assume DataFrame uses ~2-3x file size in memory
-        total_file_size_mb = sum(tob.file_size for tob in self.tob_files) / (1024 * 1024)
+        total_file_size_mb = sum(tob.file_size for tob in self.tob_files) / (
+            1024 * 1024
+        )
         # Estimate DataFrame overhead
         estimated_memory_mb = total_file_size_mb * 2.5
         return estimated_memory_mb
@@ -556,9 +586,15 @@ class ProjectModel(BaseModel):
         max_memory_mb = max_memory_gb * 1024
 
         if memory_mb > max_memory_mb * 0.8:  # Warning at 80%
-            return False, f"Memory usage high: {memory_mb:.1f}MB of {max_memory_mb:.0f}MB limit"
+            return (
+                False,
+                f"Memory usage high: {memory_mb:.1f}MB of {max_memory_mb:.0f}MB limit",
+            )
         elif memory_mb > max_memory_mb:
-            return False, f"Memory limit exceeded: {memory_mb:.1f}MB > {max_memory_mb:.0f}MB"
+            return (
+                False,
+                f"Memory limit exceeded: {memory_mb:.1f}MB > {max_memory_mb:.0f}MB",
+            )
 
         return True, ""
 
@@ -579,7 +615,8 @@ class ProjectModel(BaseModel):
             "modified_date": self.modified_date,
             "tob_files_count": len(self.tob_files),
             "total_data_points": sum(tob.data_points or 0 for tob in self.tob_files),
-            "total_file_size_mb": sum(tob.file_size for tob in self.tob_files) / (1024 * 1024),
+            "total_file_size_mb": sum(tob.file_size for tob in self.tob_files)
+            / (1024 * 1024),
             "memory_usage_mb": memory_mb,
             "memory_status": "OK" if memory_ok else "WARNING",
             "memory_message": memory_msg if not memory_ok else "",
@@ -589,6 +626,6 @@ class ProjectModel(BaseModel):
             "limits": {
                 "max_tob_files": self.MAX_TOB_FILES,
                 "max_file_size_mb": self.MAX_TOB_FILE_SIZE_MB,
-                "max_memory_gb": self.MAX_TOTAL_MEMORY_GB
-            }
+                "max_memory_gb": self.MAX_TOTAL_MEMORY_GB,
+            },
         }

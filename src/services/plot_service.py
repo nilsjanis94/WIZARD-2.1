@@ -217,7 +217,6 @@ class PlotService:
         return sensor_labels.get(sensor_name, "Value")
 
 
-
 class PlotWidget(QWidget):
     """
     Custom plot widget for displaying temperature sensor data.
@@ -254,8 +253,8 @@ class PlotWidget(QWidget):
 
         # Plot mode management
         self.plot_mode = "single"  # "single" | "dual"
-        self.y1_sensor = "NTC01"   # Primary sensor for main plot
-        self.y2_sensor = None      # Secondary sensor for secondary plot (None = disabled)
+        self.y1_sensor = "NTC01"  # Primary sensor for main plot
+        self.y2_sensor = None  # Secondary sensor for secondary plot (None = disabled)
 
         # NTC sensor filtering for when y1_sensor == "NTCs"
         self.active_ntc_sensors = None  # None = all NTCs active, or list of active NTCs
@@ -505,11 +504,11 @@ class PlotWidget(QWidget):
                 if len(time_values) > 0:
                     x_max = time_values.max()
                     self.ax1.set_xlim(0, x_max)
-                    if self.plot_mode == "dual" and hasattr(self, 'ax2'):
+                    if self.plot_mode == "dual" and hasattr(self, "ax2"):
                         self.ax2.set_xlim(0, x_max)  # Sync x-axis in dual mode
                 else:
                     self.ax1.set_xlim(auto=True)
-                    if self.plot_mode == "dual" and hasattr(self, 'ax2'):
+                    if self.plot_mode == "dual" and hasattr(self, "ax2"):
                         self.ax2.set_xlim(auto=True)
             else:
                 # Manual x-axis limits would be set here
@@ -523,7 +522,7 @@ class PlotWidget(QWidget):
                 pass
 
             # Configure secondary axis in dual mode
-            if self.plot_mode == "dual" and hasattr(self, 'ax2'):
+            if self.plot_mode == "dual" and hasattr(self, "ax2"):
                 if self.axis_settings.get("y2_auto", True):
                     self.ax2.set_ylim(auto=True)
                 else:
@@ -541,7 +540,9 @@ class PlotWidget(QWidget):
                 self.ax2.margins(x=0.08, y=0.1)  # Space for Y-labels
 
                 # Adjust subplot positions to leave space for labels (optimized for large windows)
-                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2)
+                self.figure.subplots_adjust(
+                    left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2
+                )
             else:
                 # Configure grid for single axis
                 self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
@@ -550,9 +551,13 @@ class PlotWidget(QWidget):
                 self.ax1.margins(x=0.08, y=0.1)  # Space for Y-labels
 
                 # Adjust subplot position to leave space for labels (optimized for large windows)
-                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.12)
+                self.figure.subplots_adjust(
+                    left=0.08, right=0.98, top=0.98, bottom=0.12
+                )
 
-            self.logger.debug("Axes configured successfully for mode: %s", self.plot_mode)
+            self.logger.debug(
+                "Axes configured successfully for mode: %s", self.plot_mode
+            )
         except Exception as e:
             self.logger.error("Failed to configure axes: %s", e)
             raise
@@ -709,11 +714,15 @@ class PlotWidget(QWidget):
 
             # Apply consistent layout with margins for labels
             self.ax1.margins(x=0.08, y=0.1)  # Space for Y-labels
-            if self.plot_mode == "dual" and hasattr(self, 'ax2'):
+            if self.plot_mode == "dual" and hasattr(self, "ax2"):
                 self.ax2.margins(x=0.08, y=0.1)  # Space for Y-labels
-                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2)
+                self.figure.subplots_adjust(
+                    left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.2
+                )
             else:
-                self.figure.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.12)
+                self.figure.subplots_adjust(
+                    left=0.08, right=0.98, top=0.98, bottom=0.12
+                )
 
             # Redraw the plot
             self.canvas.draw_idle()
@@ -738,11 +747,14 @@ class PlotWidget(QWidget):
             if sensor_name == "NTCs":
                 # Plot all NTC sensors (filtered by active_ntc_sensors if set)
                 ntc_sensors = [
-                    col for col in data.columns
+                    col
+                    for col in data.columns
                     if col.startswith("NTC") and col[3:].isdigit()
                 ]
                 if self.active_ntc_sensors is not None:
-                    ntc_sensors = [s for s in ntc_sensors if s in self.active_ntc_sensors]
+                    ntc_sensors = [
+                        s for s in ntc_sensors if s in self.active_ntc_sensors
+                    ]
 
                 for ntc_sensor in ntc_sensors:
                     if ntc_sensor not in data.columns:
@@ -1012,7 +1024,9 @@ class PlotWidget(QWidget):
                 time_data = self.tob_data_model.get_time_column()
                 if time_data is not None:
                     time_unit = self.axis_settings.get("x_axis_type", "Seconds")
-                    time_values, _ = self.plot_service.format_time_axis(time_data, time_unit)
+                    time_values, _ = self.plot_service.format_time_axis(
+                        time_data, time_unit
+                    )
                     self._plot_single_sensor(time_values)
                     self._configure_axes(time_values, time_unit)
                     self._update_axis_labels()
@@ -1035,7 +1049,9 @@ class PlotWidget(QWidget):
             secondary_sensor: Sensor name for the secondary plot
         """
         try:
-            self.logger.info("Switching to dual plot mode with sensor: %s", secondary_sensor)
+            self.logger.info(
+                "Switching to dual plot mode with sensor: %s", secondary_sensor
+            )
             self.plot_mode = "dual"
             self.y2_sensor = secondary_sensor
 
@@ -1061,7 +1077,9 @@ class PlotWidget(QWidget):
                 time_data = self.tob_data_model.get_time_column()
                 if time_data is not None:
                     time_unit = self.axis_settings.get("x_axis_type", "Seconds")
-                    time_values, _ = self.plot_service.format_time_axis(time_data, time_unit)
+                    time_values, _ = self.plot_service.format_time_axis(
+                        time_data, time_unit
+                    )
                     self._plot_dual_sensors(time_values)
                     self._configure_axes(time_values, time_unit)
 
@@ -1077,8 +1095,6 @@ class PlotWidget(QWidget):
         except Exception as e:
             self.logger.error("Failed to set dual mode: %s", e)
             raise
-
-
 
     def _plot_single_sensor(self, time_values: np.ndarray):
         """Plot the primary sensor(s) for single mode."""
@@ -1120,8 +1136,11 @@ class PlotWidget(QWidget):
     def _plot_dual_sensors(self, time_values: np.ndarray):
         """Plot primary and secondary sensors for dual mode."""
         try:
-            self.logger.debug("_plot_dual_sensors called with y1_sensor=%s, y2_sensor=%s",
-                            self.y1_sensor, self.y2_sensor)
+            self.logger.debug(
+                "_plot_dual_sensors called with y1_sensor=%s, y2_sensor=%s",
+                self.y1_sensor,
+                self.y2_sensor,
+            )
 
             if not self.tob_data_model or self.tob_data_model.data is None:
                 self.logger.warning("No data available for dual plotting")

@@ -175,7 +175,12 @@ class MainController(QObject):
         try:
             # Emit signal to view instead of calling methods directly
             self.plot_axis_limits_update.emit(axis, min_value, max_value)
-            self.logger.debug("Axis limits signal emitted: %s = %.2f - %.2f", axis, min_value, max_value)
+            self.logger.debug(
+                "Axis limits signal emitted: %s = %.2f - %.2f",
+                axis,
+                min_value,
+                max_value,
+            )
         except Exception as e:
             self.logger.error("Error handling axis limits change: %s", e)
 
@@ -247,7 +252,10 @@ class MainController(QObject):
             # Update plot with loaded data
             if self.tob_data_model:
                 # Update plot widget with data BEFORE sensor selection
-                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                if (
+                    hasattr(self.main_window, "plot_widget")
+                    and self.main_window.plot_widget
+                ):
                     self.main_window.plot_widget.tob_data_model = self.tob_data_model
 
                 # Update plot data (old system)
@@ -256,9 +264,12 @@ class MainController(QObject):
                 # Auto-select sensors (NTC sensors and PT100)
                 # Limit to 22 NTC sensors max to match UI design
                 ntc_sensors = [
-                    sensor for sensor in self.tob_data_model.sensors
+                    sensor
+                    for sensor in self.tob_data_model.sensors
                     if sensor.startswith("NTC")
-                ][:22]  # Limit to 22 sensors to match plot_controller
+                ][
+                    :22
+                ]  # Limit to 22 sensors to match plot_controller
 
                 selected_sensors = ntc_sensors.copy()
 
@@ -272,17 +283,22 @@ class MainController(QObject):
 
                 if selected_sensors:
                     # Update selected sensors and plot widget active NTC sensors
-                    self.plot_controller.update_selected_sensors(selected_sensors, self.main_window)
+                    self.plot_controller.update_selected_sensors(
+                        selected_sensors, self.main_window
+                    )
 
                     # Update UI checkboxes to reflect the selected sensors
                     self.plot_controller.update_sensor_checkboxes(self.main_window)
 
                 # Trigger final plot refresh with NTCs for new plot widget
-                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
-                    if hasattr(self.main_window.plot_widget, '_refresh_plot'):
+                if (
+                    hasattr(self.main_window, "plot_widget")
+                    and self.main_window.plot_widget
+                ):
+                    if hasattr(self.main_window.plot_widget, "_refresh_plot"):
                         self.main_window.plot_widget._refresh_plot()
                     # Update axis labels after initial plot refresh
-                    if hasattr(self.main_window.plot_widget, '_update_axis_labels'):
+                    if hasattr(self.main_window.plot_widget, "_update_axis_labels"):
                         self.main_window.plot_widget._update_axis_labels()
 
                 # Emit sensors updated signal
@@ -393,7 +409,6 @@ class MainController(QObject):
             self.file_load_error.emit("UnexpectedError", error_msg)
             self.error_handler.handle_error(e, self.main_window, "File Loading Error")
 
-
     def open_tob_file(self, file_path: str):
         """
         Public method to open a TOB file.
@@ -436,12 +451,17 @@ class MainController(QObject):
             is_selected: Whether the sensor is now selected
         """
         try:
-            self.logger.debug("Sensor selection changed: %s = %s", sensor_name, is_selected)
+            self.logger.debug(
+                "Sensor selection changed: %s = %s", sensor_name, is_selected
+            )
 
             # Handle NTC sensor checkboxes for filtering when Y1 is "NTCs"
             if sensor_name.startswith("NTC") or sensor_name == "Temp":
                 # This is an NTC sensor checkbox change
-                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                if (
+                    hasattr(self.main_window, "plot_widget")
+                    and self.main_window.plot_widget
+                ):
                     # Get current active NTC sensors
                     current_active = self.main_window.plot_widget.active_ntc_sensors
 
@@ -449,8 +469,11 @@ class MainController(QObject):
                     if current_active is None:
                         # Initialize with all NTC sensors that are checked
                         all_ntc_sensors = []
-                        if hasattr(self.main_window, 'ntc_checkboxes'):
-                            for name, checkbox in self.main_window.ntc_checkboxes.items():
+                        if hasattr(self.main_window, "ntc_checkboxes"):
+                            for (
+                                name,
+                                checkbox,
+                            ) in self.main_window.ntc_checkboxes.items():
                                 if name.startswith("NTC") or name == "Temp":
                                     all_ntc_sensors.append(name)
 
@@ -510,7 +533,11 @@ class MainController(QObject):
             self.logger.debug("Updating axis settings: %s", axis_settings)
 
             # Update plot widget with new axis settings
-            if self.main_window and hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+            if (
+                self.main_window
+                and hasattr(self.main_window, "plot_widget")
+                and self.main_window.plot_widget
+            ):
                 self.main_window.plot_widget.update_axis_settings(axis_settings)
                 self.logger.debug("Plot widget axis settings updated")
             else:
@@ -532,7 +559,7 @@ class MainController(QObject):
             sensor_name: Name of the sensor to display in main plot
         """
         self.y1_sensor = sensor_name
-        self._set_sensor(sensor_name, 'y1_sensor', is_primary=True)
+        self._set_sensor(sensor_name, "y1_sensor", is_primary=True)
 
     def _set_sensor(self, sensor_name: str, sensor_attr: str, is_primary: bool = True):
         """
@@ -548,18 +575,23 @@ class MainController(QObject):
             self.logger.info("Setting %s sensor to: %s", sensor_type, sensor_name)
 
             # Update plot widget if available
-            if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+            if (
+                hasattr(self.main_window, "plot_widget")
+                and self.main_window.plot_widget
+            ):
                 setattr(self.main_window.plot_widget, sensor_attr, sensor_name)
 
                 # Refresh the plot to show the new sensor
-                if hasattr(self.main_window.plot_widget, '_refresh_plot'):
+                if hasattr(self.main_window.plot_widget, "_refresh_plot"):
                     self.main_window.plot_widget._refresh_plot()
 
                 # Update axis labels
-                if hasattr(self.main_window.plot_widget, '_update_axis_labels'):
+                if hasattr(self.main_window.plot_widget, "_update_axis_labels"):
                     self.main_window.plot_widget._update_axis_labels()
 
-            self.logger.info("%s sensor set to: %s", sensor_type.capitalize(), sensor_name)
+            self.logger.info(
+                "%s sensor set to: %s", sensor_type.capitalize(), sensor_name
+            )
 
         except Exception as e:
             sensor_type = "primary" if is_primary else "secondary"
@@ -575,14 +607,18 @@ class MainController(QObject):
             sensor_name: Name of the sensor to display in secondary plot
         """
         # Check if we're already in dual mode
-        current_mode = getattr(self.main_window.plot_widget, 'plot_mode', 'single') if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget else 'single'
+        current_mode = (
+            getattr(self.main_window.plot_widget, "plot_mode", "single")
+            if hasattr(self.main_window, "plot_widget") and self.main_window.plot_widget
+            else "single"
+        )
 
         if current_mode != "dual":
             # Switch to dual mode first
             self.set_plot_mode("dual", secondary_sensor=sensor_name)
         else:
             # Already in dual mode, just update the sensor
-            self._set_sensor(sensor_name, 'y2_sensor', is_primary=False)
+            self._set_sensor(sensor_name, "y2_sensor", is_primary=False)
 
     def set_plot_mode(self, mode: str, secondary_sensor: str = None):
         """
@@ -597,32 +633,46 @@ class MainController(QObject):
 
             if mode == "single":
                 # Single plot mode - main plot takes full space
-                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                if (
+                    hasattr(self.main_window, "plot_widget")
+                    and self.main_window.plot_widget
+                ):
                     # Ensure y1_sensor and data are set in plot widget
-                    if hasattr(self, 'y1_sensor') and self.y1_sensor:
+                    if hasattr(self, "y1_sensor") and self.y1_sensor:
                         self.main_window.plot_widget.y1_sensor = self.y1_sensor
                     if self.tob_data_model:
-                        self.main_window.plot_widget.tob_data_model = self.tob_data_model
+                        self.main_window.plot_widget.tob_data_model = (
+                            self.tob_data_model
+                        )
                     self.main_window.plot_widget.set_single_mode()
                 else:
                     self.logger.warning("No plot widget available for single mode")
 
             elif mode == "dual" and secondary_sensor:
                 # Dual plot mode - two separate plots
-                if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
+                if (
+                    hasattr(self.main_window, "plot_widget")
+                    and self.main_window.plot_widget
+                ):
                     # Ensure y1_sensor is set in plot widget
-                    if hasattr(self, 'y1_sensor') and self.y1_sensor:
+                    if hasattr(self, "y1_sensor") and self.y1_sensor:
                         self.main_window.plot_widget.y1_sensor = self.y1_sensor
                     # Ensure tob_data_model is available
                     if self.tob_data_model:
-                        self.main_window.plot_widget.tob_data_model = self.tob_data_model
+                        self.main_window.plot_widget.tob_data_model = (
+                            self.tob_data_model
+                        )
                     self.main_window.plot_widget.set_dual_mode(secondary_sensor)
                     # Note: _update_axis_labels() is already called in set_dual_mode() -> _configure_axes()
                 else:
                     self.logger.warning("No plot widget available for dual mode")
 
             else:
-                self.logger.warning("Invalid plot mode or missing secondary sensor: mode=%s, sensor=%s", mode, secondary_sensor)
+                self.logger.warning(
+                    "Invalid plot mode or missing secondary sensor: mode=%s, sensor=%s",
+                    mode,
+                    secondary_sensor,
+                )
                 return
 
             self.logger.info("Plot mode set successfully to: %s", mode)
@@ -735,7 +785,7 @@ class MainController(QObject):
                 name=name,
                 enter_key=enter_key,
                 server_url=server_url,
-                description=description
+                description=description,
             )
 
             # Save project to file
@@ -762,16 +812,12 @@ class MainController(QObject):
         except ValueError as e:
             # Validation errors
             self.logger.warning("Project validation error: %s", e)
-            self.error_handler.handle_error(
-                e, "Project Validation", self.main_window
-            )
+            self.error_handler.handle_error(e, "Project Validation", self.main_window)
             self.main_window.show_status_message("Project validation failed")
 
         except Exception as e:
             self.logger.error("Error creating project: %s", e)
-            self.error_handler.handle_error(
-                e, "Project Creation", self.main_window
-            )
+            self.error_handler.handle_error(e, "Project Creation", self.main_window)
             self.main_window.show_status_message("Error creating project")
 
     def update_project_settings(self, settings_data: dict):
@@ -810,19 +856,25 @@ class MainController(QObject):
 
             # Update server config (this handles URL normalization internally)
             self.project_service.update_project_server_config(
-                self.project_model,
-                enter_key=enter_key,
-                server_url=server_url
+                self.project_model, enter_key=enter_key, server_url=server_url
             )
 
             # Save updated project
-            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+            self.project_service.save_project(
+                self.project_model, self.main_window.current_project_path
+            )
 
             # Update UI
-            location = self.project_model.server_config.url if self.project_model.server_config else ""
+            location = (
+                self.project_model.server_config.url
+                if self.project_model.server_config
+                else ""
+            )
             self.main_window.update_project_info(name, location, description)
 
-            self.main_window.show_status_message("Project settings updated successfully")
+            self.main_window.show_status_message(
+                "Project settings updated successfully"
+            )
             self.logger.info("Project settings updated and saved successfully")
 
             # Note: Auto-save not needed here since we just saved manually
@@ -849,7 +901,9 @@ class MainController(QObject):
         try:
             # Auto-save configuration
             self.auto_save_enabled = True
-            self.auto_save_interval_ms = 5000  # 5 seconds (reduced for TOB file changes)
+            self.auto_save_interval_ms = (
+                5000  # 5 seconds (reduced for TOB file changes)
+            )
             self.auto_save_pending = False
 
             # Create timer for delayed auto-save
@@ -857,7 +911,10 @@ class MainController(QObject):
             self.auto_save_timer.setSingleShot(True)
             self.auto_save_timer.timeout.connect(self._perform_auto_save)
 
-            self.logger.info("Auto-save system initialized (interval: %dms)", self.auto_save_interval_ms)
+            self.logger.info(
+                "Auto-save system initialized (interval: %dms)",
+                self.auto_save_interval_ms,
+            )
 
         except Exception as e:
             self.logger.error("Failed to setup auto-save: %s", e)
@@ -867,12 +924,19 @@ class MainController(QObject):
         """
         Trigger auto-save after a change. Uses debouncing to avoid excessive saves.
         """
-        if not self.auto_save_enabled or not self.project_model or not self.main_window.current_project_path:
+        if (
+            not self.auto_save_enabled
+            or not self.project_model
+            or not self.main_window.current_project_path
+        ):
             return
 
         try:
             if not self.auto_save_pending:
-                self.logger.debug("Auto-save triggered, scheduling in %dms", self.auto_save_interval_ms)
+                self.logger.debug(
+                    "Auto-save triggered, scheduling in %dms",
+                    self.auto_save_interval_ms,
+                )
                 self.auto_save_pending = True
 
             # Reset timer (debounce)
@@ -885,7 +949,11 @@ class MainController(QObject):
         """
         Perform the actual auto-save operation.
         """
-        if not self.auto_save_enabled or not self.project_model or not self.main_window.current_project_path:
+        if (
+            not self.auto_save_enabled
+            or not self.project_model
+            or not self.main_window.current_project_path
+        ):
             return
 
         try:
@@ -893,7 +961,9 @@ class MainController(QObject):
             self.auto_save_pending = False
 
             # Save project
-            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+            self.project_service.save_project(
+                self.project_model, self.main_window.current_project_path
+            )
 
             # Update status (don't show message to avoid spam)
             self.logger.info("Auto-save completed successfully")
@@ -903,9 +973,7 @@ class MainController(QObject):
             self.auto_save_pending = False
 
             # Show error to user
-            self.error_handler.handle_error(
-                e, "Auto-Save Failed", self.main_window
-            )
+            self.error_handler.handle_error(e, "Auto-Save Failed", self.main_window)
 
     def set_auto_save_interval(self, interval_ms: int) -> None:
         """
@@ -929,7 +997,7 @@ class MainController(QObject):
         Disable auto-save functionality.
         """
         self.auto_save_enabled = False
-        if hasattr(self, 'auto_save_timer'):
+        if hasattr(self, "auto_save_timer"):
             self.auto_save_timer.stop()
         self.logger.info("Auto-save disabled")
 
@@ -972,7 +1040,7 @@ class MainController(QObject):
                 tob_files = sorted(
                     self.project_model.tob_files,
                     key=lambda f: f.added_date or datetime.min,
-                    reverse=True
+                    reverse=True,
                 )
 
                 # Remove files beyond the first 3
@@ -980,15 +1048,19 @@ class MainController(QObject):
                     # Calculate memory usage of this file
                     file_memory = 0.0
                     if tob_file.tob_data and tob_file.tob_data.data is not None:
-                        file_memory = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
+                        file_memory = tob_file.tob_data.data.memory_usage(
+                            deep=True
+                        ).sum() / (1024 * 1024)
 
                     # Remove the file
                     if self.project_model.remove_tob_file(tob_file.file_name):
                         freed_mb += file_memory
-                        self.logger.info(f"Cleaned up TOB file '{tob_file.file_name}' ({file_memory:.1f}MB)")
+                        self.logger.info(
+                            f"Cleaned up TOB file '{tob_file.file_name}' ({file_memory:.1f}MB)"
+                        )
 
                         # Notify UI about removed file
-                        if hasattr(self.main_window, 'show_status_message'):
+                        if hasattr(self.main_window, "show_status_message"):
                             self.main_window.show_status_message(
                                 f"Removed '{tob_file.file_name}' to free memory"
                             )
@@ -1012,7 +1084,11 @@ class MainController(QObject):
 
         try:
             # Clear plot data if possible
-            if hasattr(self, 'main_window') and self.main_window and hasattr(self.main_window, 'clear_plot_data'):
+            if (
+                hasattr(self, "main_window")
+                and self.main_window
+                and hasattr(self.main_window, "clear_plot_data")
+            ):
                 self.main_window.clear_plot_data()
                 self.logger.info("Cleared plot data for memory cleanup")
 
@@ -1034,16 +1110,19 @@ class MainController(QObject):
         Returns:
             True if operation can proceed, False otherwise
         """
-        can_proceed, reason = self.memory_monitor.check_memory_before_operation(estimated_mb)
+        can_proceed, reason = self.memory_monitor.check_memory_before_operation(
+            estimated_mb
+        )
 
         if not can_proceed:
             if self.main_window:
                 from PyQt6.QtWidgets import QMessageBox
+
                 QMessageBox.warning(
                     self.main_window,
                     "Memory Limit",
                     f"Cannot perform operation: {reason}\n\n"
-                    "Try closing other applications or freeing up memory."
+                    "Try closing other applications or freeing up memory.",
                 )
 
         return can_proceed
@@ -1057,7 +1136,9 @@ class MainController(QObject):
         """
         try:
             if not self.project_model or not self.project_model.server_config:
-                self.logger.warning("No project or server configuration available for HTTP client")
+                self.logger.warning(
+                    "No project or server configuration available for HTTP client"
+                )
                 self.http_client = None
                 return False
 
@@ -1065,7 +1146,9 @@ class MainController(QObject):
 
             # Validate server configuration
             if not config.url or not config.bearer_token:
-                self.logger.warning("Incomplete server configuration - missing URL or token")
+                self.logger.warning(
+                    "Incomplete server configuration - missing URL or token"
+                )
                 self.http_client = None
                 return False
 
@@ -1073,12 +1156,14 @@ class MainController(QObject):
             self.http_client = HttpClientService(
                 base_url=config.url,
                 bearer_token=config.bearer_token,
-                error_handler=self.error_handler
+                error_handler=self.error_handler,
             )
 
             # Test connection with health check
             if self.http_client.health_check():
-                self.logger.info(f"HTTP client initialized successfully for {config.url}")
+                self.logger.info(
+                    f"HTTP client initialized successfully for {config.url}"
+                )
                 return True
             else:
                 self.logger.warning("HTTP client health check failed")
@@ -1104,8 +1189,11 @@ class MainController(QObject):
             if not self.http_client:
                 if not self.initialize_http_client():
                     self.error_handler.handle_error(
-                        ValueError("Server connection not available. Check server configuration."),
-                        "Server Connection Error", self.main_window
+                        ValueError(
+                            "Server connection not available. Check server configuration."
+                        ),
+                        "Server Connection Error",
+                        self.main_window,
                     )
                     return False
 
@@ -1117,7 +1205,8 @@ class MainController(QObject):
             if not tob_file:
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' not found in project"),
-                    "File Not Found", self.main_window
+                    "File Not Found",
+                    self.main_window,
                 )
                 return False
 
@@ -1125,7 +1214,8 @@ class MainController(QObject):
             if not Path(tob_file.file_path).exists():
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' not found on disk"),
-                    "File Not Found", self.main_window
+                    "File Not Found",
+                    self.main_window,
                 )
                 return False
 
@@ -1139,11 +1229,15 @@ class MainController(QObject):
                 "data_points": tob_file.data_points,
                 "sensors": tob_file.sensors or [],
                 "project_name": self.project_model.name,
-                "upload_timestamp": tob_file.added_date.isoformat() if tob_file.added_date else None
+                "upload_timestamp": (
+                    tob_file.added_date.isoformat() if tob_file.added_date else None
+                ),
             }
 
             # Upload file
-            upload_result = self.http_client.upload_tob_file(tob_file.file_path, metadata)
+            upload_result = self.http_client.upload_tob_file(
+                tob_file.file_path, metadata
+            )
 
             if upload_result.success:
                 # Update file with job ID if available
@@ -1159,14 +1253,16 @@ class MainController(QObject):
                 # Trigger auto-save
                 self._mark_project_modified()
 
-                self.logger.info(f"Successfully initiated upload for '{file_name}' (job: {upload_result.job_id})")
+                self.logger.info(
+                    f"Successfully initiated upload for '{file_name}' (job: {upload_result.job_id})"
+                )
 
                 # Emit signal for thread-safe GUI update
                 self.show_upload_success.emit(
                     "Upload Started",
                     f"Upload of '{file_name}' to server has been initiated.\n\n"
                     f"Job ID: {upload_result.job_id or 'N/A'}\n"
-                    f"Message: {upload_result.message or 'Upload in progress'}"
+                    f"Message: {upload_result.message or 'Upload in progress'}",
                 )
 
                 return True
@@ -1177,7 +1273,8 @@ class MainController(QObject):
 
                 self.error_handler.handle_error(
                     ValueError(f"Upload failed: {upload_result.message}"),
-                    "Upload Failed", self.main_window
+                    "Upload Failed",
+                    self.main_window,
                 )
                 return False
 
@@ -1203,7 +1300,8 @@ class MainController(QObject):
                 if not self.initialize_http_client():
                     self.error_handler.handle_error(
                         ValueError("Server connection not available"),
-                        "Server Connection Error", self.main_window
+                        "Server Connection Error",
+                        self.main_window,
                     )
                     return
 
@@ -1215,16 +1313,21 @@ class MainController(QObject):
             if not tob_file or not tob_file.server_job_id:
                 self.error_handler.handle_error(
                     ValueError(f"No server job ID available for '{file_name}'"),
-                    "No Job ID", self.main_window
+                    "No Job ID",
+                    self.main_window,
                 )
                 return
 
             # Check processing status first (more detailed)
-            status_result = self.http_client.get_processing_status(tob_file.server_job_id)
+            status_result = self.http_client.get_processing_status(
+                tob_file.server_job_id
+            )
 
             if status_result.status == "error":
                 # Check upload status as fallback
-                status_result = self.http_client.get_upload_status(tob_file.server_job_id)
+                status_result = self.http_client.get_upload_status(
+                    tob_file.server_job_id
+                )
 
             # Update local status based on server response
             if status_result.status in ["completed", "processed"]:
@@ -1272,7 +1375,9 @@ class MainController(QObject):
             for tob_file in self.project_model.tob_files:
                 if tob_file.tob_data and tob_file.tob_data.data is not None:
                     # Calculate memory usage of this TOB file
-                    file_memory = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
+                    file_memory = tob_file.tob_data.data.memory_usage(
+                        deep=True
+                    ).sum() / (1024 * 1024)
                     total_tob_memory += file_memory
 
             # Update memory monitor
@@ -1291,7 +1396,7 @@ class MainController(QObject):
         if self.project_model:
             self.project_model.update_modified_date()
             # For TOB file changes, save immediately instead of waiting
-            if hasattr(self, 'auto_save_enabled') and self.auto_save_enabled:
+            if hasattr(self, "auto_save_enabled") and self.auto_save_enabled:
                 self._perform_immediate_save()
             else:
                 self.trigger_auto_save()
@@ -1306,7 +1411,9 @@ class MainController(QObject):
 
         try:
             self.logger.debug("Performing immediate save...")
-            self.project_service.save_project(self.project_model, self.main_window.current_project_path)
+            self.project_service.save_project(
+                self.project_model, self.main_window.current_project_path
+            )
             self.logger.debug("Immediate save completed successfully")
         except Exception as e:
             self.logger.error("Immediate save failed: %s", e)
@@ -1333,11 +1440,16 @@ class MainController(QObject):
 
             # Update UI with project info
             location = project.server_config.url if project.server_config else ""
-            self.main_window.update_project_info(project.name, location, project.description or "")
+            self.main_window.update_project_info(
+                project.name, location, project.description or ""
+            )
 
             # If project has TOB files, reload their data from disk
             if project.tob_files:
-                self.logger.info("Project has %d TOB files, reloading data...", len(project.tob_files))
+                self.logger.info(
+                    "Project has %d TOB files, reloading data...",
+                    len(project.tob_files),
+                )
                 self._reload_tob_files_data(project)
 
                 # Ensure there's an active TOB file
@@ -1345,17 +1457,28 @@ class MainController(QObject):
                     # Set the first TOB file as active if none is set
                     first_tob_file = project.tob_files[0]
                     project.set_active_tob_file(first_tob_file.file_name)
-                    self.logger.info("Set first TOB file as active: %s", first_tob_file.file_name)
+                    self.logger.info(
+                        "Set first TOB file as active: %s", first_tob_file.file_name
+                    )
 
                 # Auto-plot the active TOB file if it exists and has data
                 if project.active_tob_file:
                     active_tob = project.get_active_tob_file()
-                    if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
-                        self.logger.info("Auto-plotting active TOB file: %s", project.active_tob_file)
+                    if (
+                        active_tob
+                        and active_tob.tob_data
+                        and active_tob.tob_data.data is not None
+                    ):
+                        self.logger.info(
+                            "Auto-plotting active TOB file: %s", project.active_tob_file
+                        )
                         # Simulate selecting the TOB file for plotting
                         self._plot_tob_file(project.active_tob_file)
                     else:
-                        self.logger.warning("Active TOB file '%s' has no data to plot", project.active_tob_file)
+                        self.logger.warning(
+                            "Active TOB file '%s' has no data to plot",
+                            project.active_tob_file,
+                        )
                 else:
                     self.logger.info("No TOB files available for auto-plotting")
             else:
@@ -1390,6 +1513,7 @@ class MainController(QObject):
         """
         try:
             from ..services.tob_service import TOBService
+
             tob_service = TOBService()
 
             reloaded_count = 0
@@ -1399,29 +1523,40 @@ class MainController(QObject):
                 try:
                     # Check if file still exists
                     if not Path(tob_file.file_path).exists():
-                        self.logger.warning("TOB file no longer exists: %s", tob_file.file_path)
+                        self.logger.warning(
+                            "TOB file no longer exists: %s", tob_file.file_path
+                        )
                         tob_file.status = "error"
                         failed_count += 1
                         continue
 
                     # Reload the TOB data
-                    tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
+                    tob_data = tob_service.load_tob_file_with_timeout(
+                        tob_file.file_path
+                    )
 
                     # Update the TOB file data
                     tob_file.tob_data = tob_data
-                    tob_file.data_points = len(tob_data.data) if tob_data.data is not None else 0
+                    tob_file.data_points = (
+                        len(tob_data.data) if tob_data.data is not None else 0
+                    )
                     tob_file.status = "loaded"
 
                     reloaded_count += 1
                     self.logger.debug("Reloaded TOB file: %s", tob_file.file_name)
 
                 except Exception as e:
-                    self.logger.error("Failed to reload TOB file %s: %s", tob_file.file_name, e)
+                    self.logger.error(
+                        "Failed to reload TOB file %s: %s", tob_file.file_name, e
+                    )
                     tob_file.status = "error"
                     failed_count += 1
 
-            self.logger.info("TOB file reload complete: %d reloaded, %d failed",
-                           reloaded_count, failed_count)
+            self.logger.info(
+                "TOB file reload complete: %d reloaded, %d failed",
+                reloaded_count,
+                failed_count,
+            )
 
         except Exception as e:
             self.logger.error("Error reloading TOB files: %s", e)
@@ -1456,11 +1591,13 @@ class MainController(QObject):
                 headers=tob_file.tob_data.headers or {},
                 data=tob_file.tob_data.data,
                 file_path=tob_file.file_path,
-                file_name=tob_file.file_name
+                file_name=tob_file.file_name,
             )
 
             # Check memory usage before loading
-            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
+            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (
+                1024 * 1024
+            )
             if memory_mb > 500:  # Warn if over 500MB
                 self.logger.warning(f"Auto-loading large dataset: {memory_mb:.1f}MB")
                 # Continue with loading for auto-plotting
@@ -1484,19 +1621,35 @@ class MainController(QObject):
                     self.main_window.get_metrics_widgets(), metrics
                 )
             except Exception as e:
-                self.logger.error("Failed to calculate data metrics for auto-plotting: %s", e)
+                self.logger.error(
+                    "Failed to calculate data metrics for auto-plotting: %s", e
+                )
 
             # Update axis limits in UI after plotting
-            if hasattr(self.main_window, 'axis_ui_service') and self.main_window.axis_ui_service:
+            if (
+                hasattr(self.main_window, "axis_ui_service")
+                and self.main_window.axis_ui_service
+            ):
                 # Update all axis limits from the current plot
-                self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "x")
-                self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "y1")
-                if hasattr(self.main_window.plot_widget, 'plot_mode') and self.main_window.plot_widget.plot_mode == "dual":
-                    self.main_window.axis_ui_service._update_manual_values_from_plot(self.main_window, "y2")
+                self.main_window.axis_ui_service._update_manual_values_from_plot(
+                    self.main_window, "x"
+                )
+                self.main_window.axis_ui_service._update_manual_values_from_plot(
+                    self.main_window, "y1"
+                )
+                if (
+                    hasattr(self.main_window.plot_widget, "plot_mode")
+                    and self.main_window.plot_widget.plot_mode == "dual"
+                ):
+                    self.main_window.axis_ui_service._update_manual_values_from_plot(
+                        self.main_window, "y2"
+                    )
 
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
-            data_points = len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
+            data_points = (
+                len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
+            )
 
             self.main_window.show_status_message(
                 f"Auto-loaded '{file_name}' for plotting: {data_points} data points, {sensor_count} sensors"
@@ -1530,12 +1683,22 @@ class MainController(QObject):
         """
         try:
             # Only show dialog if we have both a TOB file and an open project
-            if not self.tob_data_model or not self.project_model or not self.main_window.current_project_path:
+            if (
+                not self.tob_data_model
+                or not self.project_model
+                or not self.main_window.current_project_path
+            ):
                 return
 
             # Check if file is already in project
-            if any(tob.file_name == self.tob_data_model.file_name for tob in self.project_model.tob_files):
-                self.logger.debug("TOB file %s already exists in project", self.tob_data_model.file_name)
+            if any(
+                tob.file_name == self.tob_data_model.file_name
+                for tob in self.project_model.tob_files
+            ):
+                self.logger.debug(
+                    "TOB file %s already exists in project",
+                    self.tob_data_model.file_name,
+                )
                 return
 
             # Import dialog here to avoid circular imports
@@ -1553,14 +1716,18 @@ class MainController(QObject):
                 file_size_mb=file_size_mb,
                 data_points=data_points,
                 sensor_count=sensor_count,
-                project_name=self.project_model.name
+                project_name=self.project_model.name,
             )
 
             result = dialog.exec()
 
             if result and dialog.should_add_to_project:
                 # Add TOB file to project
-                self.logger.info("Adding TOB file %s to project %s", self.tob_data_model.file_name, self.project_model.name)
+                self.logger.info(
+                    "Adding TOB file %s to project %s",
+                    self.tob_data_model.file_name,
+                    self.project_model.name,
+                )
 
                 success = self.project_model.add_tob_file(
                     file_path=self.tob_data_model.file_path or "",
@@ -1570,7 +1737,7 @@ class MainController(QObject):
                     data=self.tob_data_model.data,
                     raw_data=None,  # Could be added later if needed
                     data_points=self.tob_data_model.data_points,
-                    sensors=self.tob_data_model.sensors
+                    sensors=self.tob_data_model.sensors,
                 )
 
                 if success:
@@ -1581,14 +1748,14 @@ class MainController(QObject):
                     # Show success message
                     self.main_window.display_status_message(
                         f"TOB file '{self.tob_data_model.file_name}' added to project",
-                        3000
+                        3000,
                     )
                 else:
                     self.logger.error("Failed to add TOB file to project")
                     self.error_handler.handle_error(
                         Exception("Failed to add TOB file to project"),
                         "Add TOB File Error",
-                        self.main_window
+                        self.main_window,
                     )
             else:
                 self.logger.debug("User chose not to add TOB file to project")

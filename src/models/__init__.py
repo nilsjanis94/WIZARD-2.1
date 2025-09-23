@@ -10,7 +10,7 @@ from .project_model import (
     TOBFileInfo,
     TOBFileData,
     TOBFileStatus,
-    ServerConfig
+    ServerConfig,
 )
 from .tob_data_model import TOBDataModel
 

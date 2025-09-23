@@ -24,7 +24,9 @@ class AxisUIService:
         """Initialize the Axis UI Service."""
         self.logger = logging.getLogger(__name__)
 
-    def setup_axis_controls(self, main_window: "MainWindow", time_range: Optional[Dict[str, Any]] = None) -> None:
+    def setup_axis_controls(
+        self, main_window: "MainWindow", time_range: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Initialize axis control widgets and their states.
 

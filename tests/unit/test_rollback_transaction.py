@@ -25,15 +25,15 @@ class TestRollbackTransaction:
         project = ProjectModel(name="Test Project")
 
         # Add a TOB file
-        test_data = pd.DataFrame({'time': [1, 2], 'sensor': [20.1, 20.5]})
+        test_data = pd.DataFrame({"time": [1, 2], "sensor": [20.1, 20.5]})
         project.add_tob_file(
             file_path="/test/file.TOB",
             file_name="test.TOB",
             file_size=1024,
-            headers={'version': '1.0'},
+            headers={"version": "1.0"},
             dataframe=test_data,
             data_points=2,
-            sensors=['sensor']
+            sensors=["sensor"],
         )
 
         transaction = RollbackTransaction(project)
@@ -44,11 +44,11 @@ class TestRollbackTransaction:
         assert len(transaction.backup_tob_files) == 1
 
         backup = transaction.backup_tob_files[0]
-        assert backup['file_name'] == 'test.TOB'
-        assert backup['file_path'] == '/test/file.TOB'
-        assert backup['data_points'] == 2
-        assert backup['sensors'] == ['sensor']
-        assert backup['tob_data'] is not None
+        assert backup["file_name"] == "test.TOB"
+        assert backup["file_path"] == "/test/file.TOB"
+        assert backup["data_points"] == 2
+        assert backup["sensors"] == ["sensor"]
+        assert backup["tob_data"] is not None
 
     def test_backup_nonexistent_file(self):
         """Test backing up a non-existent TOB file."""
@@ -83,7 +83,7 @@ class TestRollbackTransaction:
                 file_name="test.TOB",
                 file_size=1024,
                 data_points=1,
-                sensors=['sensor']
+                sensors=["sensor"],
             )
             transaction.record_operation("Added file")
 
@@ -102,7 +102,7 @@ class TestRollbackTransaction:
             file_name="initial.TOB",
             file_size=512,
             data_points=1,
-            sensors=['initial']
+            sensors=["initial"],
         )
 
         transaction = RollbackTransaction(project)
@@ -110,12 +110,12 @@ class TestRollbackTransaction:
         try:
             with transaction.transaction():
                 # Modify existing file
-                test_data = pd.DataFrame({'time': [1], 'sensor': [25.0]})
+                test_data = pd.DataFrame({"time": [1], "sensor": [25.0]})
                 project.update_tob_file_data(
                     file_name="initial.TOB",
                     dataframe=test_data,
                     data_points=1,
-                    sensors=['modified']
+                    sensors=["modified"],
                 )
                 transaction.record_operation("Modified file")
 
@@ -125,7 +125,7 @@ class TestRollbackTransaction:
                     file_name="new.TOB",
                     file_size=1024,
                     data_points=1,
-                    sensors=['new']
+                    sensors=["new"],
                 )
                 transaction.record_operation("Added new file")
 
@@ -143,7 +143,7 @@ class TestRollbackTransaction:
         new_file = project.get_tob_file("new.TOB")
 
         assert initial_file is not None
-        assert initial_file.sensors == ['initial']  # Should be restored
+        assert initial_file.sensors == ["initial"]  # Should be restored
         assert initial_file.data_points == 1  # Should be restored
         assert new_file is None  # Should be removed
 
@@ -158,7 +158,7 @@ class TestRollbackTransaction:
             file_name="file.TOB",
             file_size=1024,
             data_points=1,
-            sensors=['sensor']
+            sensors=["sensor"],
         )
 
         success = transaction.rollback()

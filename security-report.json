@@ -1,17 +1,17 @@
 {
   "errors": [],
-  "generated_at": "2025-09-21T20:07:35Z",
+  "generated_at": "2025-09-23T08:38:13Z",
   "metrics": {
     "_totals": {
-      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.HIGH": 1,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 2,
+      "CONFIDENCE.MEDIUM": 1,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 5951,
+      "loc": 10302,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -50,7 +50,20 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 425,
+      "loc": 1297,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/controllers/plot_controller.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 270,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -63,7 +76,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 74,
+      "loc": 175,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -141,7 +154,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 10,
+      "loc": 22,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -154,7 +167,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 146,
+      "loc": 502,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -167,7 +180,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 182,
+      "loc": 184,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -180,7 +193,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 61,
+      "loc": 67,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -249,6 +262,32 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "src/services/http_client_service.py": {
+      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 351,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/services/memory_monitor_service.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 288,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "src/services/plot_service.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -258,7 +297,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 603,
+      "loc": 882,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -275,6 +314,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "src/services/project_service.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 231,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "src/services/tob_service.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -284,7 +336,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 220,
+      "loc": 341,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -297,7 +349,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 412,
+      "loc": 415,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -336,7 +388,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 227,
+      "loc": 172,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -388,7 +440,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 17,
+      "loc": 19,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -405,6 +457,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "src/views/dialogs/header_info_dialog.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 101,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "src/views/dialogs/processing_list_dialog.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -414,7 +479,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 183,
+      "loc": 854,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -440,20 +505,20 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 125,
+      "loc": 239,
       "nosec": 0,
       "skipped_tests": 0
     },
     "src/views/main_window.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 2,
+      "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 2,
+      "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 841,
+      "loc": 1467,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -473,44 +538,45 @@
   },
   "results": [
     {
-      "code": "531                 # TODO: Show password dialog\n532                 password = \"default_password\"  # Placeholder\n533                 self.logger.info(\"Opening project file: %s\", file_path)\n",
-      "col_offset": 27,
-      "end_col_offset": 45,
-      "filename": "src/views/main_window.py",
-      "issue_confidence": "MEDIUM",
+      "code": "441             self.session.close()\n442         except:\n443             pass\n",
+      "col_offset": 8,
+      "end_col_offset": 16,
+      "filename": "src/services/http_client_service.py",
+      "issue_confidence": "HIGH",
       "issue_cwe": {
-        "id": 259,
-        "link": "https://cwe.mitre.org/data/definitions/259.html"
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
       },
       "issue_severity": "LOW",
-      "issue_text": "Possible hardcoded password: 'default_password'",
-      "line_number": 532,
+      "issue_text": "Try, Except, Pass detected.",
+      "line_number": 442,
       "line_range": [
-        532
+        442,
+        443
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b105_hardcoded_password_string.html",
-      "test_id": "B105",
-      "test_name": "hardcoded_password_string"
+      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b110_try_except_pass.html",
+      "test_id": "B110",
+      "test_name": "try_except_pass"
     },
     {
-      "code": "558                 # TODO: Show project creation dialog with password\n559                 password = \"default_password\"  # Placeholder\n560                 self.logger.info(\"Creating project file: %s\", file_path)\n",
-      "col_offset": 27,
-      "end_col_offset": 45,
-      "filename": "src/views/main_window.py",
+      "code": "304             if not project.server_config:\n305                 project.server_config = ServerConfig(url=\"\", bearer_token=\"\")\n306 \n",
+      "col_offset": 40,
+      "end_col_offset": 77,
+      "filename": "src/services/project_service.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
         "link": "https://cwe.mitre.org/data/definitions/259.html"
       },
       "issue_severity": "LOW",
-      "issue_text": "Possible hardcoded password: 'default_password'",
-      "line_number": 559,
+      "issue_text": "Possible hardcoded password: ''",
+      "line_number": 305,
       "line_range": [
-        559
+        305
       ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b105_hardcoded_password_string.html",
-      "test_id": "B105",
-      "test_name": "hardcoded_password_string"
+      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b106_hardcoded_password_funcarg.html",
+      "test_id": "B106",
+      "test_name": "hardcoded_password_funcarg"
     }
   ]
 }

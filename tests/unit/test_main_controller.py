@@ -250,12 +250,16 @@ class TestMainController:
         main_controller.plot_controller.update_axis_limits = Mock()
         main_controller.update_x_axis_limits(10.0, 100.0)
 
-        main_controller.plot_controller.update_axis_limits.assert_called_once_with("x", 10.0, 100.0)
+        main_controller.plot_controller.update_axis_limits.assert_called_once_with(
+            "x", 10.0, 100.0
+        )
 
         # Test Y1-axis update calls plot controller
         main_controller.update_y1_axis_limits(5.0, 50.0)
 
-        main_controller.plot_controller.update_axis_limits.assert_called_with("y1", 5.0, 50.0)
+        main_controller.plot_controller.update_axis_limits.assert_called_with(
+            "y1", 5.0, 50.0
+        )
 
     def test_plot_controller_axis_signal_flow(self, main_controller, mock_main_window):
         """Test that plot controller axis changes trigger view updates."""
@@ -263,12 +267,16 @@ class TestMainController:
         mock_main_window._handle_plot_axis_limits_update = Mock()
 
         # Simulate plot controller sending axis limits changed signal
-        main_controller._handle_axis_limits_changed('x', 0.0, 100.0)
+        main_controller._handle_axis_limits_changed("x", 0.0, 100.0)
 
         # Should emit signal to view
-        mock_main_window._handle_plot_axis_limits_update.assert_called_once_with('x', 0.0, 100.0)
+        mock_main_window._handle_plot_axis_limits_update.assert_called_once_with(
+            "x", 0.0, 100.0
+        )
 
-    def test_update_axis_settings_calls_plot_widget(self, main_controller, mock_main_window):
+    def test_update_axis_settings_calls_plot_widget(
+        self, main_controller, mock_main_window
+    ):
         """Test that axis settings updates call the plot widget."""
         # Setup mock plot widget
         mock_plot_widget = Mock()

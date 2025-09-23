@@ -30,7 +30,7 @@ class ProjectDialog(QDialog):
         project_name: str = "",
         project_description: str = "",
         enter_key: str = "",
-        server_url: str = ""
+        server_url: str = "",
     ):
         """
         Initialize project dialog.
@@ -49,7 +49,13 @@ class ProjectDialog(QDialog):
 
         self._setup_ui(project_name, project_description, enter_key, server_url)
 
-    def _setup_ui(self, project_name: str, project_description: str, enter_key: str, server_url: str) -> None:
+    def _setup_ui(
+        self,
+        project_name: str,
+        project_description: str,
+        enter_key: str,
+        server_url: str,
+    ) -> None:
         """Setup the dialog UI."""
         layout = QVBoxLayout(self)
 
@@ -63,8 +69,12 @@ class ProjectDialog(QDialog):
 
         # Enter key (for server authentication)
         self.enter_key_edit = QLineEdit(enter_key)
-        self.enter_key_edit.setPlaceholderText("Enter authentication key for server access")
-        self.enter_key_edit.setEchoMode(QLineEdit.EchoMode.Password)  # Hide sensitive data
+        self.enter_key_edit.setPlaceholderText(
+            "Enter authentication key for server access"
+        )
+        self.enter_key_edit.setEchoMode(
+            QLineEdit.EchoMode.Password
+        )  # Hide sensitive data
         form_layout.addRow("Enter Key:", self.enter_key_edit)
 
         # Server URL
@@ -208,7 +218,7 @@ class TOBProjectAssignmentDialog(QDialog):
         file_size_mb: float = 0.0,
         data_points: int = 0,
         sensor_count: int = 0,
-        project_name: str = ""
+        project_name: str = "",
     ):
         """
         Initialize TOB project assignment dialog.
@@ -237,14 +247,16 @@ class TOBProjectAssignmentDialog(QDialog):
         file_size_mb: float,
         data_points: int,
         sensor_count: int,
-        project_name: str
+        project_name: str,
     ) -> None:
         """Setup the dialog UI components."""
         layout = QVBoxLayout()
 
         # Header message
         header_label = QLabel("TOB File Successfully Loaded!")
-        header_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #3AAA35;")
+        header_label.setStyleSheet(
+            "font-weight: bold; font-size: 14px; color: #3AAA35;"
+        )
         layout.addWidget(header_label)
 
         # File information

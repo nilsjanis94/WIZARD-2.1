@@ -59,6 +59,7 @@ class ProcessingListDialog(QDialog):
 
         # Initialize logger
         import logging
+
         self.logger = logging.getLogger(__name__)
 
         # Store project model reference
@@ -102,7 +103,7 @@ class ProcessingListDialog(QDialog):
                 break
 
         # Trigger auto-save if connected to controller
-        if hasattr(self.parent(), 'controller') and self.parent().controller:
+        if hasattr(self.parent(), "controller") and self.parent().controller:
             self.parent().controller._mark_project_modified()
 
     def get_tob_file_status(self, file_name: str) -> Optional[str]:
@@ -171,7 +172,9 @@ TOB File Details: {file_name}
 """
 
         if tob_file.upload_date:
-            details += f"⬆️ Uploaded: {tob_file.upload_date.strftime('%Y-%m-%d %H:%M')}\n"
+            details += (
+                f"⬆️ Uploaded: {tob_file.upload_date.strftime('%Y-%m-%d %H:%M')}\n"
+            )
         if tob_file.server_job_id:
             details += f"🆔 Job ID: {tob_file.server_job_id}\n"
         if tob_file.server_status:
@@ -188,7 +191,7 @@ TOB File Details: {file_name}
         Args:
             file_name: Name of the TOB file to upload
         """
-        if not hasattr(self.parent(), 'controller') or not self.parent().controller:
+        if not hasattr(self.parent(), "controller") or not self.parent().controller:
             self.logger.warning("Controller not available for upload.")
             return
 
@@ -206,7 +209,7 @@ TOB File Details: {file_name}
         Args:
             file_name: Name of the TOB file
         """
-        if not hasattr(self.parent(), 'controller') or not self.parent().controller:
+        if not hasattr(self.parent(), "controller") or not self.parent().controller:
             self.logger.warning("Controller not available for status check.")
             return
 
@@ -229,10 +232,11 @@ TOB File Details: {file_name}
             return
 
         reply = QMessageBox.question(
-            self, "Reload File",
+            self,
+            "Reload File",
             f"Are you sure you want to reload '{file_name}' from disk?\n\n"
             "This will replace the current data with fresh data from the file.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply != QMessageBox.StandardButton.Yes:
@@ -248,7 +252,9 @@ TOB File Details: {file_name}
                 rollback_transaction.record_operation(f"Reloaded TOB file: {file_name}")
 
                 # Show progress
-                progress = QProgressDialog(f"Reloading {file_name}...", "Cancel", 0, 100, self)
+                progress = QProgressDialog(
+                    f"Reloading {file_name}...", "Cancel", 0, 100, self
+                )
                 progress.setWindowModality(Qt.WindowModality.WindowModal)
                 progress.show()
 
@@ -257,15 +263,20 @@ TOB File Details: {file_name}
 
                 # Validate file exists and is accessible
                 if not Path(tob_file.file_path).exists():
-                    raise FileNotFoundError(f"File no longer exists: {tob_file.file_path}")
+                    raise FileNotFoundError(
+                        f"File no longer exists: {tob_file.file_path}"
+                    )
 
                 progress.setValue(30)
                 progress.setLabelText("Loading TOB data...")
 
                 # Reload the file
                 from ...services.tob_service import TOBService
+
                 tob_service = TOBService()
-                new_tob_data = tob_service.load_tob_file_with_timeout(tob_file.file_path)
+                new_tob_data = tob_service.load_tob_file_with_timeout(
+                    tob_file.file_path
+                )
 
                 progress.setValue(70)
                 progress.setLabelText("Updating project data...")
@@ -275,8 +286,10 @@ TOB File Details: {file_name}
                     file_name=file_name,
                     headers=new_tob_data.headers,
                     dataframe=new_tob_data.data,
-                    data_points=len(new_tob_data.data) if new_tob_data.data is not None else 0,
-                    sensors=self._extract_sensors_from_data(new_tob_data.data)
+                    data_points=(
+                        len(new_tob_data.data) if new_tob_data.data is not None else 0
+                    ),
+                    sensors=self._extract_sensors_from_data(new_tob_data.data),
                 )
 
                 if not success:
@@ -286,13 +299,15 @@ TOB File Details: {file_name}
 
             # Transaction completed successfully
             # Trigger auto-save
-            if hasattr(self.parent(), 'controller') and self.parent().controller:
+            if hasattr(self.parent(), "controller") and self.parent().controller:
                 self.parent().controller._mark_project_modified()
 
             if success:
                 # Refresh table
                 self._populate_table()
-                self.logger.info(f"'{file_name}' has been successfully reloaded from disk.")
+                self.logger.info(
+                    f"'{file_name}' has been successfully reloaded from disk."
+                )
             else:
                 self.logger.warning(f"Failed to update '{file_name}' data in project.")
 
@@ -315,11 +330,20 @@ TOB File Details: {file_name}
             return []
 
         # Exclude non-sensor columns
-        exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
-                      'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
+        exclude_cols = {
+            "time",
+            "timestamp",
+            "datasets",
+            "date",
+            "datetime",
+            "vbatt",
+            "vaccu",
+            "press",
+            "pressure",
+            "battery",
+        }
 
-        sensors = [col for col in dataframe.columns
-                  if col.lower() not in exclude_cols]
+        sensors = [col for col in dataframe.columns if col.lower() not in exclude_cols]
         return sensors
 
     def _reset_file_status(self, file_name: str) -> None:
@@ -330,10 +354,11 @@ TOB File Details: {file_name}
             file_name: Name of the TOB file
         """
         reply = QMessageBox.question(
-            self, "Reset Status",
+            self,
+            "Reset Status",
             f"Reset status of '{file_name}' to 'loaded'?\n\n"
             "This allows the file to be uploaded again.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -348,9 +373,10 @@ TOB File Details: {file_name}
             file_name: Name of the TOB file
         """
         error_msg, ok = QInputDialog.getText(
-            self, "Mark as Error",
+            self,
+            "Mark as Error",
             f"Enter error message for '{file_name}':",
-            text="Manual error marking"
+            text="Manual error marking",
         )
 
         if ok and error_msg:
@@ -372,15 +398,18 @@ TOB File Details: {file_name}
             file_name: Name of the TOB file
         """
         reply = QMessageBox.question(
-            self, "Mark as Processed",
+            self,
+            "Mark as Processed",
             f"Mark '{file_name}' as successfully processed?\n\n"
             "This indicates the file has been fully processed by the server.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
             self.update_tob_file_status(file_name, "processed")
-            self.logger.info(f"'{file_name}' has been marked as successfully processed.")
+            self.logger.info(
+                f"'{file_name}' has been marked as successfully processed."
+            )
 
     def _populate_table(self) -> None:
         """
@@ -396,15 +425,21 @@ TOB File Details: {file_name}
             self.table_widget.insertRow(row_position)
 
             # File name
-            self.table_widget.setItem(row_position, 0, QTableWidgetItem(tob_file.file_name))
+            self.table_widget.setItem(
+                row_position, 0, QTableWidgetItem(tob_file.file_name)
+            )
 
             # File size (formatted)
             size_mb = tob_file.file_size / (1024 * 1024)
-            self.table_widget.setItem(row_position, 1, QTableWidgetItem(f"{size_mb:.1f} MB"))
+            self.table_widget.setItem(
+                row_position, 1, QTableWidgetItem(f"{size_mb:.1f} MB")
+            )
 
             # Data points
             data_points = tob_file.data_points or 0
-            self.table_widget.setItem(row_position, 2, QTableWidgetItem(str(data_points)))
+            self.table_widget.setItem(
+                row_position, 2, QTableWidgetItem(str(data_points))
+            )
 
             # Sensors
             sensors_str = ", ".join(tob_file.sensors) if tob_file.sensors else "None"
@@ -418,7 +453,9 @@ TOB File Details: {file_name}
             self.table_widget.setItem(row_position, 4, status_item)
 
             # Store file name for later reference
-            self.table_widget.item(row_position, 0).setData(Qt.ItemDataRole.UserRole, tob_file.file_name)
+            self.table_widget.item(row_position, 0).setData(
+                Qt.ItemDataRole.UserRole, tob_file.file_name
+            )
 
     def _get_status_text(self, status: str) -> str:
         """
@@ -436,7 +473,7 @@ TOB File Details: {file_name}
             "uploaded": "Uploaded",
             "processing": "Processing...",
             "processed": "Processed",
-            "error": "Error"
+            "error": "Error",
         }
         return status_texts.get(status, status)
 
@@ -456,7 +493,7 @@ TOB File Details: {file_name}
             "uploaded": "File has been successfully uploaded to the server",
             "processing": "Server is processing the uploaded file",
             "processed": "File processing has been completed successfully",
-            "error": "An error occurred during upload or processing"
+            "error": "An error occurred during upload or processing",
         }
         return descriptions.get(status, "Unknown status")
 
@@ -475,17 +512,18 @@ TOB File Details: {file_name}
         pixmap = QPixmap(icon_size, icon_size)
         pixmap.fill(Qt.GlobalColor.transparent)
 
-        from PyQt6.QtGui import QPainter, QBrush
+        from PyQt6.QtGui import QBrush, QPainter
+
         painter = QPainter(pixmap)
 
         # Define colors for different statuses
         colors = {
-            "loaded": QColor("#4CAF50"),      # Green - file loaded successfully
-            "uploading": QColor("#FF9800"),   # Orange - currently uploading
-            "uploaded": QColor("#2196F3"),    # Blue - uploaded to server
+            "loaded": QColor("#4CAF50"),  # Green - file loaded successfully
+            "uploading": QColor("#FF9800"),  # Orange - currently uploading
+            "uploaded": QColor("#2196F3"),  # Blue - uploaded to server
             "processing": QColor("#FF5722"),  # Deep orange - being processed
-            "processed": QColor("#9C27B0"),   # Purple - processing complete
-            "error": QColor("#F44336"),       # Red - error occurred
+            "processed": QColor("#9C27B0"),  # Purple - processing complete
+            "error": QColor("#F44336"),  # Red - error occurred
         }
 
         # Get color for status, default to gray if unknown
@@ -494,13 +532,14 @@ TOB File Details: {file_name}
         # Draw colored circle
         painter.setBrush(QBrush(color))
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(2, 2, icon_size-4, icon_size-4)
+        painter.drawEllipse(2, 2, icon_size - 4, icon_size - 4)
 
         # Add white border for better visibility
         painter.setBrush(Qt.BrushStyle.NoBrush)
         from PyQt6.QtGui import QPen
+
         painter.setPen(QPen(QColor("#FFFFFF"), 1))
-        painter.drawEllipse(1, 1, icon_size-2, icon_size-2)
+        painter.drawEllipse(1, 1, icon_size - 2, icon_size - 2)
 
         painter.end()
 
@@ -551,14 +590,18 @@ TOB File Details: {file_name}
             ("uploaded", "Uploaded", "#2196F3"),
             ("processing", "Processing", "#FF5722"),
             ("processed", "Processed", "#9C27B0"),
-            ("error", "Error", "#F44336")
+            ("error", "Error", "#F44336"),
         ]
 
         for status_key, display_text, color in status_items:
             # Create a small colored label
             color_label = QLabel("●")
-            color_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
-            color_label.setToolTip(f"{display_text}: {self._get_status_description(status_key)}")
+            color_label.setStyleSheet(
+                f"color: {color}; font-size: 14px; font-weight: bold;"
+            )
+            color_label.setToolTip(
+                f"{display_text}: {self._get_status_description(status_key)}"
+            )
 
             text_label = QLabel(display_text)
             text_label.setStyleSheet("font-size: 11px; margin-left: 2px;")
@@ -646,14 +689,18 @@ TOB File Details: {file_name}
             ("uploaded", "Uploaded", "#2196F3"),
             ("processing", "Processing", "#FF5722"),
             ("processed", "Processed", "#9C27B0"),
-            ("error", "Error", "#F44336")
+            ("error", "Error", "#F44336"),
         ]
 
         for status_key, display_text, color in status_items:
             # Create a small colored label
             color_label = QLabel("●")
-            color_label.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
-            color_label.setToolTip(f"{display_text}: {self._get_status_description(status_key)}")
+            color_label.setStyleSheet(
+                f"color: {color}; font-size: 14px; font-weight: bold;"
+            )
+            color_label.setToolTip(
+                f"{display_text}: {self._get_status_description(status_key)}"
+            )
 
             text_label = QLabel(display_text)
             text_label.setStyleSheet("font-size: 11px; margin-left: 2px;")
@@ -721,7 +768,9 @@ TOB File Details: {file_name}
 
         view_details_action = QAction("ℹ️ View Details", self)
         view_details_action.setToolTip("Show detailed information about this TOB file")
-        view_details_action.triggered.connect(lambda: self._view_file_details(file_name))
+        view_details_action.triggered.connect(
+            lambda: self._view_file_details(file_name)
+        )
         menu.addAction(view_details_action)
 
         menu.addSeparator()
@@ -729,14 +778,20 @@ TOB File Details: {file_name}
         # Server operations (only for appropriate statuses)
         if current_status in ["loaded", "error"]:
             upload_action = QAction("⬆️ Upload to Server", self)
-            upload_action.setToolTip("Upload this TOB file to the configured server for processing")
+            upload_action.setToolTip(
+                "Upload this TOB file to the configured server for processing"
+            )
             upload_action.triggered.connect(lambda: self._upload_to_server(file_name))
             menu.addAction(upload_action)
 
         if current_status in ["uploaded", "processing", "processed"]:
             check_status_action = QAction("🔍 Check Server Status", self)
-            check_status_action.setToolTip("Check the current processing status on the server")
-            check_status_action.triggered.connect(lambda: self._check_server_status(file_name))
+            check_status_action.setToolTip(
+                "Check the current processing status on the server"
+            )
+            check_status_action.triggered.connect(
+                lambda: self._check_server_status(file_name)
+            )
             menu.addAction(check_status_action)
 
         # Reload operations
@@ -756,7 +811,9 @@ TOB File Details: {file_name}
         if current_status != "loaded":
             reset_status_action = QAction("🔄 Reset to Loaded", self)
             reset_status_action.setToolTip("Reset status to 'loaded' (for re-upload)")
-            reset_status_action.triggered.connect(lambda: self._reset_file_status(file_name))
+            reset_status_action.triggered.connect(
+                lambda: self._reset_file_status(file_name)
+            )
             status_menu.addAction(reset_status_action)
 
         mark_error_action = QAction("❌ Mark as Error", self)
@@ -767,7 +824,9 @@ TOB File Details: {file_name}
         if current_status in ["processing", "uploaded"]:
             mark_processed_action = QAction("✅ Mark as Processed", self)
             mark_processed_action.setToolTip("Mark this file as successfully processed")
-            mark_processed_action.triggered.connect(lambda: self._mark_file_processed(file_name))
+            mark_processed_action.triggered.connect(
+                lambda: self._mark_file_processed(file_name)
+            )
             status_menu.addAction(mark_processed_action)
 
         # Remove action
@@ -810,30 +869,46 @@ TOB File Details: {file_name}
                         # Check limits
                         can_add, reason = self.project_model.can_add_tob_file(file_size)
                         if not can_add:
-                            self.logger.warning(f"Cannot add file {file_name}: {reason}")
+                            self.logger.warning(
+                                f"Cannot add file {file_name}: {reason}"
+                            )
                             skipped_count += 1
                             continue
 
                         # Check memory requirements
-                        if hasattr(self.parent(), 'controller') and self.parent().controller:
-                            estimated_mb = file_size / (1024 * 1024) * 2.5  # Rough estimate
-                            if not self.parent().controller.check_memory_for_tob_operation(estimated_mb):
-                                self.logger.warning(f"Memory limit exceeded for {file_name}: Insufficient memory")
+                        if (
+                            hasattr(self.parent(), "controller")
+                            and self.parent().controller
+                        ):
+                            estimated_mb = (
+                                file_size / (1024 * 1024) * 2.5
+                            )  # Rough estimate
+                            if not self.parent().controller.check_memory_for_tob_operation(
+                                estimated_mb
+                            ):
+                                self.logger.warning(
+                                    f"Memory limit exceeded for {file_name}: Insufficient memory"
+                                )
                                 skipped_count += 1
                                 continue
 
                         # Validate file before loading
                         from ...services.tob_service import TOBService
+
                         tob_service = TOBService()
 
                         validation = tob_service.validate_tob_file(file_path)
-                        if not validation['valid']:
-                            self.logger.warning(f"Validation failed for {file_name}: {validation['error_message']}")
+                        if not validation["valid"]:
+                            self.logger.warning(
+                                f"Validation failed for {file_name}: {validation['error_message']}"
+                            )
                             skipped_count += 1
                             continue
 
                         # Show progress dialog for loading
-                        progress = QProgressDialog(f"Loading {file_name}...", "Cancel", 0, 100, self)
+                        progress = QProgressDialog(
+                            f"Loading {file_name}...", "Cancel", 0, 100, self
+                        )
                         progress.setWindowModality(Qt.WindowModality.WindowModal)
                         progress.setAutoClose(True)
                         progress.setAutoReset(True)
@@ -850,14 +925,29 @@ TOB File Details: {file_name}
                             progress.setLabelText("Processing data...")
 
                             # Extract metadata
-                            data_points = len(tob_data.data) if tob_data.data is not None else 0
+                            data_points = (
+                                len(tob_data.data) if tob_data.data is not None else 0
+                            )
                             sensors = []
                             if tob_data.data is not None and not tob_data.data.empty:
                                 # Extract sensor columns (exclude time, metadata columns)
-                                exclude_cols = {'time', 'timestamp', 'datasets', 'date', 'datetime',
-                                              'vbatt', 'vaccu', 'press', 'pressure', 'battery'}
-                                sensors = [col for col in tob_data.data.columns
-                                         if col.lower() not in exclude_cols]
+                                exclude_cols = {
+                                    "time",
+                                    "timestamp",
+                                    "datasets",
+                                    "date",
+                                    "datetime",
+                                    "vbatt",
+                                    "vaccu",
+                                    "press",
+                                    "pressure",
+                                    "battery",
+                                }
+                                sensors = [
+                                    col
+                                    for col in tob_data.data.columns
+                                    if col.lower() not in exclude_cols
+                                ]
 
                             progress.setValue(80)
                             progress.setLabelText("Adding to project...")
@@ -871,7 +961,7 @@ TOB File Details: {file_name}
                                 data=tob_data.data,
                                 raw_data="",  # TODO: Store raw data if needed
                                 data_points=data_points,
-                                sensors=sensors
+                                sensors=sensors,
                             )
 
                             if success:
@@ -880,20 +970,36 @@ TOB File Details: {file_name}
                                     self.project_model.set_active_tob_file(file_name)
 
                                 # Record successful addition for potential rollback
-                                rollback_transaction.record_operation(f"Added TOB file: {file_name}")
+                                rollback_transaction.record_operation(
+                                    f"Added TOB file: {file_name}"
+                                )
                                 added_count += 1
                                 self.file_added.emit(file_path)
 
                                 # Debug logging
-                                self.logger.info(f"Successfully added TOB file: {file_name}")
-                                self.logger.info(f"Data points: {data_points}, Sensors: {len(sensors)}")
-                                self.logger.info(f"DataFrame shape: {tob_data.data.shape if tob_data.data is not None else 'None'}")
+                                self.logger.info(
+                                    f"Successfully added TOB file: {file_name}"
+                                )
+                                self.logger.info(
+                                    f"Data points: {data_points}, Sensors: {len(sensors)}"
+                                )
+                                self.logger.info(
+                                    f"DataFrame shape: {tob_data.data.shape if tob_data.data is not None else 'None'}"
+                                )
 
                                 # Update memory monitor with new TOB data size
-                                if hasattr(self.parent(), 'controller') and self.parent().controller:
-                                    tob_memory_mb = (len(tob_data.data) if tob_data.data is not None else 0) * 0.001  # Rough estimate
+                                if (
+                                    hasattr(self.parent(), "controller")
+                                    and self.parent().controller
+                                ):
+                                    tob_memory_mb = (
+                                        len(tob_data.data)
+                                        if tob_data.data is not None
+                                        else 0
+                                    ) * 0.001  # Rough estimate
                                     self.parent().controller.memory_monitor.update_tob_memory_usage(
-                                        self.parent().controller.memory_monitor.tob_memory_usage + tob_memory_mb
+                                        self.parent().controller.memory_monitor.tob_memory_usage
+                                        + tob_memory_mb
                                     )
                             else:
                                 skipped_count += 1
@@ -901,7 +1007,9 @@ TOB File Details: {file_name}
                             progress.setValue(100)
 
                         except TimeoutError:
-                            self.logger.error(f"Loading {file_name} timed out. File may be too large or corrupted.")
+                            self.logger.error(
+                                f"Loading {file_name} timed out. File may be too large or corrupted."
+                            )
                             skipped_count += 1
                             continue
                         except Exception as e:
@@ -912,7 +1020,9 @@ TOB File Details: {file_name}
                             progress.close()
 
                     except Exception as e:
-                        self.logger.error(f"Error adding {Path(file_path).name}: {str(e)}")
+                        self.logger.error(
+                            f"Error adding {Path(file_path).name}: {str(e)}"
+                        )
                         skipped_count += 1
                         # Re-raise to trigger rollback
                         raise
@@ -923,15 +1033,23 @@ TOB File Details: {file_name}
 
             # Show result
             if added_count > 0:
-                self.logger.info(f"Successfully added {added_count} file(s)." +
-                                (f" Skipped {skipped_count} file(s)." if skipped_count > 0 else ""))
+                self.logger.info(
+                    f"Successfully added {added_count} file(s)."
+                    + (
+                        f" Skipped {skipped_count} file(s)."
+                        if skipped_count > 0
+                        else ""
+                    )
+                )
                 # Trigger auto-save
-                if hasattr(self.parent(), 'controller') and self.parent().controller:
+                if hasattr(self.parent(), "controller") and self.parent().controller:
                     self.parent().controller._mark_project_modified()
 
         except Exception as e:
             # Rollback was automatically performed by the transaction context manager
-            self.logger.error(f"Failed to import TOB files. All changes have been rolled back. Error: {str(e)}")
+            self.logger.error(
+                f"Failed to import TOB files. All changes have been rolled back. Error: {str(e)}"
+            )
             # Refresh table to show rolled back state
             self._populate_table()
 
@@ -962,18 +1080,26 @@ TOB File Details: {file_name}
                     if success:
                         self._populate_table()  # Refresh table
                         self.file_removed.emit(file_name)
-                        self.logger.info(f"'{file_name}' has been removed from the project.")
+                        self.logger.info(
+                            f"'{file_name}' has been removed from the project."
+                        )
 
                         # Clear plot if this was the active file
-                        if (self.project_model.active_tob_file == file_name and
-                            hasattr(self.parent(), 'clear_plot_data')):
+                        if self.project_model.active_tob_file == file_name and hasattr(
+                            self.parent(), "clear_plot_data"
+                        ):
                             self.parent().clear_plot_data()
 
                         # Trigger auto-save
-                        if hasattr(self.parent(), 'controller') and self.parent().controller:
+                        if (
+                            hasattr(self.parent(), "controller")
+                            and self.parent().controller
+                        ):
                             self.parent().controller._mark_project_modified()
                     else:
-                        self.logger.warning(f"Could not remove '{file_name}' from the project.")
+                        self.logger.warning(
+                            f"Could not remove '{file_name}' from the project."
+                        )
 
     def _plot_selected_file(self) -> None:
         """Plot the selected file."""
@@ -999,7 +1125,9 @@ TOB File Details: {file_name}
                     # Update table to show active state
                     self._populate_table()
                 else:
-                    self.logger.warning(f"Could not find file '{file_name}' in project.")
+                    self.logger.warning(
+                        f"Could not find file '{file_name}' in project."
+                    )
 
     def update_file_list(self, files: List[dict]) -> None:
         """
