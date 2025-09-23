@@ -245,6 +245,11 @@ class TOBFileInfo(BaseModel):
     sensors: List[str] = Field(default_factory=list, description="Available sensors")
     tob_data: Optional[TOBFileData] = Field(None, description="Complete TOB file data")
 
+    # Modified headers (for persistence of user changes)
+    modified_headers: Dict[str, Any] = Field(
+        default_factory=dict, description="Headers modified by user (persistent)"
+    )
+
     # Processing status
     status: str = Field(
         default=TOBFileStatus.LOADED, description="Current processing status"

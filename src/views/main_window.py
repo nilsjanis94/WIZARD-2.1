@@ -675,6 +675,16 @@ class MainWindow(QMainWindow):
         if self.request_status_button:
             self.request_status_button.clicked.connect(self._on_request_status)
 
+        # Project container widget changes
+        if self.location_comment_value:
+            self.location_comment_value.editingFinished.connect(self._on_location_comment_changed)
+
+        if self.location_sensorstring_value:
+            self.location_sensorstring_value.editingFinished.connect(self._on_location_sensorstring_changed)
+
+        if self.location_subcon_spin:
+            self.location_subcon_spin.valueChanged.connect(self._on_location_subcon_changed)
+
         self.logger.debug("Signals connected successfully")
 
     def _show_welcome_screen(self):
@@ -1730,23 +1740,23 @@ class MainWindow(QMainWindow):
                                self.controller.main_window.current_project_path is not None)
 
             # Enable/disable project container input widgets
-            if self.location_subcon_spin:
+            if self.location_subcon_spin is not None:
                 self.location_subcon_spin.setEnabled(has_real_project)
 
-            if self.location_comment_value:
+            if self.location_comment_value is not None:
                 self.location_comment_value.setReadOnly(not has_real_project)
 
-            if self.location_sensorstring_value:
+            if self.location_sensorstring_value is not None:
                 self.location_sensorstring_value.setReadOnly(not has_real_project)
 
             # Enable/disable project container buttons
-            if self.send_data_button:
+            if self.send_data_button is not None:
                 self.send_data_button.setEnabled(has_real_project)
 
-            if self.quality_control_button:
+            if self.quality_control_button is not None:
                 self.quality_control_button.setEnabled(has_real_project)
 
-            if self.request_status_button:
+            if self.request_status_button is not None:
                 self.request_status_button.setEnabled(has_real_project)
 
             self.logger.debug("Project container editability updated: real_project_loaded=%s", has_real_project)
@@ -1754,6 +1764,89 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"DEBUG: Error in update_project_container_editability: {e}")
             self.logger.error("Error updating project container editability: %s", e)
+
+    def _update_processing_list_dialogs(self):
+        """Try to update any open processing list dialogs."""
+        try:
+            # Find all ProcessingListDialog instances
+            # This is a simple approach - we look for widgets of the correct type
+            from PyQt6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                for widget in app.allWidgets():
+                    if hasattr(widget, '_populate_table') and hasattr(widget, 'project_model'):
+                        # This looks like a ProcessingListDialog
+                        if widget.project_model == self.controller.project_model:
+                            # Same project model, update it
+                            widget._populate_table()
+                            self.logger.debug("Updated processing list dialog")
+        except Exception as e:
+            self.logger.error("Error updating processing list dialogs: %s", e)
+
+    def _on_location_comment_changed(self):
+        """Handle comment value changes in project container."""
+        if not self.controller or not self.controller.project_model:
+            return
+
+        new_comment = self.location_comment_value.text()
+        self.logger.info(f"Comment changed to: {new_comment}")
+
+        # Update comment in active TOB file headers
+        active_tob = self.controller.project_model.get_active_tob_file()
+        if active_tob and active_tob.tob_data and active_tob.tob_data.headers:
+            active_tob.tob_data.headers["Comments"] = new_comment
+            # Store in modified headers for persistence
+            active_tob.modified_headers["Comments"] = new_comment
+            self.logger.info(f"Updated comment in active TOB file: {active_tob.file_name}")
+
+            # Also update the TOBDataModel in the controller if it exists
+            current_tob_data = self.controller.get_current_tob_data()
+            if current_tob_data and current_tob_data.headers:
+                current_tob_data.headers["Comments"] = new_comment
+                self.logger.debug("Updated comment in controller TOBDataModel")
+
+            # Mark project as modified for auto-save
+            if hasattr(self.controller, '_mark_project_modified'):
+                self.controller._mark_project_modified()
+
+            # Try to update any open processing list dialogs
+            self._update_processing_list_dialogs()
+
+    def _on_location_sensorstring_changed(self):
+        """Handle sensor string changes in project container."""
+        # Sensor string is derived from comment, so this shouldn't be directly editable
+        # Reset to derived value
+        if hasattr(self, 'update_project_container'):
+            self.update_project_container(self.controller.get_current_tob_data() if self.controller else None)
+        self.logger.debug("Sensor string change ignored - value is derived from comment")
+
+    def _on_location_subcon_changed(self, value: float):
+        """Handle subcon extension changes in project container."""
+        if not self.controller or not self.controller.project_model:
+            return
+
+        self.logger.info(f"Subcon extension changed to: {value}")
+
+        # Update Subconn_Length in active TOB file headers
+        active_tob = self.controller.project_model.get_active_tob_file()
+        if active_tob and active_tob.tob_data and active_tob.tob_data.headers:
+            active_tob.tob_data.headers["Subconn_Length"] = str(value)
+            # Store in modified headers for persistence
+            active_tob.modified_headers["Subconn_Length"] = str(value)
+            self.logger.info(f"Updated Subconn_Length in active TOB file: {active_tob.file_name}")
+
+            # Also update the TOBDataModel in the controller if it exists
+            current_tob_data = self.controller.get_current_tob_data()
+            if current_tob_data and current_tob_data.headers:
+                current_tob_data.headers["Subconn_Length"] = str(value)
+                self.logger.debug("Updated Subconn_Length in controller TOBDataModel")
+
+            # Mark project as modified for auto-save
+            if hasattr(self.controller, '_mark_project_modified'):
+                self.controller._mark_project_modified()
+
+            # Try to update any open processing list dialogs
+            self._update_processing_list_dialogs()
 
     def _get_status_text(self, status: str) -> str:
         """

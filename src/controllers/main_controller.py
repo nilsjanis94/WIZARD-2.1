@@ -1666,6 +1666,13 @@ class MainController(QObject):
                     )
                     tob_file.status = "loaded"
 
+                    # Apply any modified headers that were saved in the project
+                    if tob_data.headers and tob_file.modified_headers:
+                        # Apply saved modifications
+                        for key, value in tob_file.modified_headers.items():
+                            tob_data.headers[key] = value
+                            self.logger.debug(f"Applied modified header {key}={value} to {tob_file.file_name}")
+
                     reloaded_count += 1
                     self.logger.debug("Reloaded TOB file: %s", tob_file.file_name)
 
