@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Temperatur-Analyse</string>
+   <string>Temperature Analysis</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="styleSheet">
@@ -121,7 +121,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>&lt;h1 style=&quot;color: #495057; text-align: center;&quot;&gt;Willkommen beim FIELAX Wizard-2&lt;/h1&gt;</string>
+            <string>&lt;h1 style=&quot;color: #495057; text-align: center;&quot;&gt;Welcome to FIELAX Wizard-2&lt;/h1&gt;</string>
            </property>
            <property name="textFormat">
             <enum>Qt::RichText</enum>
@@ -188,7 +188,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>&lt;p style=&quot;color: #6c757d; text-align: center; font-size: 14px;&quot;&gt;Temperaturdaten-Analyse und Visualisierung&lt;/p&gt;</string>
+            <string>&lt;p style=&quot;color: #6c757d; text-align: center; font-size: 14px;&quot;&gt;Temperature Data Analysis and Visualization&lt;/p&gt;</string>
            </property>
            <property name="textFormat">
             <enum>Qt::RichText</enum>
@@ -268,7 +268,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>&lt;p style=&quot;color: #495057; text-align: center; font-size: 12px;&quot;&gt;Öffnen Sie eine .TOB-Datei über das &lt;b&gt;File&lt;/b&gt;-Menü oder laden Sie ein Projekt, um zu beginnen.&lt;/p&gt;</string>
+            <string>&lt;p style=&quot;color: #495057; text-align: center; font-size: 12px;&quot;&gt;Open a .TOB file via the &lt;b&gt;File&lt;/b&gt; menu or load a project to get started.&lt;/p&gt;</string>
            </property>
            <property name="textFormat">
             <enum>Qt::RichText</enum>
@@ -336,7 +336,7 @@
             </size>
            </property>
            <property name="text">
-            <string>TOB-Datei öffnen</string>
+            <string>Open TOB File</string>
            </property>
           </widget>
          </item>
@@ -349,7 +349,7 @@
             </size>
            </property>
            <property name="text">
-            <string>Projekt öffnen</string>
+            <string>Open Project</string>
            </property>
           </widget>
          </item>
@@ -2658,7 +2658,7 @@
       <string>NTCs</string>
      </property>
      <addaction name="actionSelect_all"/>
-     <addaction name="actionDeseselct_all"/>
+     <addaction name="actionDeselect_all"/>
     </widget>
     <addaction name="menuLanguage"/>
     <addaction name="separator"/>
@@ -2735,7 +2735,7 @@
     <string>Select all</string>
    </property>
   </action>
-  <action name="actionDeseselct_all">
+  <action name="actionDeselect_all">
    <property name="text">
     <string>Deselect all</string>
    </property>
