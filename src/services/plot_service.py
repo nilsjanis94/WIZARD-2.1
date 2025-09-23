@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from PyQt6.QtWidgets import QWidget
 
@@ -69,6 +70,60 @@ class PlotService:
             return plot_widget
         except Exception as e:
             self.logger.error("Failed to create plot widget: %s", e)
+            raise
+
+    def create_navigation_toolbar(self, canvas: FigureCanvas, parent: QWidget) -> NavigationToolbar:
+        """
+        Create a navigation toolbar for the plot.
+
+        Args:
+            canvas: Matplotlib figure canvas
+            parent: Parent widget for the toolbar
+
+        Returns:
+            NavigationToolbar: Configured navigation toolbar
+        """
+        try:
+            self.logger.info("Creating navigation toolbar")
+            toolbar = NavigationToolbar(canvas, parent)
+
+            # Customize toolbar styling to match WIZARD-2.1 design
+            toolbar.setStyleSheet("""
+                QToolBar {
+                    background-color: white;
+                    border: 1px solid #cccccc;
+                    border-radius: 3px;
+                    padding: 2px;
+                    margin: 0px;
+                }
+                QToolButton {
+                    background-color: transparent;
+                    border: none;
+                    padding: 4px;
+                    margin: 1px;
+                    border-radius: 3px;
+                }
+                QToolButton:hover {
+                    background-color: #f0f0f0;
+                }
+                QToolButton:pressed {
+                    background-color: #e0e0e0;
+                }
+                QToolButton:checked {
+                    background-color: #3AAA35;
+                    color: white;
+                }
+                QLabel {
+                    color: #333333;
+                    font-size: 10px;
+                    padding: 0px 4px;
+                }
+            """)
+
+            self.logger.info("Navigation toolbar created successfully")
+            return toolbar
+        except Exception as e:
+            self.logger.error("Failed to create navigation toolbar: %s", e)
             raise
 
     def get_sensor_color(self, sensor_name: str) -> str:
@@ -259,11 +314,16 @@ class PlotWidget(QWidget):
         # NTC sensor filtering for when y1_sensor == "NTCs"
         self.active_ntc_sensors = None  # None = all NTCs active, or list of active NTCs
 
+        # Navigation toolbar
+        self.navigation_toolbar: Optional[NavigationToolbar] = None
+
         # Matplotlib setup
         self.logger.info("Setting up matplotlib...")
         self._setup_matplotlib()
         self.logger.info("Creating plot canvas...")
         self._create_plot_canvas()
+        self.logger.info("Creating navigation toolbar...")
+        self._create_navigation_toolbar()
         self.logger.info("Setting up plot layout...")
         self._setup_plot_layout()
 
@@ -329,6 +389,20 @@ class PlotWidget(QWidget):
             self.logger.error("Failed to create plot canvas: %s", e)
             raise
 
+    def _create_navigation_toolbar(self):
+        """Create the navigation toolbar for plot interaction."""
+        try:
+            if self.canvas:
+                self.navigation_toolbar = self.plot_service.create_navigation_toolbar(
+                    self.canvas, self
+                )
+                self.logger.debug("Navigation toolbar created successfully")
+            else:
+                self.logger.warning("Cannot create navigation toolbar: canvas not available")
+        except Exception as e:
+            self.logger.error("Failed to create navigation toolbar: %s", e)
+            raise
+
     def _setup_plot_layout(self):
         """Setup the plot layout and styling."""
         try:
@@ -350,19 +424,29 @@ class PlotWidget(QWidget):
             # Configure grid
             self.ax1.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
 
-            # Add canvas to existing layout (from UI file)
+            # Setup layout with navigation toolbar and canvas
             if self.layout() is not None:
                 # Use existing layout from UI file
+                # Add toolbar first, then canvas
+                if self.navigation_toolbar:
+                    self.layout().addWidget(self.navigation_toolbar)
                 self.layout().addWidget(self.canvas)
-                self.logger.debug("Canvas added to existing layout")
+                self.logger.debug("Toolbar and canvas added to existing layout")
             else:
                 # Fallback: create new layout if none exists
                 from PyQt6.QtWidgets import QVBoxLayout
 
                 layout = QVBoxLayout()
+                layout.setSpacing(0)  # Minimal spacing between toolbar and canvas
+                layout.setContentsMargins(0, 0, 0, 0)
+
+                # Add toolbar first, then canvas
+                if self.navigation_toolbar:
+                    layout.addWidget(self.navigation_toolbar)
                 layout.addWidget(self.canvas)
+
                 self.setLayout(layout)
-                self.logger.debug("Canvas added to new layout (fallback)")
+                self.logger.debug("Toolbar and canvas added to new layout (fallback)")
 
             self.logger.debug("Plot layout configured successfully")
         except Exception as e:
@@ -379,6 +463,10 @@ class PlotWidget(QWidget):
         try:
             self.tob_data_model = tob_data_model
             self.logger.debug("Plot data updated with TOB model")
+
+            # Show navigation toolbar when data is available
+            self.set_navigation_toolbar_visible(True)
+
             self._refresh_plot()
         except Exception as e:
             self.logger.error("Failed to update plot data: %s", e)
@@ -591,6 +679,9 @@ class PlotWidget(QWidget):
             if self.ax2 is not None:
                 self.ax2.clear()
 
+            # Hide navigation toolbar when no data is available
+            self.set_navigation_toolbar_visible(False)
+
             # Show placeholder message
             self.ax1.text(
                 0.5,
@@ -632,6 +723,31 @@ class PlotWidget(QWidget):
         except Exception as e:
             self.logger.error("Failed to export plot: %s", e)
             raise
+
+    def set_navigation_toolbar_visible(self, visible: bool):
+        """
+        Show or hide the navigation toolbar.
+
+        Args:
+            visible: Whether the toolbar should be visible
+        """
+        try:
+            if self.navigation_toolbar:
+                self.navigation_toolbar.setVisible(visible)
+                self.logger.debug("Navigation toolbar visibility set to: %s", visible)
+            else:
+                self.logger.warning("Cannot set toolbar visibility: toolbar not available")
+        except Exception as e:
+            self.logger.error("Failed to set navigation toolbar visibility: %s", e)
+
+    def get_navigation_toolbar(self) -> Optional[NavigationToolbar]:
+        """
+        Get the navigation toolbar instance.
+
+        Returns:
+            NavigationToolbar instance or None if not available
+        """
+        return self.navigation_toolbar
 
     def get_plot_info(self) -> Dict[str, Any]:
         """
