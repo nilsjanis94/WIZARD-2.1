@@ -823,6 +823,10 @@ class MainController(QObject):
             # Update main window state
             self.main_window.current_project_path = file_path
 
+            # Update project container editability
+            if hasattr(self.main_window, "update_project_container_editability"):
+                self.main_window.update_project_container_editability()
+
             # Update UI
             location = project.server_config.url if project.server_config else ""
             self.main_window.update_project_info(name, location, description)
@@ -1527,6 +1531,10 @@ class MainController(QObject):
             self.main_window.update_project_info(
                 project.name, location, project.description or ""
             )
+
+            # Update project container editability
+            if hasattr(self.main_window, "update_project_container_editability"):
+                self.main_window.update_project_container_editability()
 
             # Reset project container if no active TOB file
             if not project.active_tob_file and hasattr(self.main_window, "update_project_container"):

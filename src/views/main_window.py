@@ -314,6 +314,9 @@ class MainWindow(QMainWindow):
         # Show welcome screen initially (reset to initial state)
         self.ui_state_manager.reset_to_initial_state()
 
+        # Initialize project container editability (disabled by default)
+        self.update_project_container_editability()
+
         # Initialize axis controls
         self._initialize_axis_controls()
 
@@ -644,6 +647,10 @@ class MainWindow(QMainWindow):
         self.controller = controller
         # Connect axis signals now that controller is available
         self._connect_axis_signals()
+
+        # Update project container editability now that controller is available
+        self.update_project_container_editability()
+
         self.logger.debug("Controller set and axis signals connected")
 
         # Connect GUI operation signals (thread-safe)
@@ -723,6 +730,7 @@ class MainWindow(QMainWindow):
 
         # Also reset project container widgets
         self.update_project_container(None)
+        self.update_project_container_editability()
 
     # Event handlers
     def _on_open_tob_file(self):
@@ -1707,6 +1715,45 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             self.logger.error("Error updating project container: %s", e)
+
+    def update_project_container_editability(self):
+        """
+        Update the editability of project container widgets based on whether a project is loaded.
+        """
+        try:
+            # Check if a REAL project is currently loaded (not just the default "Untitled Project")
+            has_real_project = (self.controller and
+                               hasattr(self.controller, 'project_model') and
+                               self.controller.project_model is not None and
+                               hasattr(self.controller, 'main_window') and
+                               hasattr(self.controller.main_window, 'current_project_path') and
+                               self.controller.main_window.current_project_path is not None)
+
+            # Enable/disable project container input widgets
+            if self.location_subcon_spin:
+                self.location_subcon_spin.setEnabled(has_real_project)
+
+            if self.location_comment_value:
+                self.location_comment_value.setReadOnly(not has_real_project)
+
+            if self.location_sensorstring_value:
+                self.location_sensorstring_value.setReadOnly(not has_real_project)
+
+            # Enable/disable project container buttons
+            if self.send_data_button:
+                self.send_data_button.setEnabled(has_real_project)
+
+            if self.quality_control_button:
+                self.quality_control_button.setEnabled(has_real_project)
+
+            if self.request_status_button:
+                self.request_status_button.setEnabled(has_real_project)
+
+            self.logger.debug("Project container editability updated: real_project_loaded=%s", has_real_project)
+
+        except Exception as e:
+            print(f"DEBUG: Error in update_project_container_editability: {e}")
+            self.logger.error("Error updating project container editability: %s", e)
 
     def _get_status_text(self, status: str) -> str:
         """
