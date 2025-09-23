@@ -464,64 +464,8 @@
           </item>
           <item>
            <widget class="QLabel" name="plot_logo_label">
-            <property name="minimumSize">
-             <size>
-              <width>32</width>
-              <height>32</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>32</width>
-              <height>32</height>
-             </size>
-            </property>
             <property name="text">
              <string/>
-            </property>
-            <property name="pixmap">
-             <pixmap>resources/icons/wizardLogo_transparent.png</pixmap>
-            </property>
-            <property name="scaledContents">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="location_prefix_label">
-            <property name="visible">
-             <bool>false</bool>
-            </property>
-            <property name="text">
-             <string>&lt;b&gt;Location:&lt;/b&gt;</string>
-            </property>
-            <property name="textFormat">
-             <enum>Qt::RichText</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="location_combo">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>220</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="visible">
-             <bool>false</bool>
-            </property>
-            <property name="sizeAdjustPolicy">
-             <enum>QComboBox::AdjustToContents</enum>
-            </property>
-            <property name="minimumContentsLength">
-             <number>12</number>
             </property>
            </widget>
           </item>

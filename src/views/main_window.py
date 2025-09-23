@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):
             self.error_handler.handle_error(e, self, "UI Loading Error")
             raise
 
+
     def _store_widget_references(self):
         """
         Store references to important UI widgets for easy access.
