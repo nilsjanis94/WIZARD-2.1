@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -189,3 +190,117 @@ class PasswordDialog(QDialog):
             The entered password
         """
         return self.password_edit.text()
+
+
+class TOBProjectAssignmentDialog(QDialog):
+    """
+    Dialog for asking user if a loaded TOB file should be added to the current project.
+
+    This dialog appears after successfully loading a TOB file via File → Open,
+    giving the user the option to add the file to the currently open project for
+    persistent storage and management.
+    """
+
+    def __init__(
+        self,
+        parent=None,
+        file_name: str = "",
+        file_size_mb: float = 0.0,
+        data_points: int = 0,
+        sensor_count: int = 0,
+        project_name: str = ""
+    ):
+        """
+        Initialize TOB project assignment dialog.
+
+        Args:
+            parent: Parent widget
+            file_name: Name of the loaded TOB file
+            file_size_mb: Size of the file in MB
+            data_points: Number of data points in the file
+            sensor_count: Number of sensors available
+            project_name: Name of the current project
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Add TOB File to Project")
+        self.setModal(True)
+        self.setMinimumSize(400, 250)
+
+        self.file_name = file_name
+        self.should_add_to_project = False
+
+        self._setup_ui(file_name, file_size_mb, data_points, sensor_count, project_name)
+
+    def _setup_ui(
+        self,
+        file_name: str,
+        file_size_mb: float,
+        data_points: int,
+        sensor_count: int,
+        project_name: str
+    ) -> None:
+        """Setup the dialog UI components."""
+        layout = QVBoxLayout()
+
+        # Header message
+        header_label = QLabel("TOB File Successfully Loaded!")
+        header_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #3AAA35;")
+        layout.addWidget(header_label)
+
+        # File information
+        info_layout = QFormLayout()
+        info_layout.addRow("File:", QLabel(file_name))
+        info_layout.addRow("Size:", QLabel(f"{file_size_mb:.1f} MB"))
+        info_layout.addRow("Data Points:", QLabel(f"{data_points:,}"))
+        info_layout.addRow("Sensors:", QLabel(str(sensor_count)))
+        layout.addLayout(info_layout)
+
+        # Spacer
+        layout.addSpacing(10)
+
+        # Question to user
+        question_label = QLabel(
+            f"Do you want to add this TOB file to the current project '{project_name}'?\n\n"
+            "• The file will be saved with the project and appear in the Processing List\n"
+            "• You can upload it to the server and track its processing status\n"
+            "• Changes will be automatically saved"
+        )
+        question_label.setWordWrap(True)
+        layout.addWidget(question_label)
+
+        # Checkbox for "Don't ask again"
+        self.dont_ask_checkbox = QCheckBox("Don't ask again for this session")
+        layout.addWidget(self.dont_ask_checkbox)
+
+        # Spacer
+        layout.addSpacing(10)
+
+        # Buttons
+        button_box = QDialogButtonBox()
+        self.yes_button = QPushButton("Add to Project")
+        self.yes_button.setDefault(True)
+        self.no_button = QPushButton("Just Show Plot")
+
+        button_box.addButton(self.yes_button, QDialogButtonBox.ButtonRole.AcceptRole)
+        button_box.addButton(self.no_button, QDialogButtonBox.ButtonRole.RejectRole)
+
+        self.yes_button.clicked.connect(self._on_yes_clicked)
+        self.no_button.clicked.connect(self.reject)
+
+        layout.addWidget(button_box)
+
+        self.setLayout(layout)
+
+    def _on_yes_clicked(self) -> None:
+        """Handle yes button click."""
+        self.should_add_to_project = True
+        self.accept()
+
+    def should_not_ask_again(self) -> bool:
+        """
+        Check if user wants to skip this dialog in the future.
+
+        Returns:
+            True if user checked "Don't ask again"
+        """
+        return self.dont_ask_checkbox.isChecked()

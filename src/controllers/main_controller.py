@@ -246,30 +246,36 @@ class MainController(QObject):
 
             # Update plot with loaded data
             if self.tob_data_model:
-                # Set default Y1 sensor to NTCs for new plot system FIRST
-                self.y1_sensor = "NTCs"
-
-                # Update plot widget with correct sensor settings BEFORE plot data
+                # Update plot widget with data BEFORE sensor selection
                 if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
-                    self.main_window.plot_widget.y1_sensor = "NTCs"
                     self.main_window.plot_widget.tob_data_model = self.tob_data_model
-                    # Ensure all NTC sensors are active initially
-                    self.main_window.plot_widget.active_ntc_sensors = None
 
                 # Update plot data (old system)
                 self.plot_controller.update_plot_data(self.tob_data_model)
 
                 # Auto-select sensors (NTC sensors and PT100)
-                selected_sensors = [
+                # Limit to 22 NTC sensors max to match UI design
+                ntc_sensors = [
                     sensor for sensor in self.tob_data_model.sensors
                     if sensor.startswith("NTC")
-                ]
+                ][:22]  # Limit to 22 sensors to match plot_controller
+
+                selected_sensors = ntc_sensors.copy()
+
+                # Add PT100 sensor if available
                 pt100_sensor = self.tob_data_model.get_pt100_sensor()
                 if pt100_sensor:
                     selected_sensors.append(pt100_sensor)
 
+                # Check if file should be added to current project
+                self._check_add_tob_to_project()
+
                 if selected_sensors:
-                    self.plot_controller.update_selected_sensors(selected_sensors)
+                    # Update selected sensors and plot widget active NTC sensors
+                    self.plot_controller.update_selected_sensors(selected_sensors, self.main_window)
+
+                    # Update UI checkboxes to reflect the selected sensors
+                    self.plot_controller.update_sensor_checkboxes(self.main_window)
 
                 # Trigger final plot refresh with NTCs for new plot widget
                 if hasattr(self.main_window, 'plot_widget') and self.main_window.plot_widget:
@@ -1513,6 +1519,83 @@ class MainController(QObject):
 
         # TODO: Update plot visualization
         # This will be implemented when we add the plotting functionality
+
+    def _check_add_tob_to_project(self) -> None:
+        """
+        Check if the loaded TOB file should be added to the current project.
+
+        Shows a dialog asking the user if they want to add the TOB file to the
+        currently open project. If yes, adds the file to the project and triggers
+        auto-save.
+        """
+        try:
+            # Only show dialog if we have both a TOB file and an open project
+            if not self.tob_data_model or not self.project_model or not self.main_window.current_project_path:
+                return
+
+            # Check if file is already in project
+            if any(tob.file_name == self.tob_data_model.file_name for tob in self.project_model.tob_files):
+                self.logger.debug("TOB file %s already exists in project", self.tob_data_model.file_name)
+                return
+
+            # Import dialog here to avoid circular imports
+            from ..views.dialogs.project_dialogs import TOBProjectAssignmentDialog
+
+            # Calculate file information for dialog
+            file_size_mb = (self.tob_data_model.file_size or 0) / (1024 * 1024)
+            data_points = self.tob_data_model.data_points or 0
+            sensor_count = len(self.tob_data_model.sensors)
+
+            # Show dialog
+            dialog = TOBProjectAssignmentDialog(
+                parent=self.main_window,
+                file_name=self.tob_data_model.file_name or "Unknown",
+                file_size_mb=file_size_mb,
+                data_points=data_points,
+                sensor_count=sensor_count,
+                project_name=self.project_model.name
+            )
+
+            result = dialog.exec()
+
+            if result and dialog.should_add_to_project:
+                # Add TOB file to project
+                self.logger.info("Adding TOB file %s to project %s", self.tob_data_model.file_name, self.project_model.name)
+
+                success = self.project_model.add_tob_file(
+                    file_path=self.tob_data_model.file_path or "",
+                    file_name=self.tob_data_model.file_name or "",
+                    file_size=self.tob_data_model.file_size or 0,
+                    headers=self.tob_data_model.headers,
+                    data=self.tob_data_model.data,
+                    raw_data=None,  # Could be added later if needed
+                    data_points=self.tob_data_model.data_points,
+                    sensors=self.tob_data_model.sensors
+                )
+
+                if success:
+                    # Trigger immediate save for critical changes
+                    self._mark_project_modified()
+                    self.logger.info("TOB file successfully added to project and saved")
+
+                    # Show success message
+                    self.main_window.display_status_message(
+                        f"TOB file '{self.tob_data_model.file_name}' added to project",
+                        3000
+                    )
+                else:
+                    self.logger.error("Failed to add TOB file to project")
+                    self.error_handler.handle_error(
+                        Exception("Failed to add TOB file to project"),
+                        "Add TOB File Error",
+                        self.main_window
+                    )
+            else:
+                self.logger.debug("User chose not to add TOB file to project")
+
+        except Exception as e:
+            self.logger.error("Error in TOB project assignment: %s", e)
+            # Don't show error dialog for this optional feature
 
     def show_main_window(self):
         """

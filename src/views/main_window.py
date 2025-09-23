@@ -876,15 +876,17 @@ class MainWindow(QMainWindow):
             tob_file: TOBFileInfo object
         """
         try:
-            # Update sensor checkboxes - select all NTC sensors (NTC01-NTC22 and Temp)
+            # Update sensor checkboxes - select only available NTC sensors
             # Clear current selections
             for checkbox in self.ntc_checkboxes.values():
                 checkbox.setChecked(False)
 
-            # Select all NTC sensors instead of just available ones
+            # Select only sensors that are actually available in the TOB file
             selected_ntc_sensors = []
+            available_sensors = tob_file.sensors or []
+
             for sensor_name, checkbox in self.ntc_checkboxes.items():
-                if sensor_name.startswith("NTC") or sensor_name == "Temp":
+                if sensor_name in available_sensors and (sensor_name.startswith("NTC") or sensor_name == "Temp"):
                     checkbox.setChecked(True)
                     selected_ntc_sensors.append(sensor_name)
 

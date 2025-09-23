@@ -86,17 +86,33 @@ class PlotController(QObject):
         except Exception as e:
             self.logger.error("Error updating plot data: %s", e)
 
-    def update_selected_sensors(self, selected_sensors: List[str]) -> None:
+    def update_selected_sensors(self, selected_sensors: List[str], main_window=None) -> None:
         """
         Update the list of selected sensors for plotting.
 
         Args:
             selected_sensors: List of sensor names to display
+            main_window: Main window instance to update plot widget
         """
         try:
             self.selected_sensors = selected_sensors
             self.logger.info(f"Selected sensors updated: {selected_sensors}")
             self.sensors_updated.emit(selected_sensors)
+
+            # Update plot widget's active NTC sensors if main window is provided
+            if main_window and hasattr(main_window, 'plot_widget') and main_window.plot_widget:
+                # Extract NTC sensors from selected sensors
+                ntc_sensors = [s for s in selected_sensors if s.startswith("NTC") or s == "Temp"]
+                if ntc_sensors:
+                    # Set y1_sensor to "NTCs" to show multiple NTC sensors
+                    main_window.plot_widget.y1_sensor = "NTCs"
+                    # Set active NTC sensors to the selected ones
+                    main_window.plot_widget.set_active_ntc_sensors(ntc_sensors)
+                    self.logger.debug(f"Set y1_sensor to NTCs and active NTC sensors: {ntc_sensors}")
+
+                    # Also update the UI combo box if it exists
+                    if hasattr(main_window, 'y1_axis_combo') and main_window.y1_axis_combo:
+                        main_window.y1_axis_combo.setCurrentText("NTCs")
 
         except Exception as e:
             self.logger.error("Error updating selected sensors: %s", e)
@@ -198,7 +214,7 @@ class PlotController(QObject):
             self.logger.debug("New selected sensors: %s", new_selected)
 
             # Update the selected sensors (will emit signal)
-            self.update_selected_sensors(new_selected)
+            self.update_selected_sensors(new_selected, main_window)
 
             if is_selected:
                 self.logger.info("Sensor %s selected for visualization", sensor_name)
