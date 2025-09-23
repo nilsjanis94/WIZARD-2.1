@@ -442,7 +442,7 @@ class MainWindow(QMainWindow):
 
     def update_tob_file_status_bar(self, file_name: str = None, data_points: int = None, sensors: int = None):
         """
-        Update the TOB file information in the status bar.
+        Update the TOB file information in the status bar and plot info labels.
 
         Args:
             file_name: Name of the TOB file (None for no file loaded)
@@ -450,25 +450,80 @@ class MainWindow(QMainWindow):
             sensors: Number of sensors (optional, for logging only)
         """
         try:
-            if not hasattr(self, 'tob_file_status_label') or not self.tob_file_status_label:
-                return
+            # Update status bar
+            if hasattr(self, 'tob_file_status_label') and self.tob_file_status_label:
+                if file_name:
+                    status_text = f"TOB: {file_name}"
+                else:
+                    status_text = "No TOB file loaded"
 
-            if file_name:
-                status_text = f"TOB: {file_name}"
-            else:
-                status_text = "No TOB file loaded"
+                self.tob_file_status_label.setText(status_text)
 
-            self.tob_file_status_label.setText(status_text)
+            # Update plot info labels with TOB header data
+            self._update_plot_info_from_tob_headers(file_name, data_points, sensors)
 
             # Log additional info for debugging
             if file_name and data_points is not None and sensors is not None:
                 self.logger.debug("TOB file loaded: %s (%d points, %d sensors)",
                                 file_name, data_points, sensors)
             else:
-                self.logger.debug("TOB file status updated: %s", status_text)
+                self.logger.debug("TOB file status updated: %s", status_text if 'status_text' in locals() else "No TOB file loaded")
 
         except Exception as e:
             self.logger.error("Error updating TOB file status: %s", e)
+
+    def _update_plot_info_from_tob_headers(self, file_name: str = None, data_points: int = None, sensors: int = None):
+        """
+        Update plot info labels (cruise and location) with TOB header data.
+
+        Args:
+            file_name: Name of the TOB file
+            data_points: Number of data points
+            sensors: Number of sensors
+        """
+        try:
+            # Get TOB header data from the currently loaded TOB file
+            cruise_value = "-"
+            station_value = "-"
+
+            if file_name:
+                # Try to get header data from plot widget first (currently displayed)
+                tob_data_model = None
+
+                if (hasattr(self, 'plot_widget') and self.plot_widget and
+                    hasattr(self.plot_widget, 'tob_data_model') and
+                    self.plot_widget.tob_data_model):
+                    tob_data_model = self.plot_widget.tob_data_model
+                    self.logger.debug("Using header data from plot widget")
+
+                # Fallback to controller data
+                elif self.controller and self.controller.tob_data_model:
+                    tob_data_model = self.controller.tob_data_model
+                    self.logger.debug("Using header data from controller")
+
+                # Extract header values
+                if tob_data_model and tob_data_model.headers:
+                    cruise_value = tob_data_model.headers.get('Cruise', '-')
+                    station_value = tob_data_model.headers.get('Station', '-')
+
+                    # Handle different data types (some headers might be lists)
+                    if isinstance(cruise_value, list):
+                        cruise_value = cruise_value[0] if cruise_value else '-'
+                    if isinstance(station_value, list):
+                        station_value = station_value[0] if station_value else '-'
+
+            # Update the labels
+            if self.cruise_info_label:
+                self.cruise_info_label.setText(f"Cruise: {cruise_value}")
+
+            if self.location_info_label:
+                self.location_info_label.setText(f"Station: {station_value}")
+
+            self.logger.debug("Plot info labels updated - Cruise: %s, Station: %s",
+                            cruise_value, station_value)
+
+        except Exception as e:
+            self.logger.error("Error updating plot info from TOB headers: %s", e)
 
     def _connect_signals(self):
         """
@@ -1530,21 +1585,22 @@ class MainWindow(QMainWindow):
         """
         Update project information display.
 
+        Note: The cruise_info_label and location_info_label are now used for TOB header data.
+        This method is kept for backward compatibility but no longer updates those labels.
+
         Args:
             project_name: Name of the project
             location: Location information
             comment: Additional comment
         """
-        if self.cruise_info_label:
-            self.cruise_info_label.setText(f"Project: {project_name}")
-
-        if self.location_info_label:
-            self.location_info_label.setText(f"Location: {location}")
+        # The cruise_info_label and location_info_label are now used for TOB header data
+        # They are automatically updated when TOB files are loaded
 
         if self.location_comment_value:
             self.location_comment_value.setText(comment)
 
-        self.logger.info("Project info updated: %s, %s", project_name, location)
+        self.logger.info("Project info updated: %s, %s (labels now show TOB header data)",
+                        project_name, location)
 
     def update_data_metrics(self, metrics: Dict[str, Any]):
         """

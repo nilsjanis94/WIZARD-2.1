@@ -430,10 +430,10 @@ class UIService:
 
             # Reset project info widgets
             if "cruise_info_label" in widgets and widgets["cruise_info_label"]:
-                widgets["cruise_info_label"].setText("Project: -")
+                widgets["cruise_info_label"].setText("Cruise: -")
 
             if "location_info_label" in widgets and widgets["location_info_label"]:
-                widgets["location_info_label"].setText("Location: -")
+                widgets["location_info_label"].setText("Station: -")
 
             # Reset TOB file status
             if hasattr(widgets.get("main_window"), 'update_tob_file_status_bar'):
