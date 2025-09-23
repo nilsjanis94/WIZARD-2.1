@@ -83,10 +83,10 @@ class TOBService:
 
             if file_size_mb > self.MAX_FILE_SIZE_MB:
                 return {
-                    'valid': False,
-                    'file_size_mb': file_size_mb,
-                    'estimated_memory_mb': 0,
-                    'error_message': f"File too large ({file_size_mb:.1f}MB > {self.MAX_FILE_SIZE_MB}MB limit)"
+                    "valid": False,
+                    "file_size_mb": file_size_mb,
+                    "estimated_memory_mb": 0,
+                    "error_message": f"File too large ({file_size_mb:.1f}MB > {self.MAX_FILE_SIZE_MB}MB limit)",
                 }
 
             # Rough estimation of memory usage (DataFrame is typically 2-3x file size)
@@ -94,34 +94,36 @@ class TOBService:
 
             if estimated_memory_mb > self.MAX_MEMORY_MB:
                 return {
-                    'valid': False,
-                    'file_size_mb': file_size_mb,
-                    'estimated_memory_mb': estimated_memory_mb,
-                    'error_message': f"Estimated memory usage too high ({estimated_memory_mb:.1f}MB > {self.MAX_MEMORY_MB}MB limit)"
+                    "valid": False,
+                    "file_size_mb": file_size_mb,
+                    "estimated_memory_mb": estimated_memory_mb,
+                    "error_message": f"Estimated memory usage too high ({estimated_memory_mb:.1f}MB > {self.MAX_MEMORY_MB}MB limit)",
                 }
 
             return {
-                'valid': True,
-                'file_size_mb': file_size_mb,
-                'estimated_memory_mb': estimated_memory_mb,
-                'error_message': None
+                "valid": True,
+                "file_size_mb": file_size_mb,
+                "estimated_memory_mb": estimated_memory_mb,
+                "error_message": None,
             }
 
         except WizTOBFileNotFoundError:
             raise
         except Exception as e:
             return {
-                'valid': False,
-                'file_size_mb': 0,
-                'estimated_memory_mb': 0,
-                'error_message': f"Validation error: {str(e)}"
+                "valid": False,
+                "file_size_mb": 0,
+                "estimated_memory_mb": 0,
+                "error_message": f"Validation error: {str(e)}",
             }
 
     def _timeout_handler(self, signum, frame):
         """Signal handler for timeout."""
         raise TimeoutError("TOB file loading timed out")
 
-    def load_tob_file_with_timeout(self, file_path: str, timeout_seconds: Optional[int] = None) -> TOBDataModel:
+    def load_tob_file_with_timeout(
+        self, file_path: str, timeout_seconds: Optional[int] = None
+    ) -> TOBDataModel:
         """
         Load a TOB file with timeout protection.
 
@@ -141,7 +143,9 @@ class TOBService:
         if timeout_seconds is None:
             timeout_seconds = self.LOAD_TIMEOUT_SECONDS
 
-        self.logger.info("Loading TOB file with %ds timeout: %s", timeout_seconds, file_path)
+        self.logger.info(
+            "Loading TOB file with %ds timeout: %s", timeout_seconds, file_path
+        )
 
         # Set up timeout signal
         old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
@@ -158,7 +162,9 @@ class TOBService:
             return result
 
         except TimeoutError:
-            self.logger.error("TOB file loading timed out after %ds: %s", timeout_seconds, file_path)
+            self.logger.error(
+                "TOB file loading timed out after %ds: %s", timeout_seconds, file_path
+            )
             raise
         finally:
             # Restore original signal handler
@@ -192,8 +198,11 @@ class TOBService:
                 f"Data memory usage too high ({memory_usage_mb:.1f}MB > {self.MAX_MEMORY_MB}MB limit)"
             )
 
-        self.logger.debug("TOB data validation passed: %d points, %.1fMB memory",
-                         data_points, memory_usage_mb)
+        self.logger.debug(
+            "TOB data validation passed: %d points, %.1fMB memory",
+            data_points,
+            memory_usage_mb,
+        )
 
     def load_tob_file(self, file_path: str) -> TOBDataModel:
         """
@@ -268,6 +277,7 @@ class TOBService:
             # Create data model
             data_model = TOBDataModel(
                 file_path=str(file_path),
+                file_name=file_path.name,
                 file_size=file_path.stat().st_size,
                 headers=headers,
                 data=data,

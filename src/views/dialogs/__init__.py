@@ -5,6 +5,7 @@ Contains all dialog classes for user interaction.
 """
 
 from .error_dialogs import ErrorDialog, InfoDialog, WarningDialog
+from .header_info_dialog import HeaderInfoDialog
 from .processing_list_dialog import ProcessingListDialog
 from .progress_dialogs import ProgressDialog
 from .project_dialogs import PasswordDialog, ProjectDialog
@@ -13,6 +14,7 @@ __all__ = [
     "ErrorDialog",
     "WarningDialog",
     "InfoDialog",
+    "HeaderInfoDialog",
     "ProjectDialog",
     "PasswordDialog",
     "ProgressDialog",

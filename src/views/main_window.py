@@ -103,7 +103,7 @@ class MainWindow(QMainWindow):
         self.logger.info("Services injected successfully")
 
         # Setup UI components if not already done
-        if not hasattr(self, 'welcome_container') or self.welcome_container is None:
+        if not hasattr(self, "welcome_container") or self.welcome_container is None:
             self._setup_ui()
             self._connect_signals()
             self._setup_menu_bar()
@@ -124,7 +124,9 @@ class MainWindow(QMainWindow):
         if self._are_services_available():
             self._initialize_ui_state()
         else:
-            self.logger.info("Services not available - UI state initialization deferred")
+            self.logger.info(
+                "Services not available - UI state initialization deferred"
+            )
 
         self.logger.info("Main window initialized successfully")
 
@@ -304,12 +306,18 @@ class MainWindow(QMainWindow):
         """
         Ensure plot widget is initialized and available.
         """
-        if not hasattr(self, 'plot_widget') or self.plot_widget is None:
-            if hasattr(self, 'plot_service') and self.plot_service and self.plot_canvas_container:
+        if not hasattr(self, "plot_widget") or self.plot_widget is None:
+            if (
+                hasattr(self, "plot_service")
+                and self.plot_service
+                and self.plot_canvas_container
+            ):
                 self.logger.info("Creating plot widget on demand...")
                 self._initialize_plot_widget()
             else:
-                self.logger.warning("Cannot create plot widget: services or container not available")
+                self.logger.warning(
+                    "Cannot create plot widget: services or container not available"
+                )
                 return False
         return self.plot_widget is not None
 
@@ -435,6 +443,9 @@ class MainWindow(QMainWindow):
         if self.open_action:
             self.open_action.triggered.connect(self._on_open_tob_file)
 
+        if self.info_action:
+            self.info_action.triggered.connect(self._on_show_header_info)
+
         if self.exit_action:
             self.exit_action.triggered.connect(self.close)
 
@@ -445,10 +456,14 @@ class MainWindow(QMainWindow):
             self.actionOpen_Project_File.triggered.connect(self._on_open_project)
 
         if self.actionEdit_Project_Settings:
-            self.actionEdit_Project_Settings.triggered.connect(self._on_edit_project_settings)
+            self.actionEdit_Project_Settings.triggered.connect(
+                self._on_edit_project_settings
+            )
 
         if self.actionShow_Processing_List:
-            self.actionShow_Processing_List.triggered.connect(self._on_show_processing_list)
+            self.actionShow_Processing_List.triggered.connect(
+                self._on_show_processing_list
+            )
 
         # NTC checkbox changes
         for sensor_name, checkbox in self.ntc_checkboxes.items():
@@ -476,29 +491,29 @@ class MainWindow(QMainWindow):
         """
         Connect axis control signals that require controller.
         """
-        if hasattr(self, 'y1_axis_combo') and self.y1_axis_combo:
+        if hasattr(self, "y1_axis_combo") and self.y1_axis_combo:
             self.y1_axis_combo.currentTextChanged.connect(self._on_y1_axis_changed)
 
-        if hasattr(self, 'y2_axis_combo') and self.y2_axis_combo:
+        if hasattr(self, "y2_axis_combo") and self.y2_axis_combo:
             self.y2_axis_combo.currentTextChanged.connect(self._on_y2_axis_changed)
 
-        if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
+        if hasattr(self, "x_axis_combo") and self.x_axis_combo:
             self.x_axis_combo.currentTextChanged.connect(self._on_x_axis_changed)
 
         # Connect manual axis value changes
-        if hasattr(self, 'x_min_value') and self.x_min_value:
+        if hasattr(self, "x_min_value") and self.x_min_value:
             self.x_min_value.textChanged.connect(self._on_x_axis_limits_changed)
-        if hasattr(self, 'x_max_value') and self.x_max_value:
+        if hasattr(self, "x_max_value") and self.x_max_value:
             self.x_max_value.textChanged.connect(self._on_x_axis_limits_changed)
 
-        if hasattr(self, 'y1_min_value') and self.y1_min_value:
+        if hasattr(self, "y1_min_value") and self.y1_min_value:
             self.y1_min_value.textChanged.connect(self._on_y1_axis_limits_changed)
-        if hasattr(self, 'y1_max_value') and self.y1_max_value:
+        if hasattr(self, "y1_max_value") and self.y1_max_value:
             self.y1_max_value.textChanged.connect(self._on_y1_axis_limits_changed)
 
-        if hasattr(self, 'y2_min_value') and self.y2_min_value:
+        if hasattr(self, "y2_min_value") and self.y2_min_value:
             self.y2_min_value.textChanged.connect(self._on_y2_axis_limits_changed)
-        if hasattr(self, 'y2_max_value') and self.y2_max_value:
+        if hasattr(self, "y2_max_value") and self.y2_max_value:
             self.y2_max_value.textChanged.connect(self._on_y2_axis_limits_changed)
 
         self.logger.debug("Axis control signals connected")
@@ -553,7 +568,7 @@ class MainWindow(QMainWindow):
         self.ui_state_manager.show_plot_mode()
         self.logger.debug("Plot area displayed")
 
-    def get_metrics_widgets(self) -> Dict[str, 'QLineEdit']:
+    def get_metrics_widgets(self) -> Dict[str, "QLineEdit"]:
         """
         Get dictionary of metrics widget references.
 
@@ -611,6 +626,53 @@ class MainWindow(QMainWindow):
             self.logger.error("Unexpected error opening TOB file: %s", e)
             self.error_handler.handle_error(e, self, "File Open Error")
 
+    def _on_show_header_info(self):
+        """
+        Handle showing TOB file header information.
+        """
+        try:
+            # Get TOB data from plot widget first (currently displayed data),
+            # fallback to controller data (last loaded file)
+            tob_data_model = None
+
+            # Check plot widget first (currently displayed TOB file)
+            if (hasattr(self, 'plot_widget') and self.plot_widget and
+                hasattr(self.plot_widget, 'tob_data_model') and
+                self.plot_widget.tob_data_model):
+                tob_data_model = self.plot_widget.tob_data_model
+                self.logger.debug("Using TOB data from plot widget (currently displayed)")
+
+            # Fallback to controller data (last loaded file)
+            elif self.controller and self.controller.tob_data_model:
+                tob_data_model = self.controller.tob_data_model
+                self.logger.debug("Using TOB data from controller (last loaded)")
+
+            # No data available
+            if not tob_data_model:
+                self.show_error_dialog(
+                    "No TOB Data",
+                    "Please load a TOB file first before viewing header information.",
+                )
+                return
+
+            # Import and create header info dialog
+            from .dialogs.header_info_dialog import HeaderInfoDialog
+
+            dialog = HeaderInfoDialog(tob_data_model, self)
+            dialog.exec()
+
+            self.logger.info("Header info dialog displayed for file: %s",
+                           tob_data_model.file_name or "Unknown")
+
+        except ImportError as e:
+            self.logger.error("Failed to import HeaderInfoDialog: %s", e)
+            self.show_error_dialog(
+                "Import Error", f"Could not load header info dialog: {e}"
+            )
+        except Exception as e:
+            self.logger.error("Error showing header info: %s", e)
+            self.error_handler.handle_error(e, self, "Header Info Display Error")
+
     def _on_open_project(self):
         """
         Handle opening a project file.
@@ -643,11 +705,14 @@ class MainWindow(QMainWindow):
         try:
             # First show project creation dialog to get project details
             from .dialogs.project_dialogs import ProjectDialog
+
             project_dialog = ProjectDialog(parent=self)
 
             if project_dialog.exec() == ProjectDialog.DialogCode.Accepted:
                 # Get project data from dialog
-                name, enter_key, server_url, description = project_dialog.get_project_data()
+                name, enter_key, server_url, description = (
+                    project_dialog.get_project_data()
+                )
 
                 # Now get file path for saving
                 file_path, _ = QFileDialog.getSaveFileName(
@@ -659,8 +724,8 @@ class MainWindow(QMainWindow):
 
                 if file_path:
                     # Ensure .wzp extension
-                    if not file_path.lower().endswith('.wzp'):
-                        file_path += '.wzp'
+                    if not file_path.lower().endswith(".wzp"):
+                        file_path += ".wzp"
 
                     # Prepare project data dictionary
                     project_data = {
@@ -668,7 +733,7 @@ class MainWindow(QMainWindow):
                         "enter_key": enter_key,
                         "server_url": server_url,
                         "description": description,
-                        "file_path": file_path
+                        "file_path": file_path,
                     }
 
                     self.logger.info("Creating project: %s at %s", name, file_path)
@@ -687,42 +752,58 @@ class MainWindow(QMainWindow):
         """
         try:
             # Check if a project is currently loaded
-            if not self.current_project_path or not hasattr(self.controller, 'project_model') or not self.controller.project_model:
+            if (
+                not self.current_project_path
+                or not hasattr(self.controller, "project_model")
+                or not self.controller.project_model
+            ):
                 self.error_handler.handle_error(
-                    ValueError("No project is currently loaded. Please create or open a project first."),
-                    "No Project Loaded", self
+                    ValueError(
+                        "No project is currently loaded. Please create or open a project first."
+                    ),
+                    "No Project Loaded",
+                    self,
                 )
                 return
 
             # Get current project data
             project = self.controller.project_model
             current_name = project.name
-            current_enter_key = project.server_config.bearer_token if project.server_config else ""
-            current_server_url = project.server_config.url if project.server_config else ""
+            current_enter_key = (
+                project.server_config.bearer_token if project.server_config else ""
+            )
+            current_server_url = (
+                project.server_config.url if project.server_config else ""
+            )
             current_description = project.description or ""
 
             # Open project dialog in edit mode
             from .dialogs.project_dialogs import ProjectDialog
+
             edit_dialog = ProjectDialog(
                 parent=self,
                 project_name=current_name,
                 project_description=current_description,
                 enter_key=current_enter_key,
-                server_url=current_server_url
+                server_url=current_server_url,
             )
             edit_dialog.setWindowTitle("Edit Project Settings")
 
             if edit_dialog.exec() == ProjectDialog.DialogCode.Accepted:
                 # Get updated data from dialog
-                name, enter_key, server_url, description = edit_dialog.get_project_data()
+                name, enter_key, server_url, description = (
+                    edit_dialog.get_project_data()
+                )
 
                 # Send update request to controller
-                self.controller.update_project_settings({
-                    "name": name,
-                    "enter_key": enter_key,
-                    "server_url": server_url,
-                    "description": description
-                })
+                self.controller.update_project_settings(
+                    {
+                        "name": name,
+                        "enter_key": enter_key,
+                        "server_url": server_url,
+                        "description": description,
+                    }
+                )
 
                 self.logger.info("Project settings updated successfully")
 
@@ -738,14 +819,20 @@ class MainWindow(QMainWindow):
             # Check if a project is loaded
             if not self.controller or not self.controller.project_model:
                 self.error_handler.handle_error(
-                    ValueError("No project is currently loaded. Please create or open a project first."),
-                    "No Project Loaded", self
+                    ValueError(
+                        "No project is currently loaded. Please create or open a project first."
+                    ),
+                    "No Project Loaded",
+                    self,
                 )
                 return
 
             # Import and create dialog
             from .dialogs.processing_list_dialog import ProcessingListDialog
-            dialog = ProcessingListDialog(parent=self, project_model=self.controller.project_model)
+
+            dialog = ProcessingListDialog(
+                parent=self, project_model=self.controller.project_model
+            )
 
             # Connect signals
             dialog.file_selected.connect(self._on_tob_file_selected_for_plot)
@@ -773,8 +860,7 @@ class MainWindow(QMainWindow):
             if not self.controller or not self.controller.project_model:
                 self.logger.error("No project controller available")
                 self.error_handler.handle_error(
-                    ValueError("No project controller available"),
-                    "Project Error", self
+                    ValueError("No project controller available"), "Project Error", self
                 )
                 return
 
@@ -784,7 +870,8 @@ class MainWindow(QMainWindow):
                 self.logger.error(f"TOB file '{file_name}' not found in project")
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' not found in project"),
-                    "File Not Found", self
+                    "File Not Found",
+                    self,
                 )
                 return
 
@@ -792,16 +879,23 @@ class MainWindow(QMainWindow):
             self.logger.info(f"TOB data exists: {tob_file.tob_data is not None}")
 
             if tob_file.tob_data:
-                self.logger.info(f"DataFrame exists: {tob_file.tob_data.data is not None}")
+                self.logger.info(
+                    f"DataFrame exists: {tob_file.tob_data.data is not None}"
+                )
                 if tob_file.tob_data.data is not None:
                     self.logger.info(f"DataFrame shape: {tob_file.tob_data.data.shape}")
                     self.logger.info(f"DataFrame empty: {tob_file.tob_data.data.empty}")
 
-            if not tob_file.tob_data or tob_file.tob_data.data is None or tob_file.tob_data.data.empty:
+            if (
+                not tob_file.tob_data
+                or tob_file.tob_data.data is None
+                or tob_file.tob_data.data.empty
+            ):
                 self.logger.error(f"TOB file '{file_name}' has no data to plot")
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' has no data to plot"),
-                    "No Plot Data", self
+                    "No Plot Data",
+                    self,
                 )
                 return
 
@@ -809,7 +903,8 @@ class MainWindow(QMainWindow):
             if not self._ensure_plot_widget():
                 self.error_handler.handle_error(
                     ValueError("Plot widget is not available"),
-                    "Plot System Error", self
+                    "Plot System Error",
+                    self,
                 )
                 return
 
@@ -820,11 +915,13 @@ class MainWindow(QMainWindow):
                 headers=tob_file.tob_data.headers or {},
                 data=tob_file.tob_data.data,
                 file_path=tob_file.file_path,
-                file_name=tob_file.file_name
+                file_name=tob_file.file_name,
             )
 
             # Check memory usage before loading
-            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (1024 * 1024)
+            memory_mb = tob_file.tob_data.data.memory_usage(deep=True).sum() / (
+                1024 * 1024
+            )
             if memory_mb > 500:  # Warn if over 500MB
                 # For now, just show a warning but continue loading
                 # TODO: Implement proper user confirmation dialog via signals
@@ -838,9 +935,11 @@ class MainWindow(QMainWindow):
             self.controller.project_model.set_active_tob_file(file_name)
 
             # Calculate and update data metrics
-            if self.controller and hasattr(self.controller, 'data_service'):
+            if self.controller and hasattr(self.controller, "data_service"):
                 try:
-                    metrics = self.controller.data_service._calculate_metrics(tob_data_model)
+                    metrics = self.controller.data_service._calculate_metrics(
+                        tob_data_model
+                    )
                     self.logger.info("TOB metrics calculated for manual plotting")
 
                     # Update data metrics in view
@@ -848,21 +947,27 @@ class MainWindow(QMainWindow):
                         self.get_metrics_widgets(), metrics
                     )
                 except Exception as e:
-                    self.logger.error("Failed to calculate data metrics for manual plotting: %s", e)
+                    self.logger.error(
+                        "Failed to calculate data metrics for manual plotting: %s", e
+                    )
 
             # Update UI elements
             self._update_ui_for_tob_plot(tob_file)
 
             # Show status message
             sensor_count = len(tob_file.sensors) if tob_file.sensors else 0
-            data_points = len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
+            data_points = (
+                len(tob_file.tob_data.data) if tob_file.tob_data.data is not None else 0
+            )
 
             self.show_status_message(
                 f"Loaded '{file_name}' for plotting: {data_points} data points, {sensor_count} sensors"
             )
 
-            self.logger.info(f"Successfully loaded TOB file '{file_name}' for plotting: "
-                           f"{data_points} points, {sensor_count} sensors")
+            self.logger.info(
+                f"Successfully loaded TOB file '{file_name}' for plotting: "
+                f"{data_points} points, {sensor_count} sensors"
+            )
 
         except Exception as e:
             self.logger.error(f"Error selecting TOB file for plot: {e}")
@@ -886,42 +991,51 @@ class MainWindow(QMainWindow):
             available_sensors = tob_file.sensors or []
 
             for sensor_name, checkbox in self.ntc_checkboxes.items():
-                if sensor_name in available_sensors and (sensor_name.startswith("NTC") or sensor_name == "Temp"):
+                if sensor_name in available_sensors and (
+                    sensor_name.startswith("NTC") or sensor_name == "Temp"
+                ):
                     checkbox.setChecked(True)
                     selected_ntc_sensors.append(sensor_name)
 
             # Update plot widget with active NTC sensors
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.set_active_ntc_sensors(selected_ntc_sensors)
 
                 # If we have multiple NTC sensors selected, switch to NTCs mode for plotting
                 if len(selected_ntc_sensors) > 1:
                     # Set y1 sensor to "NTCs" to plot all selected NTC sensors
-                    if hasattr(self.plot_widget, 'y1_sensor'):
+                    if hasattr(self.plot_widget, "y1_sensor"):
                         self.plot_widget.y1_sensor = "NTCs"
-                        self.logger.debug("Switched to NTCs mode for multi-sensor plotting")
+                        self.logger.debug(
+                            "Switched to NTCs mode for multi-sensor plotting"
+                        )
 
                     # Also update the y1 axis combo box if it exists
-                    if hasattr(self, 'y1_axis_combo') and self.y1_axis_combo:
+                    if hasattr(self, "y1_axis_combo") and self.y1_axis_combo:
                         self.y1_axis_combo.setCurrentText("NTCs")
                         self.logger.debug("Updated y1 axis combo to NTCs")
 
-            self.logger.debug(f"Selected all NTC sensors for '{tob_file.file_name}': {selected_ntc_sensors}")
+            self.logger.debug(
+                f"Selected all NTC sensors for '{tob_file.file_name}': {selected_ntc_sensors}"
+            )
 
             # Update X axis limits based on current time unit
             current_time_unit = "Seconds"  # Default
-            if hasattr(self, 'x_axis_combo') and self.x_axis_combo:
+            if hasattr(self, "x_axis_combo") and self.x_axis_combo:
                 current_time_unit = self.x_axis_combo.currentText() or "Seconds"
             self._update_x_axis_limits_for_unit(current_time_unit)
 
             # Update project info display
             if self.controller.project_model:
-                location = (self.controller.project_model.server_config.url
-                          if self.controller.project_model.server_config else "")
+                location = (
+                    self.controller.project_model.server_config.url
+                    if self.controller.project_model.server_config
+                    else ""
+                )
                 self.update_project_info(
                     self.controller.project_model.name,
                     location,
-                    self.controller.project_model.description
+                    self.controller.project_model.description,
                 )
 
         except Exception as e:
@@ -932,15 +1046,15 @@ class MainWindow(QMainWindow):
         Clear all data from the plot widget.
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 # Clear sensor selections
                 for checkbox in self.ntc_checkboxes.values():
                     checkbox.setChecked(False)
 
                 # Clear plot data (if the plot widget supports it)
-                if hasattr(self.plot_widget, 'clear_plot'):
+                if hasattr(self.plot_widget, "clear_plot"):
                     self.plot_widget.clear_plot()
-                elif hasattr(self.plot_widget, '_clear_plot'):
+                elif hasattr(self.plot_widget, "_clear_plot"):
                     self.plot_widget._clear_plot()
 
                 self.show_status_message("Plot data cleared")
@@ -986,10 +1100,12 @@ class MainWindow(QMainWindow):
             "uploaded": f"'{file_name}' uploaded to server",
             "processing": f"Processing '{file_name}' on server...",
             "processed": f"'{file_name}' processing completed",
-            "error": f"Error with '{file_name}'"
+            "error": f"Error with '{file_name}'",
         }
 
-        message = status_messages.get(status, f"Status of '{file_name}' changed to {status}")
+        message = status_messages.get(
+            status, f"Status of '{file_name}' changed to {status}"
+        )
         self.show_status_message(message)
 
     def update_tob_file_status(self, file_name: str, status: str) -> None:
@@ -1005,7 +1121,9 @@ class MainWindow(QMainWindow):
 
         if self.controller and self.controller.project_model:
             self.controller.project_model.update_tob_file_status(file_name, status)
-            self.logger.info(f"TOB file status updated externally: {file_name} -> {status}")
+            self.logger.info(
+                f"TOB file status updated externally: {file_name} -> {status}"
+            )
 
             # Trigger auto-save
             self.controller._mark_project_modified()
@@ -1082,18 +1200,28 @@ class MainWindow(QMainWindow):
             data = None
 
             # Try to get TOB data from current project first
-            if (self.controller and self.controller.project_model and
-                self.controller.project_model.active_tob_file):
+            if (
+                self.controller
+                and self.controller.project_model
+                and self.controller.project_model.active_tob_file
+            ):
 
                 active_tob = self.controller.project_model.get_active_tob_file()
-                if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
+                if (
+                    active_tob
+                    and active_tob.tob_data
+                    and active_tob.tob_data.data is not None
+                ):
                     data = active_tob.tob_data.data
 
             # If no project data, try to get data from plot widget (direct TOB loading)
-            elif (hasattr(self, 'plot_widget') and self.plot_widget and
-                  hasattr(self.plot_widget, 'tob_data_model') and
-                  self.plot_widget.tob_data_model and
-                  self.plot_widget.tob_data_model.data is not None):
+            elif (
+                hasattr(self, "plot_widget")
+                and self.plot_widget
+                and hasattr(self.plot_widget, "tob_data_model")
+                and self.plot_widget.tob_data_model
+                and self.plot_widget.tob_data_model.data is not None
+            ):
                 data = self.plot_widget.tob_data_model.data
 
             # If we have data, calculate min/max values
@@ -1125,16 +1253,22 @@ class MainWindow(QMainWindow):
                                 self.y2_max_value.setText(f"{max_val:.2f}")
                                 self.y2_max_value.blockSignals(False)
 
-                        self.logger.debug(f"Updated {axis} limits for {sensor_name}: {min_val:.2f} - {max_val:.2f}")
+                        self.logger.debug(
+                            f"Updated {axis} limits for {sensor_name}: {min_val:.2f} - {max_val:.2f}"
+                        )
                     else:
-                        self.logger.warning(f"No data available for sensor {sensor_name}")
+                        self.logger.warning(
+                            f"No data available for sensor {sensor_name}"
+                        )
                 else:
                     self.logger.warning(f"Sensor {sensor_name} not found in data")
             else:
                 self.logger.debug("No TOB data available for limit calculation")
 
         except Exception as e:
-            self.logger.error(f"Error updating {axis} limits for sensor {sensor_name}: {e}")
+            self.logger.error(
+                f"Error updating {axis} limits for sensor {sensor_name}: {e}"
+            )
 
     def _update_x_axis_limits_for_unit(self, time_unit: str):
         """
@@ -1147,17 +1281,27 @@ class MainWindow(QMainWindow):
             data = None
 
             # Get TOB data from current project or plot widget
-            if (self.controller and self.controller.project_model and
-                self.controller.project_model.active_tob_file):
+            if (
+                self.controller
+                and self.controller.project_model
+                and self.controller.project_model.active_tob_file
+            ):
 
                 active_tob = self.controller.project_model.get_active_tob_file()
-                if active_tob and active_tob.tob_data and active_tob.tob_data.data is not None:
+                if (
+                    active_tob
+                    and active_tob.tob_data
+                    and active_tob.tob_data.data is not None
+                ):
                     data = active_tob.tob_data.data
 
-            elif (hasattr(self, 'plot_widget') and self.plot_widget and
-                  hasattr(self.plot_widget, 'tob_data_model') and
-                  self.plot_widget.tob_data_model and
-                  self.plot_widget.tob_data_model.data is not None):
+            elif (
+                hasattr(self, "plot_widget")
+                and self.plot_widget
+                and hasattr(self.plot_widget, "tob_data_model")
+                and self.plot_widget.tob_data_model
+                and self.plot_widget.tob_data_model.data is not None
+            ):
                 data = self.plot_widget.tob_data_model.data
 
             if data is not None:
@@ -1192,7 +1336,9 @@ class MainWindow(QMainWindow):
                         self.x_max_value.setText(f"{time_max:.2f}")
                         self.x_max_value.blockSignals(False)
 
-                    self.logger.debug(f"Updated X axis limits for {time_unit}: {time_min:.2f} - {time_max:.2f}")
+                    self.logger.debug(
+                        f"Updated X axis limits for {time_unit}: {time_min:.2f} - {time_max:.2f}"
+                    )
                 else:
                     self.logger.warning("No time column found in TOB data")
             else:
@@ -1221,7 +1367,9 @@ class MainWindow(QMainWindow):
                 self.controller.set_plot_mode("single")
         else:
             # Dual mode: Main plot + secondary plot with selected sensor
-            self.logger.debug("Switching to dual plot mode with sensor: %s", sensor_name)
+            self.logger.debug(
+                "Switching to dual plot mode with sensor: %s", sensor_name
+            )
             if self.controller:
                 self.controller.set_secondary_sensor(sensor_name)
 
@@ -1470,7 +1618,7 @@ class MainWindow(QMainWindow):
             selected_sensors: List of selected sensor names
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.update_sensor_selection(selected_sensors)
                 self.update_style_indicators()  # Update visual indicators
                 self.logger.debug("Plot sensors updated: %s", selected_sensors)
@@ -1488,7 +1636,7 @@ class MainWindow(QMainWindow):
             axis_settings: Dictionary containing axis configuration
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.update_axis_settings(axis_settings)
                 self.logger.debug("Plot axis settings updated: %s", axis_settings)
             else:
@@ -1506,7 +1654,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum X-axis value in seconds
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.update_x_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot X-axis limits updated: min=%.2f, max=%.2f",
@@ -1530,7 +1678,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum Y1-axis value
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.update_y1_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot Y1-axis limits updated: min=%.2f, max=%.2f",
@@ -1554,7 +1702,7 @@ class MainWindow(QMainWindow):
             max_value: Maximum Y2-axis value
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 self.plot_widget.update_y2_limits(min_value, max_value)
                 self.logger.debug(
                     "Plot Y2-axis limits updated: min=%.2f, max=%.2f",
@@ -1600,7 +1748,7 @@ class MainWindow(QMainWindow):
             Dictionary containing plot information
         """
         try:
-            if hasattr(self, 'plot_widget') and self.plot_widget:
+            if hasattr(self, "plot_widget") and self.plot_widget:
                 return self.plot_widget.get_plot_info()
             else:
                 return {"has_plot_widget": False}
@@ -1729,6 +1877,7 @@ class MainWindow(QMainWindow):
             message: Dialog message
         """
         from PyQt6.QtWidgets import QMessageBox
+
         QMessageBox.information(self, title, message)
 
     def _on_show_server_status(self, title: str, message: str):
@@ -1740,6 +1889,7 @@ class MainWindow(QMainWindow):
             message: Dialog message
         """
         from PyQt6.QtWidgets import QMessageBox
+
         QMessageBox.information(self, title, message)
 
     def _on_error_occurred(self, error_type: str, error_message: str, parent):
@@ -1752,6 +1902,7 @@ class MainWindow(QMainWindow):
             parent: Parent widget
         """
         from PyQt6.QtWidgets import QMessageBox
+
         msg_box = QMessageBox(parent or self)
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setWindowTitle(f"Error - {error_type}")
@@ -1768,6 +1919,7 @@ class MainWindow(QMainWindow):
             parent: Parent widget
         """
         from PyQt6.QtWidgets import QMessageBox
+
         msg_box = QMessageBox(parent or self)
         msg_box.setIcon(QMessageBox.Icon.Warning)
         msg_box.setWindowTitle("Warning")
@@ -1784,6 +1936,7 @@ class MainWindow(QMainWindow):
             parent: Parent widget
         """
         from PyQt6.QtWidgets import QMessageBox
+
         msg_box = QMessageBox(parent or self)
         msg_box.setIcon(QMessageBox.Icon.Information)
         msg_box.setWindowTitle("Information")
