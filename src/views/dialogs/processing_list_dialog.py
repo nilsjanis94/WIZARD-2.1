@@ -4,6 +4,7 @@ Processing List Dialog for WIZARD-2.1
 Dialog for managing TOB files in a project.
 """
 
+import re
 from pathlib import Path
 from typing import List, Optional
 
@@ -99,7 +100,7 @@ class ProcessingListDialog(QDialog):
                 # Update status text
                 status_item = QTableWidgetItem(self._get_status_text(new_status))
                 status_item.setIcon(self._get_status_icon(new_status))
-                self.table_widget.setItem(row, 4, status_item)  # Status column
+                self.table_widget.setItem(row, 6, status_item)  # Status column
                 break
 
         # Trigger auto-save if connected to controller
@@ -441,16 +442,46 @@ TOB File Details: {file_name}
                 row_position, 2, QTableWidgetItem(str(data_points))
             )
 
-            # Sensors
-            sensors_str = ", ".join(tob_file.sensors) if tob_file.sensors else "None"
-            self.table_widget.setItem(row_position, 3, QTableWidgetItem(sensors_str))
+            # Sensor String (FLX-TxxxSD from comments)
+            sensor_string = "-"
+            if tob_file.tob_data and tob_file.tob_data.headers:
+                headers = tob_file.tob_data.headers
+                if headers.get("Comments"):
+                    comment = str(headers["Comments"])
+                    match = re.search(r'T(\d+)SD', comment)
+                    if match:
+                        sensor_number = match.group(1)
+                        sensor_string = f"FLX-T{sensor_number}SD"
+            self.table_widget.setItem(row_position, 3, QTableWidgetItem(sensor_string))
+
+            # Comment (filtered)
+            comment = "-"
+            if tob_file.tob_data and tob_file.tob_data.headers:
+                headers = tob_file.tob_data.headers
+                if headers.get("Comments"):
+                    comment = str(headers["Comments"])
+                    # Remove brackets and quotes
+                    comment = re.sub(r'[\[\]\'""]', '', comment)
+            self.table_widget.setItem(row_position, 4, QTableWidgetItem(comment))
+
+            # Subcon Ext. (m)
+            subcon_value = "-"
+            if tob_file.tob_data and tob_file.tob_data.headers:
+                headers = tob_file.tob_data.headers
+                if "Subconn_Length" in headers:
+                    try:
+                        value = float(headers["Subconn_Length"])
+                        subcon_value = f"{value:.1f}"
+                    except (ValueError, TypeError):
+                        subcon_value = "-"
+            self.table_widget.setItem(row_position, 5, QTableWidgetItem(subcon_value))
 
             # Status with icon
             status_item = QTableWidgetItem(self._get_status_text(tob_file.status))
             status_icon = self._get_status_icon(tob_file.status)
             if status_icon is not None:
                 status_item.setIcon(status_icon)
-            self.table_widget.setItem(row_position, 4, status_item)
+            self.table_widget.setItem(row_position, 6, status_item)
 
             # Store file name for later reference
             self.table_widget.item(row_position, 0).setData(
@@ -555,9 +586,9 @@ TOB File Details: {file_name}
 
         # Table widget
         self.table_widget = QTableWidget()
-        self.table_widget.setColumnCount(5)
+        self.table_widget.setColumnCount(7)
         self.table_widget.setHorizontalHeaderLabels(
-            ["File Name", "Size", "Data Points", "Sensors", "Status"]
+            ["File Name", "Size", "Data Points", "Sensor String", "Comment", "Subcon Ext. (m)", "Status"]
         )
 
         # Configure table
@@ -654,9 +685,9 @@ TOB File Details: {file_name}
 
         # Table widget
         self.table_widget = QTableWidget()
-        self.table_widget.setColumnCount(5)
+        self.table_widget.setColumnCount(7)
         self.table_widget.setHorizontalHeaderLabels(
-            ["File Name", "Size", "Data Points", "Sensors", "Status"]
+            ["File Name", "Size", "Data Points", "Sensor String", "Comment", "Subcon Ext. (m)", "Status"]
         )
 
         # Configure table
@@ -1154,11 +1185,6 @@ TOB File Details: {file_name}
             data_points_str = f"{data_points:,}" if data_points else "Unknown"
             self.table_widget.setItem(row, 2, QTableWidgetItem(data_points_str))
 
-            # Sensors
-            sensors = file_info.get("sensors", [])
-            sensors_str = f"{len(sensors)} sensors" if sensors else "Unknown"
-            self.table_widget.setItem(row, 3, QTableWidgetItem(sensors_str))
-
             # Added date
             added_date = file_info.get("added_date", "")
-            self.table_widget.setItem(row, 4, QTableWidgetItem(str(added_date)))
+            self.table_widget.setItem(row, 3, QTableWidgetItem(str(added_date)))
