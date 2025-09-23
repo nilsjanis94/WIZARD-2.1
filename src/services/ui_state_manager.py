@@ -65,6 +65,11 @@ class UIStateManager:
         # Show welcome container
         if self.welcome_container:
             self.welcome_container.setVisible(True)
+            # Ensure size policy allows expansion
+            from PyQt6.QtWidgets import QSizePolicy
+            self.welcome_container.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            )
             self.logger.debug("Welcome container shown")
 
         # Hide plot container
@@ -107,9 +112,12 @@ class UIStateManager:
             self.plot_container.setVisible(True)
             # Remove height restrictions to make container visible
             self.plot_container.setMaximumHeight(16777215)  # Qt's maximum value
-            self.plot_container.setMinimumHeight(
-                200
-            )  # Set minimum height for visibility
+            self.plot_container.setMinimumHeight(0)  # Allow flexible height
+            # Ensure size policy allows expansion
+            from PyQt6.QtWidgets import QSizePolicy
+            self.plot_container.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            )
             self.logger.info("Plot container shown and resized")
 
         self.current_state = UIState.PLOT

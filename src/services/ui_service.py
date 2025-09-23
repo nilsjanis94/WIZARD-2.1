@@ -435,6 +435,10 @@ class UIService:
             if "location_info_label" in widgets and widgets["location_info_label"]:
                 widgets["location_info_label"].setText("Location: -")
 
+            # Reset TOB file status
+            if hasattr(widgets.get("main_window"), 'update_tob_file_status_bar'):
+                widgets["main_window"].update_tob_file_status_bar()
+
             if (
                 "location_comment_value" in widgets
                 and widgets["location_comment_value"]

@@ -304,6 +304,13 @@ class MainController(QObject):
                 # Emit sensors updated signal
                 self.sensors_updated.emit(self.tob_data_model.sensors)
 
+            # Update status bar with TOB file information
+            if hasattr(self.main_window, 'update_tob_file_status_bar'):
+                file_name = self.tob_data_model.file_name or "Unknown"
+                data_points = self.tob_data_model.data_points or 0
+                sensors_count = len(self.tob_data_model.sensors) if self.tob_data_model.sensors else 0
+                self.main_window.update_tob_file_status_bar(file_name, data_points, sensors_count)
+
             # Show plot mode and indicate data loaded
             self.show_plot_mode.emit()
             self.main_window.show_data_loaded()
@@ -352,6 +359,16 @@ class MainController(QObject):
         }
 
         self.main_window.set_services(services)
+
+        # After service injection, ensure UI state management is properly set up
+        if (self.main_window.ui_state_manager and
+            self.main_window.welcome_container and
+            self.main_window.plot_container):
+            self.main_window.ui_state_manager.set_containers(
+                self.main_window.welcome_container, self.main_window.plot_container
+            )
+            self.logger.info("UI state manager containers set after service injection")
+
         self.logger.info("Services injected into view successfully")
 
     def _connect_signals(self):
@@ -1486,6 +1503,20 @@ class MainController(QObject):
 
             # Update memory usage for loaded project
             self.update_tob_memory_usage()
+
+            # Update status bar with active TOB file info (if any)
+            if project.active_tob_file:
+                active_tob = project.get_active_tob_file()
+                if active_tob and hasattr(self.main_window, 'update_tob_file_status_bar'):
+                    file_name = active_tob.file_name or "Unknown"
+                    data_points = len(active_tob.tob_data.data) if (active_tob.tob_data and active_tob.tob_data.data is not None) else 0
+                    sensors_count = len(active_tob.sensors) if active_tob.sensors else 0
+                    self.main_window.update_tob_file_status_bar(file_name, data_points, sensors_count)
+                    self.logger.info("Status bar updated with active TOB file: %s", file_name)
+            else:
+                # No active TOB file - reset status bar
+                if hasattr(self.main_window, 'update_tob_file_status_bar'):
+                    self.main_window.update_tob_file_status_bar()
 
             self.main_window.show_status_message("Project opened successfully")
             self.logger.info("Project '%s' opened successfully", project.name)

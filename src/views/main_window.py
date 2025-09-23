@@ -109,7 +109,8 @@ class MainWindow(QMainWindow):
             self._setup_menu_bar()
             self._setup_status_bar()
 
-        # Setup UI state manager with container references first
+        # Setup UI state manager with container references
+        # This may be called multiple times - once during UI setup, once after service injection
         if self.ui_state_manager and self.welcome_container and self.plot_container:
             self.ui_state_manager.set_containers(
                 self.welcome_container, self.plot_container
@@ -119,6 +120,11 @@ class MainWindow(QMainWindow):
                 self.welcome_container is not None,
                 self.plot_container is not None,
             )
+        elif self.welcome_container and self.plot_container:
+            # Containers are available but ui_state_manager not yet injected
+            self.logger.debug("UI containers available, waiting for ui_state_manager injection")
+        else:
+            self.logger.debug("UI containers not yet available")
 
         # Initialize service-dependent UI components now that services are available
         if self._are_services_available():
@@ -428,6 +434,42 @@ class MainWindow(QMainWindow):
         if self.statusbar:
             self.statusbar.showMessage("Ready")
 
+            # Add permanent TOB file info label to status bar
+            from PyQt6.QtWidgets import QLabel
+            self.tob_file_status_label = QLabel("No TOB file loaded")
+            self.tob_file_status_label.setStyleSheet("font-weight: bold; color: #3AAA35;")
+            self.statusbar.addPermanentWidget(self.tob_file_status_label)
+
+    def update_tob_file_status_bar(self, file_name: str = None, data_points: int = None, sensors: int = None):
+        """
+        Update the TOB file information in the status bar.
+
+        Args:
+            file_name: Name of the TOB file (None for no file loaded)
+            data_points: Number of data points (optional, for logging only)
+            sensors: Number of sensors (optional, for logging only)
+        """
+        try:
+            if not hasattr(self, 'tob_file_status_label') or not self.tob_file_status_label:
+                return
+
+            if file_name:
+                status_text = f"TOB: {file_name}"
+            else:
+                status_text = "No TOB file loaded"
+
+            self.tob_file_status_label.setText(status_text)
+
+            # Log additional info for debugging
+            if file_name and data_points is not None and sensors is not None:
+                self.logger.debug("TOB file loaded: %s (%d points, %d sensors)",
+                                file_name, data_points, sensors)
+            else:
+                self.logger.debug("TOB file status updated: %s", status_text)
+
+        except Exception as e:
+            self.logger.error("Error updating TOB file status: %s", e)
+
     def _connect_signals(self):
         """
         Connect UI signals to their respective handlers.
@@ -565,7 +607,8 @@ class MainWindow(QMainWindow):
         """
         Show the plot area and hide welcome screen.
         """
-        self.ui_state_manager.show_plot_mode()
+        if self.ui_state_manager:
+            self.ui_state_manager.show_plot_mode()
         self.logger.debug("Plot area displayed")
 
     def get_metrics_widgets(self) -> Dict[str, "QLineEdit"]:
@@ -942,7 +985,7 @@ class MainWindow(QMainWindow):
                     )
                     self.logger.info("TOB metrics calculated for manual plotting")
 
-                    # Update data metrics in view
+                            # Update data metrics in view
                     self.controller.data_service.update_data_metrics(
                         self.get_metrics_widgets(), metrics
                     )
@@ -950,6 +993,13 @@ class MainWindow(QMainWindow):
                     self.logger.error(
                         "Failed to calculate data metrics for manual plotting: %s", e
                     )
+
+            # Update status bar with TOB file information
+            if hasattr(self, 'update_tob_file_status_bar'):
+                file_name = tob_data_model.file_name or "Unknown"
+                data_points = tob_data_model.data_points or 0
+                sensors_count = len(tob_data_model.sensors) if tob_data_model.sensors else 0
+                self.update_tob_file_status_bar(file_name, data_points, sensors_count)
 
             # Update UI elements
             self._update_ui_for_tob_plot(tob_file)
@@ -1056,6 +1106,10 @@ class MainWindow(QMainWindow):
                     self.plot_widget.clear_plot()
                 elif hasattr(self.plot_widget, "_clear_plot"):
                     self.plot_widget._clear_plot()
+
+                # Reset TOB file status in status bar
+                if hasattr(self, 'update_tob_file_status_bar'):
+                    self.update_tob_file_status_bar()
 
                 self.show_status_message("Plot data cleared")
                 self.logger.info("Plot data cleared")
