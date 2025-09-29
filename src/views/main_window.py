@@ -1731,13 +1731,23 @@ class MainWindow(QMainWindow):
         Update the editability of project container widgets based on whether a project is loaded.
         """
         try:
-            # Check if a REAL project is currently loaded (not just the default "Untitled Project")
-            has_real_project = (self.controller and
-                               hasattr(self.controller, 'project_model') and
-                               self.controller.project_model is not None and
-                               hasattr(self.controller, 'main_window') and
-                               hasattr(self.controller.main_window, 'current_project_path') and
-                               self.controller.main_window.current_project_path is not None)
+            controller = getattr(self, "controller", None)
+            has_real_project = False
+
+            if controller is not None:
+                project_model = getattr(controller, "project_model", None)
+                main_window_ref = getattr(controller, "main_window", None)
+                current_project_path = None
+                if main_window_ref is not None:
+                    current_project_path = getattr(
+                        main_window_ref, "current_project_path", None
+                    )
+
+                has_real_project = bool(
+                    project_model
+                    and current_project_path is not None
+                    and current_project_path != ""
+                )
 
             # Enable/disable project container input widgets
             if self.location_subcon_spin is not None:

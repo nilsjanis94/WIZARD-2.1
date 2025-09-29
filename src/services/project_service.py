@@ -1,17 +1,15 @@
-"""
-Project Service for WIZARD-2.1
-
-Service for project management, creation, and file operations.
-Handles project lifecycle with app-internal encryption.
-"""
+"""Project management service with secure secret handling."""
 
 import logging
+import json
 import os
+import secrets
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..models.project_model import ProjectModel, ServerConfig
 from .encryption_service import EncryptionService
+from .secret_manager import SecretManager, SecretManagerError
 
 
 class ProjectService:
@@ -22,13 +20,13 @@ class ProjectService:
     with app-internal encryption for data security.
     """
 
-    # App-internal encryption key - should be moved to config in production
-    APP_ENCRYPTION_KEY = "wizard-2.1-internal-key-v1.0-secure"
+    LEGACY_APP_KEY = "wizard-2.1-internal-key-v1.0-secure"
 
-    def __init__(self):
+    def __init__(self, *, secret_manager: Optional[SecretManager] = None):
         """Initialize the project service."""
         self.logger = logging.getLogger(__name__)
         self.encryption_service = EncryptionService()
+        self.secret_manager = secret_manager or SecretManager()
 
     def create_project(
         self,
@@ -75,12 +73,13 @@ class ProjectService:
                 comment_field_name="comment",
             )
 
-            # Create project model
+            encryption_key, secret_id = self._generate_and_store_project_key(name)
+
             project = ProjectModel(
                 name=name,
                 description=description,
                 server_config=server_config,
-                encryption_key=self.APP_ENCRYPTION_KEY,
+                encryption_key=secret_id,
             )
 
             self.logger.info("Successfully created project: %s", name)
@@ -105,14 +104,25 @@ class ProjectService:
         try:
             self.logger.info("Saving project '%s' to: %s", project.name, file_path)
 
+            if not project.encryption_key:
+                self.logger.info(
+                    "Project %s missing encryption identifier – generating new secret",
+                    project.name,
+                )
+                _, secret_id = self._generate_and_store_project_key(project.name)
+                project.encryption_key = secret_id
+
             # Ensure the directory exists
             file_path_obj = Path(file_path)
             file_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-            # Use app-internal encryption
+            encryption_key = self._resolve_project_key(project)
+
             self.encryption_service.save_encrypted_project(
-                project=project, password=self.APP_ENCRYPTION_KEY, file_path=file_path
+                project=project, password=encryption_key, file_path=file_path
             )
+
+            self._write_project_metadata(file_path_obj, project.encryption_key)
 
             self.logger.info("Successfully saved project: %s", project.name)
 
@@ -141,10 +151,15 @@ class ProjectService:
             if not Path(file_path).exists():
                 raise FileNotFoundError(f"Project file not found: {file_path}")
 
-            # Load with app-internal encryption
+            secret_id = self._read_project_secret_id(Path(file_path))
+            encryption_key = self._resolve_project_key(None, secret_id=secret_id)
+
             project = self.encryption_service.load_encrypted_project(
-                file_path=file_path, password=self.APP_ENCRYPTION_KEY
+                file_path=file_path, password=encryption_key
             )
+
+            # Ensure the project carries the secret identifier for future saves
+            project.encryption_key = secret_id
 
             self.logger.info("Successfully loaded project: %s", project.name)
             return project
@@ -285,6 +300,81 @@ class ProjectService:
         url_without_protocol = server_url.replace("http://", "").replace("https://", "")
         if not ("." in url_without_protocol or "/" in url_without_protocol):
             raise ValueError("Server URL must contain a valid domain or path")
+
+    # ------------------------------------------------------------------
+    # Secret management helpers
+    # ------------------------------------------------------------------
+
+    def _generate_and_store_project_key(self, project_name: str) -> tuple[str, str]:
+        secret_id = f"project-{secrets.token_hex(16)}"
+        secret_value = secrets.token_urlsafe(32)
+
+        try:
+            self.secret_manager.store_secret(secret_id, secret_value)
+        except SecretManagerError as exc:
+            self.logger.error(
+                "Failed to store project secret for %s: %s", project_name, exc
+            )
+            raise
+
+        return secret_value, secret_id
+
+    def _resolve_project_key(
+        self,
+        project: Optional[ProjectModel],
+        *,
+        secret_id: Optional[str] = None,
+    ) -> str:
+        candidate_id = secret_id or (project.encryption_key if project else None)
+
+        if candidate_id:
+            secret = self.secret_manager.retrieve_secret(candidate_id)
+            if secret:
+                return secret
+            self.logger.warning(
+                "Secret %s not found in store – attempting legacy fallback",
+                candidate_id,
+            )
+
+        legacy_key = os.environ.get("WIZARD_LEGACY_KEY", self.LEGACY_APP_KEY)
+        if legacy_key:
+            self.logger.warning("Using legacy encryption key fallback")
+            return legacy_key
+
+        raise SecretManagerError("No encryption secret available for project")
+
+    def _metadata_path(self, file_path: Path) -> Path:
+        return file_path.with_suffix(f"{file_path.suffix}.meta")
+
+    def _write_project_metadata(self, file_path: Path, secret_id: str) -> None:
+        metadata_path = self._metadata_path(file_path)
+        metadata = {
+            "version": 1,
+            "secret_id": secret_id,
+        }
+
+        with open(metadata_path, "w", encoding="utf-8") as meta_file:
+            json.dump(metadata, meta_file)
+        os.chmod(metadata_path, 0o600)
+
+    def _read_project_secret_id(self, file_path: Path) -> str:
+        metadata_path = self._metadata_path(file_path)
+
+        if not metadata_path.exists():
+            self.logger.warning(
+                "Metadata file %s missing – using legacy key fallback", metadata_path
+            )
+            return "legacy"
+
+        with open(metadata_path, "r", encoding="utf-8") as meta_file:
+            metadata = json.load(meta_file)
+
+        secret_id = metadata.get("secret_id")
+        if not secret_id:
+            raise SecretManagerError(
+                f"Secret identifier missing in metadata for {file_path}"
+            )
+        return secret_id
 
     def update_project_server_config(
         self,

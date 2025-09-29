@@ -216,6 +216,8 @@ data/*.tob
 data/*.TOB
 data/*.flx
 data/*.FLX
+data/*.wzp
+data/*.wzp.meta
 !data/.gitkeep
 
 # Test files (but keep our test structure)

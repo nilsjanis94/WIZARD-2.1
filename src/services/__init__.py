@@ -10,6 +10,7 @@ from .encryption_service import EncryptionService
 from .http_client_service import HttpClientService
 from .memory_monitor_service import MemoryMonitorService
 from .project_service import ProjectService
+from .secret_manager import SecretManager, SecretManagerError
 from .tob_service import TOBService
 
 # Optional Qt-dependent services
@@ -75,6 +76,8 @@ __all__ = [
     "HttpClientService",
     "MemoryMonitorService",
     "ProjectService",
+    "SecretManager",
+    "SecretManagerError",
     "TOBService",
     # Optional services (may be None if PyQt6 not available)
     "AxisUIService",

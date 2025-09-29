@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from src.services.project_service import ProjectService
+from src.services.secret_manager import SecretManager
 
 
 class TestProjectService:
@@ -16,7 +17,21 @@ class TestProjectService:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.service = ProjectService()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.secret_storage = Path(self.temp_dir.name) / "secrets"
+        self.secret_manager = SecretManager(use_keyring=False, storage_dir=self.secret_storage)
+        self.service = ProjectService(secret_manager=self.secret_manager)
+
+    def teardown_method(self):
+        """Clean up temporary directories."""
+        self.temp_dir.cleanup()
+
+    def _cleanup_project_files(self, project_path: str) -> None:
+        meta_path = Path(f"{project_path}.meta")
+        if os.path.exists(project_path):
+            os.unlink(project_path)
+        if meta_path.exists():
+            meta_path.unlink()
 
     def test_create_project_success(self):
         """Test successful project creation."""
@@ -71,6 +86,9 @@ class TestProjectService:
         try:
             self.service.save_project(project, temp_file)
 
+            metadata_path = Path(f"{temp_file}.meta")
+            assert metadata_path.exists()
+
             # Verify file exists
             assert Path(temp_file).exists()
             assert Path(temp_file).stat().st_size > 0
@@ -88,9 +106,7 @@ class TestProjectService:
             )
 
         finally:
-            # Cleanup
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+            self._cleanup_project_files(temp_file)
 
     def test_validate_project_file(self):
         """Test project file validation."""
@@ -113,8 +129,7 @@ class TestProjectService:
             assert self.service.validate_project_file("invalid.txt") is False
 
         finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+            self._cleanup_project_files(temp_file)
 
     def test_get_project_info(self):
         """Test getting project information without loading."""
@@ -138,5 +153,4 @@ class TestProjectService:
             assert info["file_name"] == Path(temp_file).name
 
         finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+            self._cleanup_project_files(temp_file)
