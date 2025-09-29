@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 from ..models.project_model import ProjectModel, ServerConfig
 from .encryption_service import EncryptionService
 from .secret_manager import SecretManager, SecretManagerError
+from ..utils.logging_config import get_logger
 
 
 class ProjectService:
@@ -25,6 +26,7 @@ class ProjectService:
     def __init__(self, *, secret_manager: Optional[SecretManager] = None):
         """Initialize the project service."""
         self.logger = logging.getLogger(__name__)
+        self.audit_logger = get_logger("wizard.audit")
         self.encryption_service = EncryptionService()
         self.secret_manager = secret_manager or SecretManager()
 
@@ -83,6 +85,7 @@ class ProjectService:
             )
 
             self.logger.info("Successfully created project: %s", name)
+            self._audit("project_created", project)
             return project
 
         except Exception as e:
@@ -125,6 +128,7 @@ class ProjectService:
             self._write_project_metadata(file_path_obj, project.encryption_key)
 
             self.logger.info("Successfully saved project: %s", project.name)
+            self._audit("project_saved", project, file_path=file_path)
 
         except Exception as e:
             self.logger.error("Error saving project %s: %s", project.name, e)
@@ -162,6 +166,7 @@ class ProjectService:
             project.encryption_key = secret_id
 
             self.logger.info("Successfully loaded project: %s", project.name)
+            self._audit("project_loaded", project, file_path=file_path)
             return project
 
         except Exception as e:
@@ -311,6 +316,11 @@ class ProjectService:
 
         try:
             self.secret_manager.store_secret(secret_id, secret_value)
+            self._audit(
+                "secret_created",
+                project_name,
+                secret_id=secret_id,
+            )
         except SecretManagerError as exc:
             self.logger.error(
                 "Failed to store project secret for %s: %s", project_name, exc
@@ -334,6 +344,11 @@ class ProjectService:
             self.logger.warning(
                 "Secret %s not found in store – attempting legacy fallback",
                 candidate_id,
+            )
+            self._audit(
+                "secret_missing",
+                project.name if project else "unknown",
+                secret_id=candidate_id,
             )
 
         legacy_key = os.environ.get("WIZARD_LEGACY_KEY", self.LEGACY_APP_KEY)
@@ -404,9 +419,28 @@ class ProjectService:
 
             project.update_modified_date()
             self.logger.info("Updated server config for project: %s", project.name)
+            self._audit(
+                "project_server_config_updated",
+                project,
+                url=project.server_config.url if project.server_config else None,
+            )
 
         except Exception as e:
             self.logger.error(
                 "Error updating server config for project %s: %s", project.name, e
             )
             raise
+
+    def _audit(self, event: str, project: ProjectModel | str, **properties: Any) -> None:
+        try:
+            project_name = (
+                project.name if isinstance(project, ProjectModel) else str(project)
+            )
+            payload = {
+                "event": event,
+                "project": project_name,
+            }
+            payload.update({k: v for k, v in properties.items() if v is not None})
+            self.audit_logger.info("audit", extra={"audit": payload})
+        except Exception as exc:  # pragma: no cover - audit must never crash flow
+            self.logger.debug("Audit logging failed for %s: %s", event, exc)

@@ -4,11 +4,31 @@ Logging Configuration for WIZARD-2.1
 Centralized logging configuration and setup.
 """
 
+import json
 import logging
 import logging.handlers
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+class AuditJSONFormatter(logging.Formatter):
+    """JSON formatter for audit log entries."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = getattr(record, "audit", {})
+
+        base = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+
+        if isinstance(payload, dict):
+            base.update(payload)
+
+        return json.dumps(base, ensure_ascii=False)
 
 
 def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> None:
@@ -21,20 +41,25 @@ def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> Non
     """
     try:
         # Set log directory
+        base_dir = Path(__file__).parent.parent.parent
         if log_dir is None:
-            log_dir = Path(__file__).parent.parent.parent / "logs"
+            log_dir = base_dir / "logs"
         else:
             log_dir = Path(log_dir)
 
+        audit_log_dir = log_dir / "audit"
+
         # Create log directory if it doesn't exist
-        log_dir.mkdir(exist_ok=True)
+        log_dir.mkdir(parents=True, exist_ok=True)
+        audit_log_dir.mkdir(parents=True, exist_ok=True)
 
         # Configure root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, log_level.upper()))
-
-        # Clear existing handlers
         root_logger.handlers.clear()
+        audit_logger = logging.getLogger("wizard.audit")
+        audit_logger.setLevel(logging.INFO)
+        audit_logger.handlers.clear()
 
         # Create formatters
         detailed_formatter = logging.Formatter(
@@ -87,11 +112,25 @@ def setup_logging(log_level: str = "INFO", log_dir: Optional[str] = None) -> Non
         server_handler.setFormatter(detailed_formatter)
         root_logger.addHandler(server_handler)
 
-        # Log startup message
+        audit_handler = logging.handlers.TimedRotatingFileHandler(
+            audit_log_dir / "wizard_audit.log",
+            when="midnight",
+            backupCount=30,
+            encoding="utf-8",
+        )
+        audit_handler.setFormatter(AuditJSONFormatter())
+        audit_handler.setLevel(logging.INFO)
+        audit_logger.addHandler(audit_handler)
+        audit_logger.propagate = False
+
         logger = logging.getLogger(__name__)
         logger.info("Logging system initialized successfully")
         logger.info("Log directory: %s", log_dir)
         logger.info("Log level: %s", log_level)
+        audit_logger.info(
+            "Audit log initialized",
+            extra={"audit": {"event": "audit_start"}},
+        )
 
     except (OSError, PermissionError) as e:
         print(f"File system error setting up logging: {e}", file=sys.stderr)
