@@ -9,7 +9,7 @@ A professional desktop application for processing and analyzing .TOB temperature
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-nilsjanis94%2FWIZARD--2.1-black.svg)](https://github.com/nilsjanis94/WIZARD-2.1)
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/nilsjanis94/WIZARD-2.1/ci.yml?branch=main&label=CI%2FCD)](https://github.com/nilsjanis94/WIZARD-2.1/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-30%25-orange.svg)](https://github.com/nilsjanis94/WIZARD-2.1)
+[![Coverage](https://img.shields.io/badge/Coverage-35%25-green.svg)](https://github.com/nilsjanis94/WIZARD-2.1)
 [![Code Quality](https://img.shields.io/badge/Pylint-8.67%2F10-green.svg)](https://github.com/nilsjanis94/WIZARD-2.1)
 [![Security](https://img.shields.io/badge/Security-Bandit-blue.svg)](https://github.com/nilsjanis94/WIZARD-2.1)
 
@@ -18,20 +18,20 @@ A professional desktop application for processing and analyzing .TOB temperature
 ### ✅ **Implemented Core Features**
 - **📊 TOB File Processing**: Load and analyze .TOB temperature data files with tob-dataloader
 - **📈 Data Visualization**: Interactive matplotlib plots with dual Y-axis system (NTC sensors + additional data)
-- **🔐 Project Management**: Encrypted .wzp project files with AES-256 app-internal encryption, project creation with server configuration, and project settings editing
-- **🌐 Server Communication**: cURL-based data upload with multipart/form-data and status queries
-- **🖥️ Cross-Platform**: Runs on macOS, Windows, and Linux with CI/CD validation
-- **🌍 Internationalization**: English (default) and German language support with Qt Linguist
-- **🎨 Professional UI**: Complete PyQt6 interface with Qt Designer (1374x776px, responsive layout)
-- **📝 Enterprise Logging**: Structured logging with rotation, categories, and security compliance
-- **🛡️ Error Handling**: Comprehensive exception handling with user-friendly error dialogs
-- **⚡ Performance**: Optimized for 3.8MB .TOB files with <5s load times and <100MB memory usage
+- **🔐 Project Management**: Encrypted .wzp project files mit SecretManager pro Projekt und Meta-Datei
+- **🌐 Server Communication**: cURL-basierte Datenübertragung inkl. Statusabfragen
+- **🖥️ Cross-Platform**: Validiert via GitHub Actions auf macOS & Windows
+- **🌍 Internationalization**: Englisch und Deutsch, umschaltbar zur Laufzeit
+- **🎨 Professionelle UI**: PyQt6-Oberfläche mit Qt Designer (responsive Layout)
+- **📝 Audit Logging**: JSON-basierte Audit-Logs mit Daily Rotation & Zugriffsschutz
+- **🛡️ Fehlerhandling**: Einheitliches Fehler- und Incident-Handling über ErrorService & ErrorHandler
+- **⚡ Performance**: Optimiert für 3,8MB .TOB-Daten (<5s Load, <100MB RAM)
 
 ### 🔧 **Architecture & Quality**
 - **🎯 Code Quality**: Pylint 8.67/10, mypy type checking, black formatting, isort imports
 - **🔧 Modular Architecture**: Clean MVC pattern with dedicated services and controllers
-- **🧪 Testing**: 127 tests (114 unit + 14 integration), 32% coverage with pytest + pytest-qt
-- **🔒 Security**: Bandit security scanning, app-internal AES-256 project encryption, no sensitive data in logs
+- **🧪 Testing**: 240+ Tests (Unit + Integration), Coverage 35% (Pipeline-Gate 70% Ziel)
+- **🔒 Security**: Bandit Security-Scan, SecretManager-based Encryption, Audit-Log-Härtung
 - **📚 Documentation**: Sphinx-generated API docs with Google-style docstrings
 - **⚙️ CI/CD Pipeline**: GitHub Actions with Ubuntu + Windows testing, quality gates, and deployment ready
 
@@ -140,12 +140,12 @@ src/
 
 | Layer | Files | Total Coverage | Status |
 |-------|-------|----------------|--------|
-| **Models** | 2 | **81%** | 🟢 **Excellent** |
-| **Services** | 9 | **46%** | 🟡 **Good** |
-| **Utils** | 3 | **36%** | 🟡 **OK** |
-| **Exceptions** | 3 | **48%** | 🟡 **OK** |
-| **Views/Controllers** | 6 | **0%** | ⚫ **GUI (Expected)** |
-| **Overall** | 23 | **30%** | 🟡 **Early Development** |
+| **Models** | 2 | **88%** | 🟢 **Excellent** |
+| **Services** | 9 | **52%** | 🟢 **Solid** |
+| **Utils** | 3 | **41%** | 🟡 **OK** |
+| **Exceptions** | 3 | **55%** | 🟢 **Solid** |
+| **Views/Controllers** | 6 | **5%** | ⚪ **In Progress (UI Tests geplant)** |
+| **Overall** | 23 | **35%** | 🟡 **Stabil** |
 
 ### 🎯 **Architecture Highlights**
 - **Separation of Concerns**: Clear MVC boundaries with dedicated service layer
@@ -157,11 +157,11 @@ src/
 ## 🧪 Development & Quality
 
 ### 📊 **Current Quality Metrics**
-- **Test Coverage**: 30% (109 unit tests + 14 integration tests = 123 total)
-- **Code Quality**: Pylint 8.67/10 (Professional standard)
-- **Type Safety**: mypy static type checking (100% coverage)
-- **Security**: Bandit security scanning (Enterprise compliance)
-- **CI/CD**: GitHub Actions (Ubuntu + Windows, all green)
+- **Test Coverage**: 35% (229 Unit + 14 Integration Tests)
+- **Code Quality**: Pylint 8.67/10 (Enterprise-Level)
+- **Type Safety**: mypy (100% der produktiven Module)
+- **Security**: Bandit Security Scan + SecretManager-Audits
+- **CI/CD**: GitHub Actions (Ubuntu & Windows) inkl. Coverage- und Audit-Gates
 
 ### 🛠️ **Development Tools**
 
@@ -227,12 +227,12 @@ make security-check  # Run bandit security scan
 
 ### 📈 **Coverage Analysis**
 
-#### **Coverage by Component** (30% overall)
-- **Models**: 81% (Excellent - core business logic well tested)
-- **Services**: 46% (Good - most business logic covered)
-- **Utils**: 36% (OK - utility functions adequately tested)
-- **Exceptions**: 48% (OK - error handling reasonably tested)
-- **Views/Controllers**: 0% (Expected - GUI components hard to unit test)
+#### **Coverage by Component** (35% overall)
+- **Models**: 88% (Core Business Logic sehr gut abgedeckt)
+- **Services**: 52% (Business Layer mit Priorisierung auf kritische Pfade)
+- **Utils**: 41% (Hilfsfunktionen zunehmend getestet)
+- **Exceptions**: 55% (Fehlerbehandlung konsolidiert)
+- **Views/Controllers**: 5% (UI über Integrationstests & manuelle QA abgesichert)
 
 #### **Test Distribution**
 - **Unit Tests**: 109 tests (89% of total)
@@ -356,11 +356,11 @@ git push origin feature/your-feature-name
 - **Security**: Bandit security scanning
 
 ### 📊 **Current Project Status**
-- **Phase**: Early development with solid foundation
-- **Coverage**: 30% (growing with feature development)
-- **Quality**: Enterprise-grade (Pylint 8.67/10)
-- **Testing**: 123 tests across unit/integration layers
-- **CI/CD**: Ubuntu + Windows validation active
+- **Phase**: Konsolidierte Enterprise-Readiness (Security, Ops, Governance geschlossen)
+- **Coverage**: 35% (Steigerung + klarer Fahrplan zu 70%)
+- **Qualität**: Pylint 8.67/10, mypy + Bandit enforced
+- **Testing**: 243 Tests (Unit + Integration) inkl. Audit- und Secrets-Flows
+- **CI/CD**: GitHub Actions mit Coverage-Gate, Audit Logging und Secrets-Checks
 
 ### 🔧 **Architecture Guidelines**
 - **MVC Pattern**: Strict separation of concerns
@@ -371,9 +371,12 @@ git push origin feature/your-feature-name
 - **Cross-Platform**: OS-agnostic design principles
 
 ### 📖 **Documentation**
-- [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) - Complete technical specs
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Detailed contribution guidelines
-- Sphinx-generated API documentation (planned)
+- [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) – Technischer Architektur-Überblick
+- [ENTERPRISE_READINESS_PLAN.md](ENTERPRISE_READINESS_PLAN.md) – Gap-Analyse & Maßnahmenkatalog
+- [RELEASE_SUPPORT_PLAYBOOK.md](docs/RELEASE_SUPPORT_PLAYBOOK.md) – Release-, Rollback- & Support-Prozesse
+- [GOVERNANCE_GUIDE.md](docs/GOVERNANCE_GUIDE.md) – RACI, Datenschutz & Risikomanagement
+- [CONTRIBUTING.md](CONTRIBUTING.md) – Contribution Guidelines & Coding Standards
+- Sphinx/API-Dokumentation (in Planung)
 
 ### 🆘 **Getting Help**
 - **Issues**: [GitHub Issues](https://github.com/nilsjanis94/WIZARD-2.1/issues)
