@@ -27,7 +27,7 @@ class TestProjectModelTOB:
             file_name="data.TOB",
             file_size=1024,
             headers={"version": "1.0", "device": "TEST"},
-            dataframe=test_data,
+            data=test_data,
             data_points=3,
             sensors=["NTC01", "PT100"],
         )
@@ -44,7 +44,7 @@ class TestProjectModelTOB:
         assert tob_file.status == "loaded"
         assert tob_file.tob_data is not None
         assert tob_file.tob_data.headers == {"version": "1.0", "device": "TEST"}
-        assert tob_file.tob_data.dataframe.equals(test_data)
+        assert tob_file.tob_data.data.equals(test_data)
 
     def test_add_duplicate_tob_file_update(self):
         """Test adding a duplicate TOB file updates existing one."""
@@ -66,7 +66,7 @@ class TestProjectModelTOB:
             file_name="data.TOB",
             file_size=2048,
             headers={"version": "2.0"},
-            dataframe=test_data,
+            data=test_data,
             data_points=1,
             sensors=["NTC02"],
         )
@@ -116,8 +116,19 @@ class TestProjectModelTOB:
             file_path="/test/data.TOB",
             file_name="data.TOB",
             file_size=1024,
-            data_points=3,
-            sensors=["NTC01"],
+            headers={},
+            data=pd.DataFrame({"time": [1], "sensor": [20.0]}),
+            data_points=1,
+            sensors=["sensor"],
+        )
+        project.add_tob_file(
+            file_path="/test/data.TOB",
+            file_name="data.TOB",
+            file_size=1024,
+            headers={},
+            data=pd.DataFrame({"time": [1], "sensor": [20.0]}),
+            data_points=1,
+            sensors=["sensor"],
         )
 
         # Update data (data_points and sensors)

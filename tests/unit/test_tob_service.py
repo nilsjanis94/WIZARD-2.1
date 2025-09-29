@@ -36,7 +36,10 @@ class TestTOBService:
             mock_stat.return_value.st_size = 1024  # Non-zero file size
 
             result = service.validate_tob_file("test.tob")
-            assert result is True
+            assert result["valid"] is True
+            assert result["error_message"] is None
+            assert result["file_size_mb"] > 0
+            assert result["estimated_memory_mb"] > 0
 
     def test_validate_tob_file_invalid_extension(self):
         """Test validating file with invalid extension."""
@@ -47,15 +50,16 @@ class TestTOBService:
         ):
 
             result = service.validate_tob_file("test.txt")
-            assert result is False
+            assert result["valid"] is False
+            assert "validation" in result["error_message"].lower()
 
     def test_validate_tob_file_not_found(self):
         """Test validating non-existent file."""
         service = TOBService()
 
         with patch("pathlib.Path.exists", return_value=False):
-            result = service.validate_tob_file("nonexistent.tob")
-            assert result is False
+            with pytest.raises(TOBFileNotFoundError):
+                service.validate_tob_file("nonexistent.tob")
 
     @pytest.mark.skip(reason="Method _is_data_line removed - now using tob_dataloader")
     def test_is_data_line_numeric(self):

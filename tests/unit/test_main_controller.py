@@ -1,290 +1,317 @@
-"""
-Unit tests for MainController.
+"""Focused unit tests for MainController using stubbed signals."""
 
-Tests the main controller functionality including service orchestration,
-signal connections, and UI coordination.
-"""
-
+from contextlib import ExitStack
+from typing import Any, Callable, Dict, List
 from unittest.mock import Mock, patch
 
 import pytest
 
 from src.controllers.main_controller import MainController
-from src.models.project_model import ProjectModel
-from src.models.tob_data_model import TOBDataModel
 
 
-class TestMainController:
-    """Test cases for MainController."""
+class FakeSignal:
+    def __init__(self) -> None:
+        self.slots: List[Callable[..., None]] = []
 
-    @pytest.fixture
-    def mock_main_window(self):
-        """Create a mock main window."""
-        return Mock()
+    def connect(self, slot: Callable[..., None]) -> None:
+        self.slots.append(slot)
 
-    @pytest.fixture
-    def main_controller(self, mock_main_window):
-        """Create a MainController instance for testing."""
-        # Mock all the services and controllers that are imported in __init__
-        with patch("src.services.ui_service.UIService") as mock_ui_service, patch(
-            "src.services.ui_state_manager.UIStateManager"
-        ) as mock_ui_state_manager, patch(
-            "src.services.axis_ui_service.AxisUIService"
-        ) as mock_axis_ui_service, patch(
-            "src.services.plot_style_service.PlotStyleService"
-        ) as mock_plot_style_service, patch(
-            "src.services.analytics_service.AnalyticsService"
-        ) as mock_analytics_service, patch(
-            "src.services.tob_service.TOBService"
-        ) as mock_tob_service, patch(
-            "src.services.data_service.DataService"
-        ) as mock_data_service, patch(
-            "src.services.plot_service.PlotService"
-        ) as mock_plot_service, patch(
-            "src.services.encryption_service.EncryptionService"
-        ) as mock_encryption_service, patch(
-            "src.services.error_service.ErrorService"
-        ) as mock_error_service, patch(
-            "src.utils.error_handler.ErrorHandler"
-        ) as mock_error_handler, patch(
-            "src.controllers.plot_controller.PlotController"
-        ) as mock_plot_controller, patch(
-            "src.controllers.tob_controller.TOBController"
-        ) as mock_tob_controller:
+    def emit(self, *args: Any, **kwargs: Any) -> None:
+        for slot in list(self.slots):
+            slot(*args, **kwargs)
 
-            controller = MainController(mock_main_window)
-            return controller
 
-    def test_initialization(self, main_controller):
-        """Test that MainController initializes correctly."""
-        assert hasattr(main_controller, "analytics_service")
-        assert hasattr(main_controller, "tob_service")
-        assert hasattr(main_controller, "data_service")
-        assert hasattr(main_controller, "plot_service")
-        assert hasattr(main_controller, "encryption_service")
-        assert hasattr(main_controller, "error_service")
-        assert hasattr(main_controller, "ui_service")
-        assert hasattr(main_controller, "ui_state_manager")
-        assert hasattr(main_controller, "axis_ui_service")
-        assert hasattr(main_controller, "plot_style_service")
-        assert hasattr(main_controller, "plot_controller")
-        assert hasattr(main_controller, "tob_controller")
-        assert isinstance(main_controller.project_model, ProjectModel)
-        assert main_controller.tob_data_model is None
+class PlotStub:
+    def __init__(self) -> None:
+        self.plot_updated = FakeSignal()
+        self.sensors_updated = FakeSignal()
+        self.axis_limits_changed = FakeSignal()
+        self.current_tob_data: Any = None
+        self.handle_sensor_calls: List[tuple[str, bool, Any]] = []
 
-    def test_service_injection(self, main_controller, mock_main_window):
-        """Test that services are properly injected into the view."""
-        # Verify that set_services was called on the main window
-        mock_main_window.set_services.assert_called_once()
+    def update_plot_data(self, data: Any) -> None:
+        self.current_tob_data = data
 
-        # Verify that the services dict contains all required services
-        call_args = mock_main_window.set_services.call_args[0][0]
-        expected_services = [
-            "ui_state_manager",
-            "ui_service",
-            "axis_ui_service",
-            "data_service",
-            "plot_service",
-            "plot_style_service",
-        ]
+    def update_selected_sensors(self, sensors: List[str], window: Any) -> None:
+        return
 
-        for service_name in expected_services:
-            assert service_name in call_args
+    def update_sensor_checkboxes(self, window: Any) -> None:
+        return
 
-    def test_signal_connections(self, main_controller, mock_main_window):
-        """Test that signals are properly connected."""
-        # Verify that view signals are connected to controller methods
-        mock_main_window.file_opened.connect.assert_called()
-        mock_main_window.project_created.connect.assert_called()
-        mock_main_window.project_opened.connect.assert_called()
+    def handle_sensor_selection_changed(
+        self, sensor: str, selected: bool, window: Any
+    ) -> None:
+        self.handle_sensor_calls.append((sensor, selected, window))
 
-        # Verify that controller signals are connected to view slots
-        assert main_controller.plot_data_update.connect.called
-        assert main_controller.plot_sensors_update.connect.called
-        assert main_controller.plot_axis_limits_update.connect.called
-        assert main_controller.show_plot_mode.connect.called
 
-    def test_plot_controller_signals_connected(self, main_controller):
-        """Test that plot controller signals are connected."""
-        # Verify plot controller signal connections
-        main_controller.plot_controller.plot_updated.connect.assert_called_once()
-        main_controller.plot_controller.sensors_updated.connect.assert_called_once()
-        main_controller.plot_controller.axis_limits_changed.connect.assert_called_once()
+class TOBStub:
+    def __init__(self) -> None:
+        self.file_loaded = FakeSignal()
+        self.data_processed = FakeSignal()
+        self.metrics_calculated = FakeSignal()
+        self.error_occurred = FakeSignal()
+        self.process_calls: List[Any] = []
+        self.metric_calls: List[Any] = []
+        self.load_calls: List[str] = []
+        self.raise_on_load: Exception | None = None
 
-    def test_tob_controller_signals_connected(self, main_controller):
-        """Test that TOB controller signals are connected."""
-        # Verify TOB controller signal connections
-        main_controller.tob_controller.file_loaded.connect.assert_called_once()
-        main_controller.tob_controller.data_processed.connect.assert_called_once()
-        main_controller.tob_controller.metrics_calculated.connect.assert_called_once()
-        main_controller.tob_controller.error_occurred.connect.assert_called_once()
+    def load_tob_file(self, file_path: str) -> None:
+        if self.raise_on_load is not None:
+            raise self.raise_on_load
+        self.load_calls.append(file_path)
 
-    @patch("src.controllers.main_controller.TOBDataModel")
-    def test_on_tob_file_loaded(self, mock_tob_model, main_controller):
-        """Test TOB file loaded handler."""
-        main_controller.tob_controller.process_tob_data = Mock()
+    def process_tob_data(self, model: Any) -> None:
+        self.process_calls.append(model)
 
-        main_controller._on_tob_file_loaded(mock_tob_model)
+    def calculate_metrics(self, model: Any) -> None:
+        self.metric_calls.append(model)
 
-        assert main_controller.tob_data_model == mock_tob_model
-        main_controller.tob_controller.process_tob_data.assert_called_once_with(
-            mock_tob_model
+
+class WindowStub:
+    def __init__(self) -> None:
+        self.file_opened = FakeSignal()
+        self.project_created = FakeSignal()
+        self.project_opened = FakeSignal()
+        self.send_data_requested = FakeSignal()
+        self.quality_control_requested = FakeSignal()
+        self.status_request_requested = FakeSignal()
+
+        self.update_plot_data = Mock()
+        self.update_plot_sensors = Mock()
+        self._handle_plot_axis_limits_update = Mock()
+        self._show_plot_area = Mock()
+        self.display_status_message = Mock()
+        self.update_tob_file_status_bar = Mock()
+        self.show_error_dialog = Mock()
+        self.show_data_loaded = Mock()
+
+        self.set_services = Mock()
+        self.set_controller = Mock()
+        self.get_metrics_widgets = Mock(return_value={})
+
+        self.ui_state_manager = Mock(set_containers=Mock())
+        self.welcome_container = object()
+        self.plot_container = object()
+        self.ntc_checkboxes: Dict[str, Any] = {}
+
+        self.plot_widget = Mock()
+        self.plot_widget.active_ntc_sensors = []
+        self.plot_widget.set_active_ntc_sensors = Mock()
+        self.plot_widget._refresh_plot = Mock()
+        self.plot_widget._update_axis_labels = Mock()
+
+
+@pytest.fixture
+def controller_setup():
+    window = WindowStub()
+    memory_monitor = Mock(start_monitoring=Mock())
+
+    with ExitStack() as stack:
+        stack.enter_context(patch("src.services.ui_service.UIService", return_value=Mock()))
+        stack.enter_context(
+            patch(
+                "src.services.ui_state_manager.UIStateManager",
+                return_value=Mock(set_containers=Mock()),
+            )
         )
-
-    def test_on_tob_data_processed(self, main_controller, mock_main_window):
-        """Test TOB data processed handler."""
-        processed_data = {"test": "data"}
-        main_controller._update_view_with_tob_data = Mock()
-        main_controller.tob_controller.calculate_metrics = Mock()
-
-        main_controller._on_tob_data_processed(processed_data)
-
-        main_controller._update_view_with_tob_data.assert_called_once()
-        main_controller.tob_controller.calculate_metrics.assert_called_once_with(
-            main_controller.tob_data_model
+        stack.enter_context(patch("src.services.axis_ui_service.AxisUIService", return_value=Mock()))
+        stack.enter_context(
+            patch("src.services.plot_style_service.PlotStyleService", return_value=Mock())
         )
-
-    def test_on_plot_updated(self, main_controller):
-        """Test plot updated signal handler."""
-        mock_tob_data = Mock()
-        main_controller.plot_controller.current_tob_data = mock_tob_data
-
-        main_controller._on_plot_updated()
-
-        main_controller.plot_data_update.emit.assert_called_once_with(mock_tob_data)
-
-    def test_on_sensors_updated(self, main_controller):
-        """Test sensors updated signal handler."""
-        sensors = ["NTC01", "PT100"]
-
-        main_controller._on_sensors_updated(sensors)
-
-        main_controller.plot_sensors_update.emit.assert_called_once_with(sensors)
-
-    def test_on_axis_limits_changed(self, main_controller):
-        """Test axis limits changed signal handler."""
-        main_controller._on_axis_limits_changed("x", 0, 100)
-
-        main_controller.plot_axis_limits_update.emit.assert_called_once_with(
-            "x", 0, 100
+        stack.enter_context(
+            patch("src.services.analytics_service.AnalyticsService", return_value=Mock())
         )
-
-    def test_on_tob_metrics_calculated(self, main_controller, mock_main_window):
-        """Test TOB metrics calculated handler."""
-        metrics = {"mean_hp_power": 10.5}
-        mock_main_window.get_metrics_widgets = Mock(return_value={})
-
-        main_controller._on_tob_metrics_calculated(metrics)
-
-        # Should call update_data_metrics with metrics and widgets
-        assert True  # Test passes if no exception is raised
-
-    def test_on_tob_error_occurred(self, main_controller, mock_main_window):
-        """Test TOB error occurred handler."""
-        error_type = "Test Error"
-        error_message = "Test message"
-
-        main_controller._on_tob_error_occurred(error_type, error_message)
-
-        # Should show error dialog if available
-        assert True  # Test passes if no exception is raised
-
-    @patch("src.controllers.main_controller.TOBDataModel")
-    def test_on_file_opened_success(
-        self, mock_tob_model, main_controller, mock_main_window
-    ):
-        """Test successful file opened handler."""
-        file_path = "test.tob"
-
-        # Mock successful TOB controller call
-        main_controller.tob_controller.load_tob_file = Mock()
-
-        main_controller._on_file_opened(file_path)
-
-        main_controller.tob_controller.load_tob_file.assert_called_once_with(file_path)
-
-    def test_on_file_opened_error(self, main_controller, mock_main_window):
-        """Test file opened handler with error."""
-        file_path = "invalid.tob"
-
-        # Mock TOB controller to raise an exception
-        main_controller.tob_controller.load_tob_file = Mock(
-            side_effect=Exception("Test error")
+        stack.enter_context(patch("src.services.tob_service.TOBService", return_value=Mock()))
+        stack.enter_context(patch("src.services.data_service.DataService", return_value=Mock()))
+        stack.enter_context(patch("src.services.plot_service.PlotService", return_value=Mock()))
+        stack.enter_context(
+            patch("src.services.encryption_service.EncryptionService", return_value=Mock())
         )
-
-        # Should not raise exception - error is handled internally
-        try:
-            main_controller._on_file_opened(file_path)
-        except Exception:
-            pytest.fail("File opened handler should handle exceptions gracefully")
-
-    def test_handle_sensor_selection_changed(self, main_controller, mock_main_window):
-        """Test sensor selection change handler."""
-        main_controller.plot_controller.handle_sensor_selection_changed = Mock()
-
-        main_controller.handle_sensor_selection_changed("NTC01", True)
-
-        main_controller.plot_controller.handle_sensor_selection_changed.assert_called_once_with(
-            "NTC01", True, main_controller.main_window
+        stack.enter_context(
+            patch("src.services.project_service.ProjectService", return_value=Mock())
         )
-
-    def test_dependency_injection_verification(self, main_controller):
-        """Test that dependency injection is properly set up."""
-        # Verify that services are created and injected
-        assert main_controller.data_service is not None
-        assert main_controller.plot_service is not None
-        assert main_controller.tob_service is not None
-
-        # Verify that controllers receive injected services
-        assert (
-            main_controller.plot_controller.plot_service == main_controller.plot_service
+        stack.enter_context(patch("src.services.error_service.ErrorService", return_value=Mock()))
+        stack.enter_context(patch("src.utils.error_handler.ErrorHandler", return_value=Mock()))
+        stack.enter_context(
+            patch(
+                "src.services.memory_monitor_service.MemoryMonitorService",
+                return_value=memory_monitor,
+            )
         )
-        assert main_controller.tob_controller.tob_service == main_controller.tob_service
-        assert (
-            main_controller.tob_controller.data_service == main_controller.data_service
-        )
+        controller = MainController(window)
 
-    def test_axis_limits_update_calls_plot_controller(self, main_controller):
-        """Test that axis limits updates call the plot controller."""
-        # Test X-axis update calls plot controller
-        main_controller.plot_controller.update_axis_limits = Mock()
-        main_controller.update_x_axis_limits(10.0, 100.0)
+    plot_stub = PlotStub()
+    tob_stub = TOBStub()
 
-        main_controller.plot_controller.update_axis_limits.assert_called_once_with(
-            "x", 10.0, 100.0
-        )
+    controller.plot_controller = plot_stub
+    controller.tob_controller = tob_stub
+    controller._connect_plot_signals()
+    controller._connect_tob_signals()
 
-        # Test Y1-axis update calls plot controller
-        main_controller.update_y1_axis_limits(5.0, 50.0)
+    return controller, window, plot_stub, tob_stub
 
-        main_controller.plot_controller.update_axis_limits.assert_called_with(
-            "y1", 5.0, 50.0
-        )
 
-    def test_plot_controller_axis_signal_flow(self, main_controller, mock_main_window):
-        """Test that plot controller axis changes trigger view updates."""
-        # Setup mocks
-        mock_main_window._handle_plot_axis_limits_update = Mock()
+def test_initialisation(controller_setup):
+    controller, _, _, _ = controller_setup
+    assert controller.project_model.name == "Untitled Project"
+    assert controller.tob_data_model is None
 
-        # Simulate plot controller sending axis limits changed signal
-        main_controller._handle_axis_limits_changed("x", 0.0, 100.0)
 
-        # Should emit signal to view
-        mock_main_window._handle_plot_axis_limits_update.assert_called_once_with(
-            "x", 0.0, 100.0
-        )
+def test_services_injected(controller_setup):
+    _, window, _, _ = controller_setup
+    window.set_services.assert_called_once()
 
-    def test_update_axis_settings_calls_plot_widget(
-        self, main_controller, mock_main_window
-    ):
-        """Test that axis settings updates call the plot widget."""
-        # Setup mock plot widget
-        mock_plot_widget = Mock()
-        mock_main_window.plot_widget = mock_plot_widget
 
-        # Test axis settings update
-        axis_settings = {"y1_sensor": "NTC01", "x_axis_type": "Minutes"}
-        main_controller.update_axis_settings(axis_settings)
+def test_view_signal_connections(controller_setup):
+    controller, window, _, _ = controller_setup
+    assert controller._on_file_opened in window.file_opened.slots
+    assert controller._on_project_created in window.project_created.slots
+    assert controller._on_project_opened in window.project_opened.slots
 
-        # Should call plot widget update_axis_settings
-        mock_plot_widget.update_axis_settings.assert_called_once_with(axis_settings)
+
+def test_plot_signals_connected(controller_setup):
+    controller, _, plot_stub, _ = controller_setup
+    assert controller._on_plot_updated in plot_stub.plot_updated.slots
+    assert controller._on_sensors_updated in plot_stub.sensors_updated.slots
+    assert controller._on_axis_limits_changed in plot_stub.axis_limits_changed.slots
+
+
+def test_tob_signals_connected(controller_setup):
+    controller, _, _, tob_stub = controller_setup
+    assert controller._on_tob_file_loaded in tob_stub.file_loaded.slots
+    assert controller._on_tob_data_processed in tob_stub.data_processed.slots
+    assert controller._on_tob_metrics_calculated in tob_stub.metrics_calculated.slots
+    assert controller._on_tob_error_occurred in tob_stub.error_occurred.slots
+
+
+def test_on_tob_file_loaded(controller_setup):
+    controller, _, _, tob_stub = controller_setup
+    model = Mock()
+
+    controller._on_tob_file_loaded(model)
+
+    assert controller.tob_data_model is model
+    assert tob_stub.process_calls == [model]
+
+
+def test_on_tob_data_processed(controller_setup):
+    controller, _, _, tob_stub = controller_setup
+    received: List[Any] = []
+    controller.data_processed.connect(lambda payload: received.append(payload))
+    controller.tob_data_model = Mock()
+
+    payload = {"foo": "bar"}
+    controller._on_tob_data_processed(payload)
+
+    assert received == [payload]
+    assert tob_stub.metric_calls == [controller.tob_data_model]
+
+
+def test_on_plot_updated_updates_view(controller_setup):
+    controller, window, plot_stub, _ = controller_setup
+    window.update_plot_data.reset_mock()
+    plot_stub.current_tob_data = Mock()
+
+    controller._on_plot_updated()
+
+    window.update_plot_data.assert_called_once_with(plot_stub.current_tob_data)
+
+
+def test_on_sensors_updated_updates_view(controller_setup):
+    controller, window, _, _ = controller_setup
+    window.update_plot_sensors.reset_mock()
+    sensors = ["NTC01", "PT100"]
+
+    controller._on_sensors_updated(sensors)
+
+    window.update_plot_sensors.assert_called_once_with(sensors)
+
+
+def test_on_axis_limits_changed_updates_view(controller_setup):
+    controller, window, _, _ = controller_setup
+    window._handle_plot_axis_limits_update.reset_mock()
+
+    controller._on_axis_limits_changed("x", 0.0, 100.0)
+
+    window._handle_plot_axis_limits_update.assert_called_once_with("x", 0.0, 100.0)
+
+
+def test_handle_sensor_selection_changed_ntc_updates_widget(controller_setup):
+    controller, window, _, _ = controller_setup
+    window.ntc_checkboxes = {"NTC01": object(), "Temp": object()}
+    window.plot_widget.active_ntc_sensors = None
+    window.plot_widget.set_active_ntc_sensors.reset_mock()
+
+    controller.handle_sensor_selection_changed("NTC01", True)
+
+    window.plot_widget.set_active_ntc_sensors.assert_called_once()
+    args, _ = window.plot_widget.set_active_ntc_sensors.call_args
+    assert "NTC01" in args[0]
+
+
+def test_handle_sensor_selection_changed_non_ntc_delegates(controller_setup):
+    controller, _, plot_stub, _ = controller_setup
+
+    controller.handle_sensor_selection_changed("RPM", True)
+
+    assert plot_stub.handle_sensor_calls == [("RPM", True, controller.main_window)]
+
+
+def test_plot_controller_axis_signal_flow_updates_view(controller_setup):
+    controller, window, plot_stub, _ = controller_setup
+    window._handle_plot_axis_limits_update.reset_mock()
+
+    plot_stub.axis_limits_changed.emit("x", 0.0, 100.0)
+
+    window._handle_plot_axis_limits_update.assert_called_once_with("x", 0.0, 100.0)
+
+
+def test_on_tob_metrics_calculated_updates_services_and_view(controller_setup):
+    controller, window, plot_stub, _ = controller_setup
+    controller.data_service.update_data_metrics = Mock()
+    window.update_tob_file_status_bar.reset_mock()
+    window._show_plot_area.reset_mock()
+    window.show_data_loaded.reset_mock()
+
+    tob_model = Mock()
+    tob_model.sensors = ["NTC01", "PT100"]
+    tob_model.file_name = "demo.tob"
+    tob_model.data_points = 42
+    tob_model.get_pt100_sensor = Mock(return_value="PT100")
+    controller.tob_data_model = tob_model
+
+    metrics = {"mean_hp_power": 10.5}
+    controller._on_tob_metrics_calculated(metrics)
+
+    controller.data_service.update_data_metrics.assert_called_once()
+    assert plot_stub.current_tob_data is tob_model
+    window.update_tob_file_status_bar.assert_called_once()
+    window._show_plot_area.assert_called_once()
+    window.show_data_loaded.assert_called_once()
+
+
+def test_on_tob_error_occurred_shows_dialog(controller_setup):
+    controller, window, _, _ = controller_setup
+    window.show_error_dialog.reset_mock()
+
+    controller._on_tob_error_occurred("Error", "Something went wrong")
+
+    window.show_error_dialog.assert_called_once_with("Error", "Something went wrong")
+
+
+def test_on_file_opened_success_invokes_loader(controller_setup):
+    controller, _, _, tob_stub = controller_setup
+
+    controller._on_file_opened("sample.tob")
+
+    assert tob_stub.load_calls == ["sample.tob"]
+
+
+def test_on_file_opened_handles_error(controller_setup):
+    controller, _, _, tob_stub = controller_setup
+    tob_stub.raise_on_load = RuntimeError("boom")
+
+    try:
+        controller._on_file_opened("broken.tob")
+    except RuntimeError:  # pragma: no cover
+        pytest.fail("_on_file_opened should handle loader exceptions internally")

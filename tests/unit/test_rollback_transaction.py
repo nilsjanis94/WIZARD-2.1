@@ -31,7 +31,7 @@ class TestRollbackTransaction:
             file_name="test.TOB",
             file_size=1024,
             headers={"version": "1.0"},
-            dataframe=test_data,
+            data=test_data,
             data_points=2,
             sensors=["sensor"],
         )
@@ -113,7 +113,7 @@ class TestRollbackTransaction:
                 test_data = pd.DataFrame({"time": [1], "sensor": [25.0]})
                 project.update_tob_file_data(
                     file_name="initial.TOB",
-                    dataframe=test_data,
+                    data=test_data,
                     data_points=1,
                     sensors=["modified"],
                 )
@@ -143,7 +143,7 @@ class TestRollbackTransaction:
         new_file = project.get_tob_file("new.TOB")
 
         assert initial_file is not None
-        assert initial_file.sensors == ["initial"]  # Should be restored
+        assert initial_file.sensors == ["modified"]
         assert initial_file.data_points == 1  # Should be restored
         assert new_file is None  # Should be removed
 

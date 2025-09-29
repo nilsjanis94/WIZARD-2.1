@@ -52,11 +52,11 @@ class TestMemoryMonitorService:
         service = MemoryMonitorService()
 
         # Test different memory levels (using MB values)
-        assert service._calculate_memory_level(500) == MemoryLevel.LOW  # 500MB
-        assert service._calculate_memory_level(1200) == MemoryLevel.MODERATE  # 1.2GB
-        assert service._calculate_memory_level(1600) == MemoryLevel.HIGH  # 1.6GB
-        assert service._calculate_memory_level(1900) == MemoryLevel.CRITICAL  # 1.9GB
-        assert service._calculate_memory_level(2100) == MemoryLevel.EXCEEDED  # 2.1GB
+        assert service._calculate_memory_level(500) == MemoryLevel.LOW  # 0.5GB
+        assert service._calculate_memory_level(1500) == MemoryLevel.MODERATE  # 1.5GB
+        assert service._calculate_memory_level(2500) == MemoryLevel.HIGH  # 2.5GB
+        assert service._calculate_memory_level(3200) == MemoryLevel.CRITICAL  # 3.2GB
+        assert service._calculate_memory_level(4200) == MemoryLevel.EXCEEDED  # 4.2GB
 
     def test_update_tob_memory_usage(self):
         """Test updating TOB memory usage."""
@@ -92,17 +92,17 @@ class TestMemoryMonitorService:
             # Mock high memory usage
             mock_stats.return_value = MemoryStats(
                 total_mb=8192,
-                used_mb=1900,
-                available_mb=6292,  # 1.9GB used, critical
-                usage_percent=23.2,
-                level=MemoryLevel.CRITICAL,
-                tob_data_mb=100,
+                used_mb=3500,
+                available_mb=4692,
+                usage_percent=42.7,
+                level=MemoryLevel.HIGH,
+                tob_data_mb=3000,
             )
 
-            # Should block operation when memory is critical
-            can_proceed, reason = service.check_memory_before_operation(50)
+            service.update_tob_memory_usage(3000)
+            can_proceed, reason = service.check_memory_before_operation(1200)
             assert not can_proceed
-            assert "critical" in reason.lower()
+            assert "exceed" in reason.lower()
 
     def test_add_cleanup_callback(self):
         """Test adding cleanup callbacks."""

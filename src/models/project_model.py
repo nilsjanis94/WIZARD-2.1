@@ -130,9 +130,10 @@ class RollbackTransaction:
                         data_points=backup["data_points"],
                         sensors=backup["sensors"],
                     )
-
                 # Restore status
-                self.project_model.update_tob_file_status(file_name, backup["status"])
+                self.project_model.update_tob_file_status(
+                    backup["file_name"], backup["status"]
+                )
 
             return True
 
@@ -380,7 +381,7 @@ class ProjectModel(BaseModel):
 
         # Create TOB data object
         tob_data = None
-        if headers or data or raw_data:
+        if headers or data is not None or raw_data:
             tob_data = TOBFileData(headers=headers or {}, data=data, raw_data=raw_data)
 
         # Check for duplicate file names
@@ -391,6 +392,7 @@ class ProjectModel(BaseModel):
                     tob.file_path = file_path
                     tob.file_size = file_size
                     tob.tob_data = tob_data
+                    tob.modified_headers = {}
                     tob.data_points = data_points
                     tob.sensors = sensors or []
                     tob.status = TOBFileStatus.LOADED
@@ -473,7 +475,10 @@ class ProjectModel(BaseModel):
                 if headers is not None:
                     tob_file.headers = headers
                 if data is not None:
-                    tob_file.tob_data.data = data
+                    if tob_file.tob_data is None:
+                        tob_file.tob_data = TOBFileData(headers=headers or {}, data=data)
+                    else:
+                        tob_file.tob_data.data = data
                 if data_points is not None:
                     tob_file.data_points = data_points
                 if sensors is not None:
