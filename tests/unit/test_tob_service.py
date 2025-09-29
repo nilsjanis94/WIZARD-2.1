@@ -62,11 +62,6 @@ class TestTOBService:
                 service.validate_tob_file("nonexistent.tob")
 
     @pytest.mark.skip(reason="Method _is_data_line removed - now using tob_dataloader")
-    def test_is_data_line_numeric(self):
-        """Test detecting numeric data lines."""
-        pytest.skip("Method removed - using tob_dataloader")
-
-    @pytest.mark.skip(reason="Method _is_data_line removed - now using tob_dataloader")
     def test_is_data_line_mixed(self):
         """Test detecting mixed data lines."""
         pytest.skip("Method removed - using tob_dataloader")
