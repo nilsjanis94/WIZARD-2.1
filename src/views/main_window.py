@@ -1069,6 +1069,10 @@ class MainWindow(QMainWindow):
             # Update plot widget with TOB data
             self.plot_widget.update_data(tob_data_model)
 
+            # Inform controller about the newly active TOB data
+            if hasattr(self.controller, "set_current_tob_data"):
+                self.controller.set_current_tob_data(tob_data_model)
+
             # Set as active TOB file
             self.controller.project_model.set_active_tob_file(file_name)
 

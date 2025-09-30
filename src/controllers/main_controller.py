@@ -5,14 +5,19 @@ This module contains the main controller class that coordinates between
 the models, views, and services.
 """
 
+import json
 import logging
+import re
+import subprocess
+import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
-from ..models.project_model import ProjectModel
+from ..models.project_model import ProjectModel, ServerConfig
 from ..models.tob_data_model import TOBDataModel
 from ..services.analytics_service import AnalyticsService
 from ..services.data_service import DataService
@@ -127,6 +132,9 @@ class MainController(QObject):
         self._connect_tob_signals()
 
         self.logger.info("Main controller initialized successfully")
+
+        # Executor for background tasks (e.g., uploads)
+        self._executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="wizard")
 
     def _connect_plot_signals(self) -> None:
         """
@@ -452,6 +460,15 @@ class MainController(QObject):
             Current TOB data model or None if no data loaded
         """
         return self.tob_data_model
+
+    def set_current_tob_data(self, tob_data_model: Optional[TOBDataModel]) -> None:
+        """
+        Update the controller's reference to the currently active TOB data.
+
+        Args:
+            tob_data_model: The TOBDataModel selected in the UI or loaded by the controller.
+        """
+        self.tob_data_model = tob_data_model
 
     def get_time_range(self) -> Dict[str, Any]:
         """
@@ -1207,7 +1224,7 @@ class MainController(QObject):
 
     def upload_tob_file_to_server(self, file_name: str) -> bool:
         """
-        Upload a TOB file to the configured server.
+        Upload a TOB file to the configured server using a cURL command.
 
         Args:
             file_name: Name of the TOB file to upload
@@ -1216,21 +1233,18 @@ class MainController(QObject):
             True if upload was initiated successfully, False otherwise
         """
         try:
-            if not self.http_client:
-                if not self.initialize_http_client():
-                    self.error_handler.handle_error(
-                        ValueError(
-                            "Server connection not available. Check server configuration."
-                        ),
-                        "Server Connection Error",
-                        self.main_window,
-                    )
-                    return False
-
             if not self.project_model:
                 return False
 
-            # Get TOB file info
+            server_config = self.project_model.server_config
+            if not server_config:
+                self.error_handler.handle_error(
+                    ValueError("Server configuration missing"),
+                    "Server Configuration Error",
+                    self.main_window,
+                )
+                return False
+
             tob_file = self.project_model.get_tob_file(file_name)
             if not tob_file:
                 self.error_handler.handle_error(
@@ -1240,8 +1254,8 @@ class MainController(QObject):
                 )
                 return False
 
-            # Check if file path exists
-            if not Path(tob_file.file_path).exists():
+            file_path = Path(tob_file.file_path)
+            if not file_path.exists():
                 self.error_handler.handle_error(
                     ValueError(f"TOB file '{file_name}' not found on disk"),
                     "File Not Found",
@@ -1249,82 +1263,174 @@ class MainController(QObject):
                 )
                 return False
 
-            # Update status to uploading
+            headers = self._collect_tob_headers(tob_file)
+
+            comment_value = headers.get("Comments", "")
+            if isinstance(comment_value, list):
+                comment_value = "; ".join(
+                    str(item) for item in comment_value if item is not None
+                )
+            comment = str(comment_value or "")
+            subcon = str(headers.get("Subconn_Length", "") or "")
+            location = str(
+                headers.get("Location", "") or self.project_model.description or ""
+            )
+            string_id = self._derive_string_id(comment)
+
             self.project_model.update_tob_file_status(file_name, "uploading")
 
-            # Prepare metadata for upload
-            metadata = {
-                "file_name": tob_file.file_name,
-                "file_size": tob_file.file_size,
-                "data_points": tob_file.data_points,
-                "sensors": tob_file.sensors or [],
-                "project_name": self.project_model.name,
-                "upload_timestamp": (
-                    tob_file.added_date.isoformat() if tob_file.added_date else None
-                ),
-            }
-
-            # Upload file
-            upload_result = self.http_client.upload_tob_file(
-                tob_file.file_path, metadata
+            command = self._build_curl_command(
+                server_config=server_config,
+                project_name=self.project_model.name,
+                location=location,
+                file_path=str(file_path),
+                subcon=subcon,
+                string_id=string_id,
+                comment=comment,
             )
 
-            if upload_result.success:
-                # Update file with job ID if available
-                if upload_result.job_id:
-                    tob_file.server_job_id = upload_result.job_id
+            self.logger.info("cURL command: %s", " ".join(command))
 
-                # Update status to uploaded
-                self.project_model.update_tob_file_status(file_name, "uploaded")
+            self.logger.info("Executing upload command via cURL")
+            start_time = time.time()
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            duration = time.time() - start_time
 
-                # Update upload timestamp
-                tob_file.upload_date = datetime.now()
-
-                # Update project container status
-                if hasattr(self.main_window, "update_project_container_status"):
-                    self.main_window.update_project_container_status()
-
-                # Trigger auto-save
-                self._mark_project_modified()
-
-                self.logger.info(
-                    f"Successfully initiated upload for '{file_name}' (job: {upload_result.job_id})"
-                )
-
-                # Emit signal for thread-safe GUI update
-                self.show_upload_success.emit(
-                    "Upload Started",
-                    f"Upload of '{file_name}' to server has been initiated.\n\n"
-                    f"Job ID: {upload_result.job_id or 'N/A'}\n"
-                    f"Message: {upload_result.message or 'Upload in progress'}",
-                )
-
-                return True
+            self.logger.info("cURL return code: %s", result.returncode)
+            self.logger.info("cURL execution time: %.2fs", duration)
+            if result.stdout:
+                self.logger.info("cURL stdout: %s", result.stdout.strip())
             else:
-                # Upload failed, reset status
-                self.project_model.update_tob_file_status(file_name, "error")
-                tob_file.error_message = upload_result.message
+                self.logger.info("cURL stdout: <empty>")
+            if result.stderr:
+                self.logger.info("cURL stderr: %s", result.stderr.strip())
+            else:
+                self.logger.info("cURL stderr: <empty>")
 
-                # Update project container status
+            if result.returncode != 0:
+                self.logger.error("cURL upload failed: %s", result.stderr or result.stdout)
+                self.project_model.update_tob_file_status(file_name, "error")
+                tob_file.error_message = result.stderr or result.stdout
                 if hasattr(self.main_window, "update_project_container_status"):
                     self.main_window.update_project_container_status()
-
                 self.error_handler.handle_error(
-                    ValueError(f"Upload failed: {upload_result.message}"),
+                    ValueError("Upload failed"),
                     "Upload Failed",
                     self.main_window,
                 )
                 return False
 
-        except Exception as e:
-            self.logger.error(f"Error uploading TOB file: {e}")
+            job_id, message = self._parse_curl_response(result.stdout)
 
-            # Reset status on error
+            tob_file.server_job_id = job_id
+            tob_file.upload_date = datetime.now()
+            self.project_model.update_tob_file_status(file_name, "uploaded")
+
+            if hasattr(self.main_window, "update_project_container_status"):
+                self.main_window.update_project_container_status()
+
+            self._mark_project_modified()
+
+            self.logger.info(
+                "Successfully uploaded '%s' (job: %s)", file_name, job_id or "N/A"
+            )
+
+            self.show_upload_success.emit(
+                "Upload Started",
+                "Upload of '{file}' to server has been initiated.\n\nJob ID: {job}\nMessage: {msg}".format(
+                    file=file_name,
+                    job=job_id or "N/A",
+                    msg=message or "Upload in progress",
+                ),
+            )
+
+            return True
+
+        except Exception as e:
+            self.logger.error("Error uploading TOB file via cURL: %s", e)
             if self.project_model:
                 self.project_model.update_tob_file_status(file_name, "error")
-
             self.error_handler.handle_error(e, "Upload Error", self.main_window)
             return False
+
+    def _collect_tob_headers(self, tob_file) -> dict[str, Any]:
+        headers: dict[str, Any] = {}
+        if tob_file.tob_data and tob_file.tob_data.headers:
+            headers.update(tob_file.tob_data.headers)
+        if tob_file.modified_headers:
+            headers.update(tob_file.modified_headers)
+        return headers
+
+    def _derive_string_id(self, comment: str) -> str:
+        if not comment:
+            return ""
+        match = re.search(r"T(\d+)SD", comment)
+        if match:
+            return f"FLX-T{match.group(1)}SD"
+        return ""
+
+    def _build_curl_command(
+        self,
+        *,
+        server_config: ServerConfig,
+        project_name: str,
+        location: str,
+        file_path: str,
+        subcon: str,
+        string_id: str,
+        comment: str,
+    ) -> list[str]:
+        command: list[str] = [
+            "curl",
+            "-i",
+            "-S",
+            "--connect-timeout",
+            "10",
+            "--max-time",
+            "60",
+        ]
+
+        command.extend(
+            ["-H", "Content-Type: multipart/form-data"]
+        )
+        command.extend(["-H", "Accept: application/json"])
+        command.extend(
+            ["-H", f"Authorization: Bearer {server_config.bearer_token}"]
+        )
+        command.extend(
+            ["-F", f"{server_config.project_field_name}={project_name}"]
+        )
+        command.extend(["-F", f"{server_config.location_field_name}={location}"])
+        command.extend(["-F", f"{server_config.tob_file_field_name}=@{file_path}"])
+        command.extend(["-F", f"{server_config.subconn_length_field_name}={subcon}"])
+        command.extend(["-F", f"{server_config.string_id_field_name}={string_id}"])
+        command.extend(["-F", f"{server_config.comment_field_name}={comment}"])
+        command.append(server_config.url)
+
+        return command
+
+    def _parse_curl_response(self, stdout: str) -> tuple[Optional[str], Optional[str]]:
+        if not stdout:
+            return None, None
+
+        json_start = stdout.find("{")
+        if json_start == -1:
+            return None, stdout.strip()
+
+        payload_text = stdout[json_start:]
+        try:
+            data = json.loads(payload_text)
+        except json.JSONDecodeError:
+            return None, stdout.strip()
+
+        job_id = data.get("job_id") or data.get("id")
+        message = data.get("message")
+        return job_id, message
 
     def check_tob_file_server_status(self, file_name: str) -> None:
         """
@@ -1413,11 +1519,35 @@ class MainController(QObject):
         """
         try:
             self.logger.info("Send data requested for file: %s", file_name)
-            success = self.upload_tob_file_to_server(file_name)
-            if success:
-                self.logger.info("Data upload initiated successfully for: %s", file_name)
-            else:
-                self.logger.warning("Data upload failed for: %s", file_name)
+            success = False
+
+            def _upload() -> bool:
+                nonlocal success
+                success = self.upload_tob_file_to_server(file_name)
+                return success
+
+            def _on_finished(future: Future):
+                try:
+                    future.result()
+                except Exception as exc:
+                    self.logger.error(
+                        "Async upload execution failed for %s: %s", file_name, exc
+                    )
+                    self.error_handler.handle_error(
+                        exc, "Upload Error", self.main_window
+                    )
+                    return
+
+                if success:
+                    self.logger.info(
+                        "Data upload initiated successfully for: %s", file_name
+                    )
+                else:
+                    self.logger.warning(
+                        "Data upload failed for: %s", file_name
+                    )
+
+            self._executor.submit(_upload).add_done_callback(_on_finished)
         except Exception as e:
             self.logger.error("Error handling send data request: %s", e)
             self.error_handler.handle_error(e, "Send Data Error", self.main_window)

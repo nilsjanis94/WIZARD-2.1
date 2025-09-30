@@ -21,6 +21,26 @@ class FakeSignal:
             slot(*args, **kwargs)
 
 
+class FakeFuture:
+    def __init__(self, fn: Callable[[], Any]) -> None:
+        self._exception: Exception | None = None
+        self._result: Any = None
+
+        try:
+            self._result = fn()
+        except Exception as exc:  # pragma: no cover - surfaced via result()
+            self._exception = exc
+
+    def result(self) -> Any:
+        if self._exception is not None:
+            raise self._exception
+        return self._result
+
+    def add_done_callback(self, callback: Callable[["FakeFuture"], None]):
+        callback(self)
+        return self
+
+
 class PlotStub:
     def __init__(self) -> None:
         self.plot_updated = FakeSignal()
@@ -114,7 +134,9 @@ def controller_setup():
                 return_value=Mock(set_containers=Mock()),
             )
         )
-        stack.enter_context(patch("src.services.axis_ui_service.AxisUIService", return_value=Mock()))
+        stack.enter_context(
+            patch("src.services.axis_ui_service.AxisUIService", return_value=Mock())
+        )
         stack.enter_context(
             patch("src.services.plot_style_service.PlotStyleService", return_value=Mock())
         )
@@ -138,10 +160,17 @@ def controller_setup():
                 return_value=memory_monitor,
             )
         )
-        controller = MainController(window)
+        with patch("src.controllers.main_controller.subprocess.run"), patch(
+            "src.controllers.main_controller.ThreadPoolExecutor"
+        ) as fake_executor:
+            executor_mock = fake_executor.return_value
+            executor_mock.submit.side_effect = lambda fn: FakeFuture(fn)
+            controller = MainController(window)
 
     plot_stub = PlotStub()
     tob_stub = TOBStub()
+
+    controller._executor_mock = executor_mock
 
     controller.plot_controller = plot_stub
     controller.tob_controller = tob_stub

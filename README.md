@@ -19,7 +19,7 @@ A professional desktop application for processing and analyzing .TOB temperature
 - **📊 TOB File Processing**: Load and analyze .TOB temperature data files with tob-dataloader
 - **📈 Data Visualization**: Interactive matplotlib plots with dual Y-axis system (NTC sensors + additional data)
 - **🔐 Project Management**: Encrypted .wzp project files mit SecretManager pro Projekt und Meta-Datei
-- **🌐 Server Communication**: cURL-basierte Datenübertragung inkl. Statusabfragen
+- **🌐 Server Communication**: Asynchrone cURL-basierte Datenübertragung mit Timeout-, Logging- und Fehlerdiagnose
 - **🖥️ Cross-Platform**: Validiert via GitHub Actions auf macOS & Windows
 - **🌍 Internationalization**: Englisch und Deutsch, umschaltbar zur Laufzeit
 - **🎨 Professionelle UI**: PyQt6-Oberfläche mit Qt Designer (responsive Layout)
